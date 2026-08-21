@@ -13,4 +13,4 @@
 - [ ] No buy/like/price/favorite/cart controls; source link (if any) is the subtly clickable title/poster, opening safely in a new tab (`rel="noopener"`, announced as external) only when a `sourceUrl` exists in data
 - [ ] Reverse scroll steps back through films correctly (scene-state seam maps progress → film index symmetrically)
 - [ ] Reduced motion: films swap by crossfade; all three reachable
-- [ ] Playwright: 3 films appear in order forward, reverse restores film 1, poster images load from local mock paths
+- [ ] Playwright: 3 films appear in order forward and reverse restores film 1 — asserted via the DOM observable-state contract (`data-active`/`aria-current` per BUILD-GUIDE), not styles; poster images load from local mock paths

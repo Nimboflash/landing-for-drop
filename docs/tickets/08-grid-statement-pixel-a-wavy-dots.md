@@ -9,7 +9,7 @@
 - [ ] Grid scene: one centered statement only — no form, button, arrows, handwriting, social icons, imagery, or floating UI (the Zero University reference's furniture is explicitly excluded)
 - [ ] Statement reveals once via clean mask/opacity+y; scene pins briefly
 - [ ] Pixel A is a shared-canvas mosaic (WebGL preferred; DOM grid only if provably smooth): stable random seed, bottom-weighted threshold field, old grid visible until each cell is replaced — not a wipe, blur, crossfade, or gradient dissolve
-- [ ] Reverse scroll restores the exact prior grid state (seeded determinism asserted at the scene-state seam; visual state asserted in Playwright)
+- [ ] Reverse scroll restores the prior grid state: seam 2 asserts a stable seed and mirrored transition progress in the `{seed, progress}` descriptor; Playwright asserts the DOM observable (statement fades out within the ~20–55% window and returns on reverse, via data attributes); `[manual]` actual cell-level restoration checked visually
 - [ ] Wavy Dots fully active at 100%; restrained (never fights text); rebuilt in GLSL — no MetalForge embed, no video
 - [ ] Reduced motion: static grid → brief crossfade → static dots field
-- [ ] 60fps target on capable desktop through the whole transition; no console/WebGL warnings
+- [ ] `[manual]` 60fps target on capable desktop through the whole transition (profiling notes with named hardware in PR); no console/WebGL warnings (automated)

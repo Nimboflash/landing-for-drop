@@ -13,6 +13,6 @@
 - [ ] DPR capped per quality tier (1.75–2 / 1.5 / 1); textures/geometries/materials disposed on unmount
 - [ ] WebGL context-creation failure and context-loss produce the non-WebGL fallback (styled static backgrounds), not a blank or broken page — covered by a Playwright test with WebGL disabled
 - [ ] Reduced motion: static backgrounds with brief crossfades
-- [ ] `offWhiteGlow` glow expands/contracts with thesis progress but never reduces text contrast (AA maintained)
+- [ ] `offWhiteGlow` glow expands/contracts with thesis progress; `[manual]` AA contrast maintained over the glow — sampled contrast measurement on worst-case frames, evidence in PR (Lighthouse can't see text over canvas)
 - [ ] `greenGrid` renders the quiet square grid in `#102b19`/`#245236`; grid cell size exposed for pixel-transition alignment
 - [ ] No WebGL warnings or console errors across a full scroll pass

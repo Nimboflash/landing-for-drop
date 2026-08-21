@@ -6,7 +6,7 @@
 
 **Status:** ready-for-agent
 
-- [ ] Next.js App Router + TypeScript strict + Vitest + Playwright + Zod installed and configured; CI-runnable `test`, `typecheck`, `build` scripts
+- [ ] Next.js App Router + TypeScript strict + Vitest + Playwright + Zod installed and configured; CI-runnable `test`, `typecheck`, `build` scripts — the rights guard runs behind an explicit production flag so the default `build` stays green, with a separate CI step running the flagged build and asserting non-zero exit while mock assets remain (per BUILD-GUIDE)
 - [ ] Schema + W04 mock JSON + validated export adopted from `handoff/04-mock-content/src/content/`; mock assets copied to `public/media/lenses/beautiful-imperfection/` per `handoff/04-mock-content/media-manifest.csv` (note: the `lenses/` path segment follows the mock-pack manifest and the JSON's `src` values, deliberately deviating from the brief's §13 *suggested* tree)
 - [ ] Content seam tests: schema parses W04; malformed data fails loudly; `assertProductionMedia` throws on the mock pack (asserted as correct behavior); counts match manifest (2/3/11/4)
 - [ ] Rights-state coverage at the content seam, one fixture per state: production check fails on `development-mock` and `productionAllowed: false`, fails/warns loudly on required `replace-with-final` assets (extend the adopted guard — the handoff version checks only the first two), and exposes a dev/staging-only internal flag for `rights-pending` display

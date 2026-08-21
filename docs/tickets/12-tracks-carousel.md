@@ -7,9 +7,9 @@
 **Status:** ready-for-agent
 
 - [ ] Artwork sits on the disc surface (circular clip), not as a square card above it; missing artwork falls back to a branded DROP placeholder texture, never a broken image
-- [ ] All four input methods work: scroll, drag/swipe, arrow buttons, keyboard arrows — with clean snapping that doesn't feel like a stock component-library carousel
+- [ ] All four input methods work: scroll, drag/swipe, arrow buttons, keyboard arrows — all routed as events through the seam-2 reducer (most recent input wins), so active-index behavior after mixed inputs is unit-testable; `[manual]` snapping feels clean, not like a stock component-library carousel
 - [ ] Arrow controls keyboard-accessible with visible focus states and accessible labels
-- [ ] Item count, coverflow positions, and scroll budget fully data-driven (`max(340vh, trackCount * 55vh)` starting point, sensible cap) — verified at the scene-state seam against both W04 (11 tracks) and the variable-count fixture lens from ticket 01
+- [ ] Item count and scroll budget fully data-driven (`max(340vh, trackCount * 55vh)` starting point, sensible cap) — seam-2 tests assert count-driven slots/indices against both W04 (11 tracks) and the ticket-01 variable-count fixture; `[manual]` coverflow position/scale/dim adaptation checked visually
 - [ ] Title first, artist second, optional group label third under the active case; text syncs with position changes
 - [ ] No audio autoplay; optional click opens configured external source in a new tab safely (`rel="noopener"`, announced as external) only when a `sourceUrl` exists in data
 - [ ] Reverse scroll steps backward through tracks symmetrically
