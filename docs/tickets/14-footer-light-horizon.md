@@ -6,7 +6,7 @@
 
 **Status:** ready-for-agent
 
-- [ ] Light is real-time WebGL/GLSL (`footerLight` mode on the shared canvas) — no screenshot, GIF, or video
+- [ ] `[manual]` Light is real-time WebGL/GLSL (`footerLight` mode on the shared canvas) — no screenshot, GIF, or video; liveness and the effect animating without pointer input are verified by eye/recording (canvas pixels are never asserted)
 - [ ] Outline uses the exact DROP wordmark character (from ticket 02 geometry), rendered as thin outline, not solid fill
 - [ ] Mesh→black fade is gradual; footer is not a separate white card or generic site footer
 - [ ] Closing statement from data; CTA present but disabled until final copy/action supplied
@@ -14,5 +14,5 @@
 - [ ] No invented destinations anywhere
 - [ ] Header logo may hide during the largest word reveal; wordmark may overflow horizontally on mobile but `DROP` stays recognizable
 - [ ] Reduced motion: static blurred gradient ribbon + simple outline reveal
-- [ ] Pointer distortion desktop-only; effect animates without pointer input
+- [ ] `[manual]` Pointer distortion desktop-only; effect stays alive without pointer input
 - [ ] Playwright: footer statement/slots from data, disabled links not focusable-as-links, reduced-motion variant renders

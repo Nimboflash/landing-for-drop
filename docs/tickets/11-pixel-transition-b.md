@@ -7,8 +7,8 @@
 **Status:** ready-for-agent
 
 - [ ] Film content never disappears abruptly — poster/text fade is scroll-linked and begins while film 03 is still visible
-- [ ] Pixel field passes through orange `#ff5a00` / purple `#480082` energy, restrained (atmospheric, not a color flood)
-- [ ] Mesh is revealed through the cells — never visible as a generic crossfade underneath the old scene
+- [ ] `[manual]` Pixel field passes through orange `#ff5a00` / purple `#480082` energy, restrained (atmospheric, not a color flood) — visual check against references
+- [ ] `[manual]` Mesh is revealed through the cells — never visible as a generic crossfade underneath the old scene (WebGL-visual, checked by eye; seam 2 asserts the mode/descriptor sequence)
 - [ ] Pixel coordinates/seed consistent with transition A
 - [ ] Fully reversible: scrolling back restores films exactly (seam test for state symmetry + Playwright)
 - [ ] Short dark beat at 100% precedes any Tracks content

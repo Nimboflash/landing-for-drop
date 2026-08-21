@@ -6,10 +6,10 @@
 
 **Status:** ready-for-agent
 
-- [ ] Scene-state seam established: pure controller (progress in → `{sceneId, sceneProgress, backgroundMode}` out) with unit tests proving forward/reverse symmetry and correct scene ordering
-- [ ] Lenis integrated with GSAP's RAF (single ticker, no competing scroll engines); no scroll-jacking — wheel/touch momentum respected
+- [ ] Scene-state seam established as the reducer defined in `docs/BUILD-GUIDE.md`: `(state, inputEvent) → state` with output `{sceneId, sceneProgress, backgroundMode, transitionState}`; one-way data flow (ScrollTriggers feed the reducer, scenes render only from its output); unit tests prove scene ordering, mode mapping, and symmetric stepping — ordinal assertions only, no absolute progress thresholds
+- [ ] Lenis integrated with GSAP's RAF (single ticker, no competing scroll engines); `[manual]` no scroll-jacking — wheel/touch momentum feels respected
 - [ ] All ten scenes present as pinned/flowing placeholder sections with brief-specified approximate scroll budgets; tracks budget derives from track count
 - [ ] Header: small DROP logo fixed top-left from hero onward, none during loader, top-right empty, contrast variant switches per scene, never intercepts scroll on mobile
 - [ ] `prefers-reduced-motion` utility and quality-tier detection (`high`/`medium`/`low`) available and unit-tested
-- [ ] ScrollTriggers recalculate after fonts/assets load and are killed on unmount/route change (Playwright: navigate away and back with no console errors or duplicate triggers)
+- [ ] ScrollTriggers recalculate after fonts/assets load and are killed on unmount/route change (Playwright: navigate away and back → no console errors, forward/reverse scroll produces identical states, and the dev-only diagnostics trigger count — see BUILD-GUIDE's escape hatch — hasn't grown)
 - [ ] Page seam test: scene sections appear in brief order; reverse scroll returns to the top cleanly

@@ -36,12 +36,13 @@ The content module's public API: schema parse, validated lens export, lens looku
 
 ### 2. Scene-state seam (Vitest)
 
-The pure page controller: scroll progress in → `{ sceneId, sceneProgress, backgroundMode, transitionState }` out. This is where choreography is provable without a GPU:
+The scene-state **reducer**: `(state, inputEvent) → state`, where input events are the ordered raw inputs — scroll-progress updates emitted by the per-scene ScrollTriggers, and discrete inputs (carousel keyboard/buttons/drag, reduced-motion flag) — and the state is `{ sceneId, sceneProgress, backgroundMode, transitionState }`. `transitionState` carries declarative descriptors only: active film/track/message indices, pixel-transition `{seed, progress}`, mesh variant (`"normal" | "reading" | "fadeToBlack"` + scalar), one-shot flags (e.g. grid statement revealed). No DOM, no Three.js imports — deterministic and GPU-free.
 
-- Scene order matches the brief's Section 6 sequence exactly.
-- **Reversibility is a property**: for any progress sequence, reversing it produces the mirrored states (pixel transitions restore prior state; film/track/message indices step back symmetrically).
-- Background modes map to scenes per the spec; pixel transitions own the mode changes.
-- Keep this controller pure (no DOM, no Three.js imports) so these tests stay fast and deterministic.
+**Mandated data flow (one-way):** per-scene ScrollTriggers are dumb progress sources feeding the reducer; scenes and the background canvas render *exclusively* from reducer output; no scene computes its own scene/mode/index state. This is what makes seam-2 tests meaningful — a controller that merely mirrors what scenes compute independently would test a model the page doesn't use.
+
+- **Assertions are ordinal/structural only**: scene order matches the brief's Section 6 sequence; indices and slot counts derive from data (including the variable-count fixture); mode-per-scene mapping; monotonicity; one-shot semantics. **Never assert absolute progress thresholds** — scroll budgets are tunable by design, so any absolute boundary expectation would just re-derive the implementation's config (a tautology).
+- **Reversibility is a real property because the reducer is stateful**: a scroll-driven event sequence followed by its reverse must produce the mirrored index/mode trajectory; after a discrete input (keyboard/drag), the reducer's documented precedence (most recent input wins) defines the state, and reverse-scroll stepping resumes from it. These tests can genuinely fail.
+- Pixel-transition determinism at this seam means: same `{seed, progress}` descriptor re-emitted on reverse. Whether the GLSL restores cells from that descriptor is manual visual QA.
 
 ### 3. Page seam (Playwright — the highest seam)
 
@@ -53,7 +54,15 @@ The rendered routes as a user experiences them. The brief prescribes `lens-page.
 - Reduced-motion and WebGL-disabled runs render all content.
 - Zero console errors/WebGL warnings as a standing assertion in every spec.
 
-**WebGL pixels are never asserted.** Shader look is verified by eye against the references; shader *state* is verified at seam 2.
+**DOM observable-state contract:** every scene reflects its *logical* state into the DOM as attributes driven by reducer output — `data-active`, `data-flipped`, `aria-current`, and `hidden`/`inert` on inactive content. Playwright asserts **only these attributes plus text content** — never inline transforms, opacity values, or computed styles (those are the animation engine's implementation, and Playwright's visibility heuristic is wrong for them anyway: `opacity: 0` and back-facing 3D elements still count as "visible"). This is a convention of the page seam, not a fourth seam.
+
+**Dev-only diagnostics escape hatch:** the page may expose a dev-build-only diagnostics object (e.g. live ScrollTrigger count) as part of the page seam, so leak checks ("no accumulating triggers after route round-trip") don't require reaching into GSAP internals. The behavioral proxy also applies: after navigating away and back, forward/reverse scroll must produce identical states.
+
+**WebGL pixels are never asserted.** Shader look is verified by eye against the references; shader *state* is verified at seam 2 via declarative descriptors.
+
+**`[manual]` boxes:** ticket acceptance boxes tagged `[manual]` (feel, fps, shader-visual, contrast-over-shader claims) are verified by hand with evidence (screenshots, recordings, profiling notes with named hardware) attached to the PR. Never invent an automated test for a `[manual]` box. In particular, WCAG AA contrast for text over live shaders is measured by sampling worst-case shader frames — Lighthouse's contrast rule silently skips text over canvas, so a passing Lighthouse score says nothing about it.
+
+**Production-guard CI wiring:** the rights guard runs behind an explicit production flag. The default CI `build` stays green throughout development; a dedicated CI step runs the flagged production build and asserts a **non-zero exit** while mock assets remain — that red is the passing state of that step until launch clearance.
 
 ## Definition of done (every ticket)
 

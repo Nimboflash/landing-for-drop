@@ -9,8 +9,8 @@
 - [ ] Entry choreography per brief: rise → fan (angles adapt to count, ~±8°/±3° starting points) → staggered flips; CSS 3D (`perspective`, `preserve-3d`, backface hidden)
 - [ ] Card fronts contain image/name/maker (+ optional category) only — no rationale paragraph, price, buy, cart, or like anywhere
 - [ ] Sharp corners (`border-radius: 0`); no rounded SaaS card styling
-- [ ] Card count fully data-driven 2–6; no duplicated content to fake a bigger stack; fan-angle/offset adaptation verified at the scene-state seam against the ticket-01 variable-count fixture (5 items), not just W04's 2
+- [ ] Card count fully data-driven 2–6; no duplicated content to fake a bigger stack; seam-2 tests assert count-driven card slots and flip indices against the ticket-01 variable-count fixture (5 items), not just W04's 2; `[manual]` fan-angle/offset adaptation checked visually (the brief gives only starting points — no independent expected angles exist)
 - [ ] Reverse scroll reconstructs the stack and returns it below the viewport
 - [ ] Desktop-only subtle post-flip pointer tilt; nothing depends on hover
 - [ ] Safari/WebKit backface behavior verified; mobile uses narrower fan angles and vertical offsets
-- [ ] Playwright: 2 cards rendered from data, flip state reachable forward and reversible backward, reduced-motion shows fronts without 3D flip
+- [ ] Playwright: 2 cards rendered from data; flip state reachable forward and reversible backward via the DOM observable-state contract (`data-flipped` attributes, per BUILD-GUIDE); reduced-motion shows fronts without 3D flip

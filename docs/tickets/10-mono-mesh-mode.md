@@ -8,6 +8,6 @@
 
 - [ ] Mesh uses the brief's exact 4×4 control colors and preset parameters; rebuilt in GLSL — no MetalForge embed, no recorded video
 - [ ] Runs as a background mode on the single shared canvas, driven by scene-state seam output
-- [ ] Exposes uniforms for the three consumer variants: normal, slowed+darkened (reading comfort), and gradual contrast-loss fade to pure black — each reachable and reversible via progress values (unit-tested at the scene-state seam)
+- [ ] The reducer's `transitionState` carries a declarative mesh variant descriptor (`"normal" | "reading" | "fadeToBlack"` + scalar) for the three consumer variants — normal, slowed+darkened (reading comfort), gradual contrast-loss fade to pure black; seam-2 tests assert the descriptor per scene/progress and its reversibility; the shader consumes the descriptor, and `[manual]` each variant's look is verified visually (uniform values are never asserted by reaching into materials)
 - [ ] Respects quality tiers (subdivision/detail reduction on medium/low) and reduced motion (static mesh frame)
 - [ ] No console/WebGL warnings; disposed cleanly on unmount
