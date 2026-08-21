@@ -1,0 +1,21 @@
+asset_id,scene,filename,target_public_path,width,height,aspect,rights_status,production_allowed,replace_or_approve
+menu_weekly_fruit_tart,menu,weekly-fruit-tart.webp,/media/lenses/beautiful-imperfection/menu/weekly-fruit-tart.webp,1122,1402,4:5,development-mock,false,Replace with approved Éclair photography
+menu_mochi_bite_box,menu,mochi-bite-box.webp,/media/lenses/beautiful-imperfection/menu/mochi-bite-box.webp,1122,1402,4:5,development-mock,false,Replace with approved Mochiki photography
+film_showing_up,films,showing-up-concept-poster.webp,/media/lenses/beautiful-imperfection/films/showing-up-concept-poster.webp,1024,1536,2:3,development-mock,false,License official poster or approve labeled DROP key art
+film_perfect_days,films,perfect-days-concept-poster.webp,/media/lenses/beautiful-imperfection/films/perfect-days-concept-poster.webp,1024,1536,2:3,development-mock,false,License official poster or approve labeled DROP key art
+film_paterson,films,paterson-concept-poster.webp,/media/lenses/beautiful-imperfection/films/paterson-concept-poster.webp,1024,1536,2:3,development-mock,false,License official poster or approve labeled DROP key art
+track_natural_blue,tracks,natural-blue.webp,/media/lenses/beautiful-imperfection/tracks/natural-blue.webp,1254,1254,1:1,development-mock,false,Clear or replace disc artwork
+track_this_time_around,tracks,this-time-around.webp,/media/lenses/beautiful-imperfection/tracks/this-time-around.webp,1254,1254,1:1,development-mock,false,Clear or replace disc artwork
+track_porcelain,tracks,porcelain.webp,/media/lenses/beautiful-imperfection/tracks/porcelain.webp,1254,1254,1:1,development-mock,false,Clear or replace disc artwork
+track_andata,tracks,andata.webp,/media/lenses/beautiful-imperfection/tracks/andata.webp,1254,1254,1:1,development-mock,false,Clear or replace disc artwork
+track_anything,tracks,anything.webp,/media/lenses/beautiful-imperfection/tracks/anything.webp,1254,1254,1:1,development-mock,false,Clear or replace disc artwork
+track_wild_bill_jones,tracks,wild-bill-jones.webp,/media/lenses/beautiful-imperfection/tracks/wild-bill-jones.webp,1254,1254,1:1,development-mock,false,Clear or replace disc artwork
+track_ambre,tracks,ambre.webp,/media/lenses/beautiful-imperfection/tracks/ambre.webp,1254,1254,1:1,development-mock,false,Clear or replace disc artwork
+track_space_1,tracks,space-1.webp,/media/lenses/beautiful-imperfection/tracks/space-1.webp,1254,1254,1:1,development-mock,false,Clear or replace disc artwork
+track_magdalena,tracks,magdalena.webp,/media/lenses/beautiful-imperfection/tracks/magdalena.webp,1254,1254,1:1,development-mock,false,Clear or replace disc artwork
+track_fur_alina,tracks,fur-alina.webp,/media/lenses/beautiful-imperfection/tracks/fur-alina.webp,1254,1254,1:1,development-mock,false,Clear or replace disc artwork
+track_mr_henri_rousseaus_dream,tracks,mr-henri-rousseaus-dream.webp,/media/lenses/beautiful-imperfection/tracks/mr-henri-rousseaus-dream.webp,1254,1254,1:1,development-mock,false,Clear or replace disc artwork
+art_brion_material_study,art,brion-material-study.webp,/media/lenses/beautiful-imperfection/art/brion-material-study.webp,1448,1086,4:3,development-mock,false,License source image or approve labeled concept study
+art_looped_wire_study,art,looped-wire-study.webp,/media/lenses/beautiful-imperfection/art/looped-wire-study.webp,1448,1086,4:3,development-mock,false,License source image or approve labeled concept study
+art_water_illuminance_study,art,water-illuminance-study.webp,/media/lenses/beautiful-imperfection/art/water-illuminance-study.webp,1448,1086,4:3,development-mock,false,License source image or approve labeled concept study
+art_pratfall_effect,art,pratfall-effect.webp,/media/lenses/beautiful-imperfection/art/pratfall-effect.webp,1448,1086,4:3,development-mock,false,Editorially approve as original DROP explanatory art

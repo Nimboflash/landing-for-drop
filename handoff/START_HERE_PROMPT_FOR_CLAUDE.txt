@@ -1,0 +1,19 @@
+Build the production-ready DROP Immersive Weekly Lens website from this attached handoff package.
+
+Read the entire DROP_CLAUDE_MASTER_BUILD_BRIEF_EN.md first. Then inspect the three brand files, every relevant motion reference, 04-mock-content/README.md, the Zod schema, the complete W04 mock JSON, and the local mock assets before coding.
+
+Before implementation, return a concise plan containing:
+1. dependency list;
+2. application and component architecture;
+3. data and media-loading architecture;
+4. shared WebGL/shader architecture;
+5. scene-by-scene milestones;
+6. responsive, reduced-motion, performance, and QA strategy.
+
+Then implement the website in the order specified by the master brief.
+
+Use beautiful-imperfection.mock.json as the development content source of truth until DROP Studio OS is connected. Copy all 05-mock-assets files into the matching public/media/lenses/beautiful-imperfection/ paths and render every slot from data. Do not hotlink, scrape, repeat one generic placeholder, or omit a scene because final licensed media is not ready.
+
+Keep all temporary assets marked development-mock and productionAllowed: false. Preserve the production-media guard so the build cannot be presented as launch-cleared until the replacement checklist is completed.
+
+Do not copy source code, logos, copywriting, posters, covers, or artwork from the behavioral reference sites. The master brief overrides every external reference when they conflict.
