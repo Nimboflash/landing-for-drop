@@ -6,7 +6,7 @@ How this project gets built. The what lives in `docs/spec/drop-immersive-weekly-
 
 1. Read `CLAUDE.md`, `CONTEXT.md` (use its vocabulary), and the ticket you're implementing.
 2. Read the master brief sections your ticket cites — `handoff/DROP_CLAUDE_MASTER_BUILD_BRIEF_EN.md` is the source of truth over every other document, this one included.
-3. Inspect the visual references your scene names (in `handoff/01-brand` … `05-mock-assets`). Motion `.mov` clips are not in the repo — see `handoff/02-motion/VIDEO_REFERENCES.md`.
+3. Inspect the visual references your scene names (in `handoff/01-brand` … `05-mock-assets`), including the motion `.mov` clips in `handoff/02-motion/` — see `VIDEO_REFERENCES.md` there for which clip specifies which scene.
 4. Work on a branch per ticket; open a PR back to the integration branch.
 
 ## The TDD loop (from `/tdd`)

@@ -13,7 +13,7 @@ The website for **DROP** — a food concept store in Tehran with a cultural poin
 | [`CONTEXT.md`](CONTEXT.md) | Domain glossary — the project's vocabulary |
 | [`CLAUDE.md`](CLAUDE.md) | Agent entry point + hard rules |
 
-The full handoff package (brand references, motion/layout references, validated W04 mock content, 20 local mock assets) is vendored under [`handoff/`](handoff/PACKAGE_MANIFEST.md); only the three large `.mov` motion clips are excluded (see `handoff/02-motion/VIDEO_REFERENCES.md`).
+The full handoff package (brand references, motion/layout references including the three `.mov` motion clips, validated W04 mock content, 20 local mock assets) is vendored under [`handoff/`](handoff/PACKAGE_MANIFEST.md).
 
 ## Tooling that ships with the repo
 

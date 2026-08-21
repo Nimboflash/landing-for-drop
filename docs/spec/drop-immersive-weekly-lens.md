@@ -119,7 +119,7 @@ Prior art: none — this repo has no existing tests; these three seams establish
 
 ## Further Notes
 
-- The handoff package is vendored at `handoff/` (minus 163MB of `.mov` motion references — see `handoff/02-motion/VIDEO_REFERENCES.md`).
+- The handoff package is fully vendored at `handoff/`, including the three `.mov` motion references (see `handoff/02-motion/VIDEO_REFERENCES.md`).
 - Scroll-budget numbers in the brief (Section 6) are starting points; the acceptance criterion is intentional rhythm, not exact page height.
 - The brief's Section 19 acceptance criteria and Section 21 QA matrix are the final gate; every ticket's acceptance criteria trace back to them.
 - Ticket breakdown with blocking edges: `docs/tickets/`. Build process: `docs/BUILD-GUIDE.md`.
