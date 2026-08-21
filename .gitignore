@@ -17,12 +17,8 @@ node_modules/
 executive agent model.zip
 *.zip
 
-# Phase 0
+# --- Python ---
 .venv/
-.phase0/
 __pycache__/
 *.egg-info/
 .pytest_cache/
-
-# Hypothesis example database (machine-local, not shared state)
-.hypothesis/

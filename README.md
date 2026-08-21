@@ -1,4 +1,4 @@
-# wallet
+# agents
 
 Repository scaffold, set up as a reusable template.
 
