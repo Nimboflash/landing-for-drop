@@ -17,9 +17,6 @@ node_modules/
 executive agent model.zip
 *.zip
 
-# --- Large motion reference videos (see handoff/02-motion/VIDEO_REFERENCES.md) ---
-*.mov
-
 # --- Python ---
 .venv/
 __pycache__/
