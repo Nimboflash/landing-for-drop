@@ -1,0 +1,174 @@
+# =============================================================================
+# quality-gate.schema.yaml
+# -----------------------------------------------------------------------------
+# Purpose: A pass/fail checkpoint a task must clear before advancing state.
+#   Encodes the source's most reusable, highest-confidence pattern: "gates
+#   over status" — a task's status field never outranks attached gate
+#   evidence (design-spine §3.6, §8). Every quality_gate_results entry on a
+#   task.schema.yaml instance resolves to one instance of this schema.
+#
+# schema_version: 1
+#
+# provenance: Inferred/partially-extracted
+#   The source repository had real, Extracted CI gates (format/lint/type/
+#   unit/secret-scan wired in `.github/workflows/ci.yml`, "red CI does not
+#   merge — no exceptions, no overrides, no 'just this once before the
+#   demo'" — evidence digest §5) and real non-overridable merge/promotion
+#   gates owned by qa-engineer (design-spine §2). The four domain-correctness
+#   gates (leakage/replay/stability/monotonicity-shaped) were specified in
+#   docs but never implemented in CI (evidence digest §6, stage 13 scored
+#   0.5 — "specified in docs without mechanism scores 0" for the
+#   unimplemented half). The override_authority enum and the field-level
+#   invariants below are Inferred generalizations of that real behavior;
+#   `human_approval_required` as a per-gate field, and the full instance
+#   shape, are Recommended formalization — the source enforced human
+#   approval through prose and role convention, never a structured field.
+#
+# Related schemas: task.schema.yaml, review.schema.yaml, approval.schema.yaml,
+#   agent.schema.yaml
+# =============================================================================
+
+fields:
+  schema_version: 1                    # integer | required | fixed at 1 for this contract generation
+
+  id: "qg-ci-unit-tests"                # string | required | globally unique, stable, referenced by
+                                        #   task.quality_gate_results and event payloads
+
+  name: "CI Unit Tests"                 # string | required | short human-readable label
+
+  owner: qa-engineer                    # string | required | canonical_id of the agent accountable
+                                        #   for this gate's definition and pass_criteria. For CI-
+                                        #   mechanized gates, owner is the agent accountable for the
+                                        #   mechanism (often qa-engineer or devops-engineer), not the
+                                        #   CI runner itself.
+
+  independent_from:                    # array<string> | required | canonical_id(s) of agent(s) this
+    - backend-engineer                 #   gate's owner MUST be independent of — normally the set of
+    - frontend-engineer                #   owner_agent values this gate is likely to be checking work
+    - ml-engineer                      #   for. See invariant below: owner must never equal, or be
+                                        #   supervised by, the implementer whose work it gates.
+
+  trigger: "push or pull_request against any branch feeding main"
+                                        # string | required | what causes this gate to run
+
+  required_inputs:                     # array<string> | required | what this gate consumes
+    - "task.expected_outputs (changed files)"
+    - "pyproject.toml / project toolchain config"
+
+  checks:                              # array<string> | required | the concrete checks this gate runs
+    - "dependency lock verified (frozen sync)"
+    - "formatter check (non-mutating)"
+    - "linter (zero warnings)"
+    - "type checker (strict mode)"
+    - "unit test suite (100% must pass, no skips without recorded reason)"
+
+  pass_criteria: >                      # string | required | the falsifiable condition for a pass
+    All checks listed above exit zero; zero skipped tests without a
+    recorded, reviewed skip-reason; zero flaky-test suppressions issued in
+    this run.
+
+  failure_behavior: >                   # string | required | what happens on failure — must be
+    Task is returned to `rework_required` (design-spine §8); owner_agent is
+    notified via blocker_report or review_result; task MUST NOT advance
+    past its current state until this gate is re-run and passes.
+                                        #   consistent with blocking below
+
+  blocking: true                        # boolean | required | if true, failure stops the task's
+                                        #   progress outright (see invariant: CI-stage blocking gates)
+
+  override_authority: none              # string | required | enum: none | cto | security-engineer |
+                                        #   human. See invariant below: CI-stage blocking gates MUST
+                                        #   be `none` — no agent or human role may wave through a
+                                        #   failing check for this gate class.
+
+  human_approval_required: false        # boolean | required | whether a human must additionally sign
+                                        #   off even on a PASS before the task may advance (distinct
+                                        #   from override_authority, which governs FAILURES)
+
+  evidence_recorded:                    # array<string> | required | where this gate's run evidence
+    - "ci-run:run-88213"                #   is captured, referenced later as task.completion_evidence
+    - "artifact:coverage-report-88213"
+
+  status: pass                          # string | required | enum: pending | running | pass | fail |
+                                        #   pass_with_conditions | waived (waived only ever legal when
+                                        #   override_authority != none for this gate, and the waiver
+                                        #   itself is recorded as an approval.schema.yaml instance)
+
+# -----------------------------------------------------------------------------
+# example_instances — two illustrative gate instances covering the blocking
+# CI case and the non-overridable veto-adjacent human-gated case.
+# -----------------------------------------------------------------------------
+example_instances:
+  - id: "qg-ci-unit-tests"
+    name: "CI Unit Tests"
+    owner: qa-engineer
+    independent_from: [backend-engineer, frontend-engineer, ml-engineer, data-engineer]
+    trigger: "push or pull_request against any branch feeding main"
+    required_inputs: ["task.expected_outputs (changed files)", "toolchain config"]
+    checks: ["lock verified", "format check", "lint", "type check (strict)", "unit tests"]
+    pass_criteria: "All checks exit zero; no unreviewed skips."
+    failure_behavior: "Task -> rework_required; owner_agent notified."
+    blocking: true
+    override_authority: none            # CI-stage — non-negotiable per invariant #1 below
+    human_approval_required: false
+    evidence_recorded: ["ci-run:run-88213"]
+    status: pass
+
+  - id: "qg-security-review"
+    name: "Security Review"
+    owner: security-engineer
+    independent_from: [backend-engineer, frontend-engineer, ml-engineer, data-engineer, devops-engineer]
+    trigger: "task.security_requirements is non-empty, before implementation begins"
+    required_inputs: ["task.security_requirements", "contract.data_ownership"]
+    checks:
+      - "sensitive-data boundary review against the one scoped veto question"
+      - "authn/authz surface review"
+      - "dependency/secret-scan results reviewed for this task's changed files"
+    pass_criteria: >
+      No unresolved sensitive-data-boundary violation; any veto raised is
+      recorded via approval.schema.yaml with rationale + offered_alternative.
+    failure_behavior: >
+      Task -> rework_required if correctable; if security-engineer invokes
+      the scoped veto, task -> blocked pending human-owner exception review
+      (design-spine §3.8) — the veto itself is NOT overridable by cto or
+      orchestrator regardless of this gate's override_authority value.
+    blocking: true
+    override_authority: security-engineer   # only security-engineer may waive ITS OWN non-veto findings;
+                                             # the veto itself is never waivable by anyone but a recorded
+                                             # human exception (see approval.schema.yaml veto invariant)
+    human_approval_required: true           # required whenever a veto or exception is in play
+    evidence_recorded: ["review:REV-0091", "approval:APR-0044"]
+    status: pass_with_conditions
+
+# --- notes ---
+# A linter validating quality-gate.schema.yaml instances SHOULD enforce:
+#   1. CI-stage / CI-class blocking gates (trigger fires on push/PR, checks run in an
+#      automated pipeline) MUST have `override_authority: none`. Any CI-stage instance
+#      with a non-"none" override_authority is a schema violation (design-spine §3.7,
+#      §12: "Red blocking gate = stop... no override by anyone, including orchestrator/
+#      CTO, for CI-class blocking gates").
+#   2. `owner` MUST be independent_from every agent whose implementation work this gate
+#      checks — an owner that equals (or supervises) the implementer is a violation
+#      (design-spine §3.3 separation of duties; no implementation agent finally
+#      approves its own work).
+#   3. No orchestrator value is ever valid for `owner` or `override_authority` on a
+#      blocking gate — orchestrator holds no decision authority (design-spine §3.4)
+#      and specifically MUST NOT override a failed blocking gate.
+#   4. If `override_authority` != none, any actual override event MUST be: (a) explicit
+#      (a recorded decision, not a silent status change), (b) evidence-backed (cites
+#      why the failure is acceptable), (c) time-bound (has an expiry or a follow-up
+#      task), (d) recorded (as an approval.schema.yaml instance, approval_type:
+#      quality_gate), and (e) human-approved when the gate's human_approval_required
+#      is true OR the override touches any design-spine §3.8 human-approval item.
+#      An override missing any of (a)-(e) is invalid regardless of override_authority.
+#   5. `status: waived` is only valid when override_authority != none AND a
+#      corresponding approval.schema.yaml instance exists and is referenced from
+#      evidence_recorded.
+#   6. The one documented override pattern from the source (domain-quality gate
+#      threshold, waived jointly by ml-engineer + product-manager, always recorded) is
+#      the ONLY precedent to replicate for domain-correctness gates — do not invent new
+#      joint-override pairs without an equivalent recorded precedent (design-spine §12).
+#   7. `status` is one of: pending, running, pass, fail, pass_with_conditions, waived.
+#   8. A gate whose `blocking` is false MUST NOT be the sole entry satisfying a task's
+#      completion_evidence for a state transition that design-spine §8 requires a
+#      blocking gate for (e.g. release_ready -> completed).

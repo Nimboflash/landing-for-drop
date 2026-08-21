@@ -1,0 +1,123 @@
+# ILLUSTRATIVE reference instance — shows the framework applied to the
+# credit-intelligence evidence. Not live runtime state.
+#
+# APPEND-ONLY human-approval log. Conforms to schemas/approval.schema.yaml
+# (schema_version 1) — each entry below is a full approval.schema.yaml
+# instance. Recommended artifact: the source had no structured approval
+# record at all (evidence-digest §12b: approval.schema.yaml listed among
+# Recommended additions) — sign-off lived in prose (ADRs, PR reviews,
+# "Owner:" lines) and human convention. What IS Extracted and preserved
+# exactly is the underlying human_approval_required list (design-spine §3.8)
+# and the terminal, alternative-carrying security veto (design-spine §3.5).
+
+approvals:
+
+  # -----------------------------------------------------------------------
+  # Entry 1 — Scope approval for Phase 1 / v1-foundation. PENDING: this
+  # framework-required record has not yet been closed by human-owner, even
+  # though the underlying Phase 1 scope itself is Extracted and real.
+  # -----------------------------------------------------------------------
+  - schema_version: 1
+    id: APR-0001
+    subject: "Ratify Phase 1 — Foundation approved scope (included_scope / excluded_scope, version v1-foundation)"
+    requested_by: product-manager
+    approver: "human:product-owner"
+    approval_type: scope
+    status: pending
+    conditions: []
+    veto:
+      vetoed: false
+      rationale: ""
+      offered_alternative: ""
+    evidence_refs:
+      - "version:v1-foundation#included_scope"
+      - "version:v1-foundation#excluded_scope"
+      - "shared-context.yaml#approved-scope"
+    timestamp: "2026-07-13T08:30:00Z"
+    classification: Recommended
+    notes: >
+      Illustrative — records the FRAMEWORK-REQUIRED approval instance for a
+      scope that is itself Extracted (the 3-phase roadmap and Phase 1's
+      real included/excluded scope, evidence-digest §10). No equivalent
+      structured sign-off record exists in the source; scope approval there
+      was implicit/human-convention only.
+
+  # -----------------------------------------------------------------------
+  # Entry 2 — Architecture ADR-set ratification. APPROVED. Mirrors the
+  # bootstrap guide's step 5(3): "cto architecture — ADR per decision,
+  # migration triggers written now, human ratifies the ADR set [X]."
+  # -----------------------------------------------------------------------
+  - schema_version: 1
+    id: APR-0002
+    subject: "Ratify ADR set 0001-0003 (monorepo, DDD/bounded-contexts, event-driven + synchronous audit write)"
+    requested_by: cto
+    approver: "human:product-owner"
+    approval_type: architecture
+    status: approved
+    conditions: []
+    veto:
+      vetoed: false
+      rationale: ""
+      offered_alternative: ""
+    evidence_refs:
+      - "decision-log.yaml#ADR-0001"
+      - "decision-log.yaml#ADR-0002"
+      - "decision-log.yaml#ADR-0003"
+    timestamp: "2026-07-08T14:00:00Z"
+    classification: Extracted
+    notes: >
+      The underlying practice — "human ratifies ADR set" — is Extracted
+      (evidence-digest §8 bootstrap step 5(3): "[X]"). This structured
+      instance recording it is a Recommended formalization; the source
+      itself never persisted ratification as a queryable record.
+
+  # -----------------------------------------------------------------------
+  # Entry 3 — Security-veto clearance. VETOED, with a required alternative
+  # (ADR-0004 in decision-log.yaml). Illustrates the one deliberate
+  # authority asymmetry: cto/orchestrator cannot overrule this entry.
+  # -----------------------------------------------------------------------
+  - schema_version: 1
+    id: APR-0003
+    subject: "Sensitive-data boundary: raw device-level location fields in partner loan-tape ingestion payloads"
+    requested_by: backend-engineer
+    approver: security-engineer
+    approval_type: security_veto_clearance
+    status: vetoed
+    conditions: []
+    veto:
+      vetoed: true
+      rationale: >
+        Precise device-level location in loan-tape ingestion payloads
+        exceeds the project's declared sensitive-data boundary and creates
+        an unauthorized secondary data-collection surface under the
+        "unlicensed centralization is illegal" constraining fact.
+      offered_alternative: >
+        Accept only partner-declared, coarse (city-level or coarser)
+        geography fields; derive nothing finer server-side; do not transmit
+        or store device GPS coordinates at all.
+    evidence_refs:
+      - "decision-log.yaml#ADR-0004"
+      - "contract-registry.yaml#contract-partner-api#validation_rules"
+      - "shared-context.yaml#security-requirements"
+    timestamp: "2026-07-12T16:45:00Z"
+    classification: Recommended
+    notes: >
+      Illustrative instance. The VETO AUTHORITY itself — scoped to one
+      question, unoverridable by cto, must ship with an alternative,
+      recorded as a decision/ADR — is Extracted (design-spine §3.5,
+      evidence-digest cross-cutting caveats: "the one deliberate asymmetry
+      to preserve"). This specific subject/rationale is invented to
+      demonstrate the pattern; it mirrors decision-log.yaml's ADR-0004
+      exactly, since every veto is recorded as an ADR per that rule.
+      TERMINALITY: no future approval instance with approver == cto or
+      approver == orchestrator may flip this subject's status to
+      approved/approved_with_conditions — only a new licensed/jurisdiction-
+      cleared agreement (a human-approved exception per the
+      human_approval_required list) or adoption of the offered_alternative,
+      recorded separately, may move this forward.
+
+# --- append-only note ---
+# Entries in this log are NEVER edited after creation, including the vetoed
+# entry above — a superseding decision is always a NEW approval instance
+# (approval.schema.yaml invariant #3, "the security veto is terminal";
+# design-spine §3.9 "no self-approval, no silent handoff repair").

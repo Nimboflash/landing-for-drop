@@ -1,0 +1,54 @@
+%% prd-to-production — legend: extracted/inferred/recommended/human/automated/gate
+%% The 22-stage reusable lifecycle. Gates and human-approval nodes are marked.
+flowchart TD
+    s1["1. PRD received"]:::extracted
+    s2["2. Requirements audit"]:::recommended
+    s3["3. Clarification and<br/>assumptions register"]:::recommended
+    s4{{"4. Scope approval<br/>HUMAN"}}:::human
+    s5["5. Release strategy"]:::recommended
+    s6["6. Version planning<br/>single falsifiable exit gate"]:::extracted
+    s7{{"7. Architecture<br/>GATE"}}:::gate
+    s8["8. Contract definition"]:::extracted
+    s9["9. Milestone planning"]:::extracted
+    s10["10. Task decomposition"]:::recommended
+    s11["11. Dependency mapping"]:::recommended
+    s12["12. Agent assignment"]:::recommended
+    s13["13. Implementation"]:::extracted
+    s14["14. Integration"]:::inferred
+    s15{{"15. Code review<br/>GATE"}}:::gate
+    s16{{"16. Automated testing<br/>GATE"}}:::gate
+    s17{{"17. QA<br/>GATE"}}:::gate
+    s18{{"18. Security review<br/>GATE"}}:::gate
+    s19["19. Release preparation"]:::recommended
+    s20{{"20. Human approval<br/>HUMAN"}}:::human
+    s21["21. Deployment"]:::extracted
+    s22["22. Post-release validation"]:::recommended
+    s23["23. Closure"]:::recommended
+
+    s1 --> s2 --> s3 --> s4 --> s5 --> s6 --> s7
+    s7 --> s8 --> s9 --> s10 --> s11 --> s12 --> s13
+    s13 --> s14 --> s15 --> s16 --> s17 --> s18
+    s18 --> s19 --> s20 --> s21 --> s22 --> s23
+
+    s15 -. rework_required .-> s13
+    s16 -. rework_required .-> s13
+    s17 -. rework_required .-> s13
+    s18 -. veto or rework .-> s13
+    s22 -. rollback .-> s21
+
+    subgraph Legend["Legend"]
+        direction LR
+        legend_extracted["Extracted"]:::extracted
+        legend_inferred["Inferred"]:::inferred
+        legend_recommended["Recommended"]:::recommended
+        legend_human["Human-operated"]:::human
+        legend_automated["Automated-workflow"]:::automated
+        legend_gate["Quality-or-approval-gate"]:::gate
+    end
+
+    classDef extracted fill:#1b5e20,color:#fff;
+    classDef inferred fill:#e65100,color:#fff;
+    classDef recommended fill:#0d47a1,color:#fff;
+    classDef human fill:#4a148c,color:#fff;
+    classDef automated fill:#37474f,color:#fff;
+    classDef gate fill:#b71c1c,color:#fff;

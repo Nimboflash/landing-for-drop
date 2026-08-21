@@ -1,0 +1,58 @@
+%% handoff-validation — legend: extracted/inferred/recommended/human/automated/gate
+%% Receiver runs 15 checks against handoff.schema and returns exactly one status.
+flowchart TD
+    submit["Handoff submitted<br/>from_agent to to_agent"]:::extracted
+
+    checks{{"Receiver runs 15 checks<br/>task identity, scope, required inputs,<br/>acceptance criteria, decisions, dependencies,<br/>output locations, contract versions,<br/>changed files, tests, risks, remaining work,<br/>approval status, evidence refs,<br/>project-state changes<br/>GATE"}}:::gate
+
+    accepted["accepted"]:::extracted
+    accepted_cond["accepted_with_conditions"]:::extracted
+    rejected["rejected_incomplete"]:::extracted
+    blocked_dep["blocked_by_dependency"]:::extracted
+    requires_human["requires_human_decision"]:::extracted
+
+    proceed["Receiver proceeds<br/>with next task state"]:::automated
+    conditions_tracked["Conditions logged<br/>receiver proceeds with caveats"]:::recommended
+
+    rejection_detail["Rejection names:<br/>missing field, missing artifact,<br/>failed validation, required correction,<br/>responsible agent, blocking status"]:::extracted
+    return_to_sender["Returns to from_agent<br/>NEVER silently repaired"]:::extracted
+
+    dep_wait["Blocked task registered<br/>awaits dependency resolution"]:::inferred
+
+    human_owner["human-owner<br/>decides"]:::human
+
+    submit --> checks
+    checks --> accepted
+    checks --> accepted_cond
+    checks --> rejected
+    checks --> blocked_dep
+    checks --> requires_human
+
+    accepted --> proceed
+    accepted_cond --> conditions_tracked --> proceed
+
+    rejected --> rejection_detail --> return_to_sender
+    return_to_sender -.-> submit
+
+    blocked_dep --> dep_wait
+    dep_wait -.-> submit
+
+    requires_human --> human_owner
+    human_owner -.-> submit
+
+    subgraph Legend["Legend"]
+        direction LR
+        legend_extracted["Extracted"]:::extracted
+        legend_inferred["Inferred"]:::inferred
+        legend_recommended["Recommended"]:::recommended
+        legend_human["Human-operated"]:::human
+        legend_automated["Automated-workflow"]:::automated
+        legend_gate["Quality-or-approval-gate"]:::gate
+    end
+
+    classDef extracted fill:#1b5e20,color:#fff;
+    classDef inferred fill:#e65100,color:#fff;
+    classDef recommended fill:#0d47a1,color:#fff;
+    classDef human fill:#4a148c,color:#fff;
+    classDef automated fill:#37474f,color:#fff;
+    classDef gate fill:#b71c1c,color:#fff;

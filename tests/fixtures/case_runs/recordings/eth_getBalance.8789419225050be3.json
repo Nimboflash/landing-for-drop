@@ -1,0 +1,11 @@
+{
+  "endpoint": "https://rpc.mevblocker.io",
+  "key": "8789419225050be35361a2f66d00ac4e33e270b6c8abfc7322b73f623825a9c8",
+  "method": "eth_getBalance",
+  "params": [
+    "0x8a43343ef9f4c2ca9b638c2ca8cc8773c39382fa",
+    "0xfc5af8"
+  ],
+  "recorded_at": "2026-08-11T10:13:25+00:00",
+  "result": "0x37b8513a3814fbc4"
+}

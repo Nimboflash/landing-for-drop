@@ -1,0 +1,223 @@
+# =============================================================================
+# contract.schema.yaml
+# -----------------------------------------------------------------------------
+# Purpose: The versioned, co-owned specification that lets frontend and backend
+#   (or any two producer/consumer agents) build in parallel without talking to
+#   each other continuously. The contract lands BEFORE fan-out; both sides
+#   build against it, not against each other's code.
+#
+# schema_version: 1
+#
+# provenance: Recommended
+#   Generalizes an Extracted pattern. In the source, the API contract was
+#   co-owned by backend-engineer + domain-policy-architect (semantics) + cto
+#   (boundaries), and the frontend client was GENERATED from that schema —
+#   never hand-written (evidence-digest §2 stage 13: "FE client generated from
+#   schema; breaking change = new version"; §8 step 6: "contract-first"). The
+#   source's most complete real artifact was exactly this kind of document
+#   (`docs/api/decision-api.md`, evidence-digest §3). This schema generalizes
+#   that shape to a technology-independent envelope; the full field list, the
+#   8-step change procedure, and the closed approval_status enum are
+#   Recommended formalizations on top of the extracted discipline
+#   (design-spine §11, Phase-14 field list).
+#
+# Related: task, handoff, version, review, event (contract_ready/contract_changed), quality-gate schemas
+# =============================================================================
+
+fields:
+  schema_version: 1                     # integer | required | fixed at 1 for this schema generation
+
+  contract_id: "contract-board-api"      # string | required | stable identifier for this contract across all its versions
+
+  contract_version: "v1"                # string | required | bumped on every breaking or semantic change (see change
+                                         #   procedure below); semantic changes always count as breaking
+
+  feature_id: "board-crud-api"           # string | required | the feature/epic this contract belongs to
+
+  owners:                               # array<string> | required | co-owners — more than one by design (impl +
+    - backend-engineer                   #   semantics + boundaries); see design-spine §4 decision-ownership table
+    - domain-policy-architect
+    - cto
+
+  affected_agents:                      # array<string> | required | every agent whose work depends on this contract
+    - frontend-engineer                  #   and MUST be notified/re-acknowledge on change
+    - qa-engineer
+    - ml-engineer
+
+  user_flow: "User creates a board, views their board list, updates a board's title, and archives a board they no longer need."
+                                         # string | required | plain-language flow this contract supports
+
+  acceptance_criteria:                  # array<string> | required | QA-executable criteria the implementation must satisfy
+    - "POST create returns 201 with the created resource"
+    - "GET list returns only resources owned by the caller's tenant"
+    - "Unauthorized cross-tenant access returns 403, never 404"
+    - "Archive is reversible within a 30-day window"
+
+  endpoints:                            # array<object> | required | technology-independent operation
+                                         #   list — deliberately not tied to any one transport (REST
+                                         #   shown here as the example transport; a contract for an
+                                         #   RPC or event-driven system would use action names instead)
+    - { operation_id: "create_board", method: "POST", path: "/v1/boards", description: "Create a new board for the caller's tenant" }
+    - { operation_id: "list_boards", method: "GET", path: "/v1/boards", description: "List boards owned by the caller's tenant" }
+    - { operation_id: "update_board", method: "PATCH", path: "/v1/boards/{board_id}", description: "Update a board's mutable fields" }
+    - { operation_id: "archive_board", method: "POST", path: "/v1/boards/{board_id}/archive", description: "Soft-delete (archive) a board; reversible" }
+
+  request_schemas:                      # array<object> | required | one entry per operation_id that
+                                         #   accepts a body; schema shown in a generic, technology-
+                                         #   independent field-list form (map to JSON Schema / protobuf
+                                         #   / etc. in the generated artifact)
+    - operation_id: "create_board"
+      schema:
+        title: { type: string, required: true, max_length: 120 }
+        description: { type: string, required: false, max_length: 2000 }
+
+  response_schemas:                     # array<object> | required | one entry per operation_id
+    - operation_id: "create_board"
+      status: 201
+      schema:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        tenant_id: { type: string }
+        created_at: { type: string, format: date-time }
+
+  error_schemas:                        # array<object> | required | shared error shape across all
+                                         #   operations in this contract, so clients handle errors
+                                         #   uniformly rather than per-endpoint
+    - { status: 400, code: "validation_error", schema: { field: string, message: string } }
+    - { status: 403, code: "cross_tenant_forbidden", schema: { message: string } }
+    - { status: 404, code: "not_found", schema: { message: string } }
+
+  authentication: "tenant-scoped bearer token; tenant is derived from the credential, never from a request field"
+                                         # string | required | authentication mechanism, stated as a rule not just a mechanism name
+
+  authorization: "caller may only act on resources owned by their own tenant; enforced at the data layer, not just the API layer"
+                                         # string | required | authorization rule
+
+  validation_rules:                     # array<string> | required | cross-field/business rules not captured by the schemas above
+    - "title MUST be non-empty after trimming whitespace"
+    - "archive is idempotent — archiving an already-archived board is a no-op, not an error"
+
+  loading_states:                       # array<string> | required | UI/consumer loading states, so frontend never invents one
+    - "list_boards: skeleton list while first page loads"
+    - "create_board: submit button disabled + spinner while request is in flight"
+
+  empty_states:                         # array<string> | required
+    - "list_boards: zero boards for tenant -> show 'create your first board' prompt, not a blank table"
+
+  failure_states:                       # array<string> | required
+    - "create_board network failure: preserve form input, show retry action"
+    - "archive_board 403: show 'not your board' message, do not silently no-op"
+
+  success_states:                       # array<string> | required
+    - "create_board 201: navigate to the new board's detail view"
+    - "archive_board 200: remove from active list, show undo toast for 30 days"
+
+  data_ownership: "board records owned by backend-engineer's board module; tenant/auth data owned by the platform auth module (read-only to this contract)"
+                                         # string | required | which module/agent owns the underlying data (ports, never cross-module JOINs)
+
+  feature_flags:                        # array<string> | optional | flags gating this contract's rollout; owned by product-owner/PM
+    - "boards_archive_enabled"
+
+  analytics_events:                     # array<string> | optional | events this contract's usage should emit; owned by PM/ml/data
+    - "board_created"
+    - "board_archived"
+
+  test_fixtures:                        # array<string> | required | canonical fixture ids both sides test against (no FE/BE drift)
+    - "fixture:board:minimal-valid"
+    - "fixture:board:archived"
+    - "fixture:board:cross-tenant-forbidden"
+
+  mock_strategy: "backend generates a mock server from this contract; frontend integrates against the mock until backend implementation is contract-test green"
+                                         # string | required | lets FE/BE build in true parallel against a stand-in
+
+  compatibility_requirements:           # array<string> | required | what must remain stable across non-major bumps
+    - "additive fields only within a minor contract_version bump"
+    - "no field removed or repurposed without a major contract_version bump"
+
+  migration_requirements:               # array<string> | optional | required when superseding a prior contract_version
+    - "none — this is the initial version"
+
+  rollback_requirements:                # array<string> | required | how to revert to the prior contract_version
+    - "prior contract_version schema retained and dual-served for one release cycle before removal"
+
+  approval_status: draft                # enum: draft|proposed|under_review|approved|changed|deprecated | required
+                                         #   see approval.schema.yaml for the authority record backing an "approved" transition
+
+# -----------------------------------------------------------------------------
+# contract_change_procedure — the 8-step sequence a contract_change message
+# (message.schema.yaml type: contract_change) MUST trigger, enforced via the
+# contract_changed event (event.schema.yaml). No step may be skipped; work on
+# the affected side MUST pause after step 1 and MUST NOT resume until step 8.
+# -----------------------------------------------------------------------------
+contract_change_procedure:              # ordered array<object> | normative
+  - { step: 1, action: "emit contract_change message", detail: "Originating agent emits a contract_change message naming the contract_id and the change." }
+  - { step: 2, action: "identify affected agents", detail: "Cross-reference affected_agents on this contract instance; add any newly affected agent." }
+  - { step: 3, action: "assess compatibility impact", detail: "Classify the change: additive (non-breaking) vs breaking vs semantic (semantic always counts as breaking)." }
+  - { step: 4, action: "collect acknowledgements", detail: "Every affected agent returns an explicit acknowledgement — required when a message changes contracts." }
+  - { step: 5, action: "bump contract_version", detail: "contract_version is bumped per compatibility_requirements before implementation proceeds against the new shape." }
+  - { step: 6, action: "update project state", detail: "orchestrator records the new contract_version under project-state.contract_versions (owned by contract owners, not orchestrator)." }
+  - { step: 7, action: "regenerate mocks and fixtures", detail: "mock_strategy artifacts and test_fixtures regenerated from the updated contract before any consumer resumes work." }
+  - { step: 8, action: "resume only after approval", detail: "Affected agents resume implementation only once approval_status reflects the change (approved) — never before." }
+
+# -----------------------------------------------------------------------------
+# invariants
+# -----------------------------------------------------------------------------
+invariants:
+  - name: fe_client_is_generated_never_handwritten
+    rule: "Any typed client consuming this contract MUST be generated from request_schemas/response_schemas — never hand-authored. A hand-written client is evidence the contract needs a codegen gap filled, not a reason to skip generation (Extracted pattern)."
+  - name: breaking_change_requires_new_contract_version
+    rule: "Any non-additive change, and any semantic change (field meaning changes even if shape doesn't), MUST bump contract_version and run the full 8-step contract_change_procedure."
+  - name: reviewer_differs_from_each_owner
+    rule: "affected_agents review the contract; owners implement it — the two sets are never identical for the purpose of approval."
+
+# --- notes ---
+# A linter validating contract.schema.yaml instances SHOULD enforce:
+#   1. `contract_version` non-empty and monotonically increases per `contract_id` (compare
+#      against project-state.contract_versions history).
+#   2. Every `endpoints[].operation_id` has a matching `request_schemas` entry (if it takes a
+#      body) and exactly one `response_schemas` entry.
+#   3. `error_schemas` covers at least one 4xx and, if any endpoint is state-mutating, a
+#      409/422-class conflict/validation entry.
+#   4. `approval_status: approved` requires a resolvable approval.schema.yaml instance in evidence
+#      (soft check via id convention, e.g. `approval:<contract_id>:<contract_version>`).
+#   5. `approval_status: changed` MUST NOT persist — it is transient, resolving to approved or deprecated.
+#   6. `mock_strategy` is non-empty whenever `approval_status` is draft/proposed/under_review.
+#   7. `data_ownership` names a single owning module/agent — ambiguous ownership flags for cto escalation.
+#   8. `migration_requirements` is non-empty whenever this contract_version is not the first for its contract_id.
+#   9. Every `contract_change_procedure` step SHOULD trace to a message.schema.yaml `contract_change` instance.
+
+# -----------------------------------------------------------------------------
+# example — a second filled generic REST contract instance, shown compact
+# since `fields:` above is itself a fully filled example instance.
+# -----------------------------------------------------------------------------
+example:
+  schema_version: 1
+  contract_id: "contract-widget-api"
+  contract_version: "v1"
+  feature_id: "widget-crud"
+  owners: [backend-engineer, cto]
+  affected_agents: [frontend-engineer, qa-engineer]
+  user_flow: "User creates, lists, and removes widgets scoped to their account."
+  acceptance_criteria: ["POST create returns 201 with the created widget", "DELETE returns 204 and the widget no longer appears in list"]
+  endpoints:
+    - { operation_id: "create_widget", method: "POST", path: "/v1/widgets", description: "Create a widget" }
+    - { operation_id: "delete_widget", method: "DELETE", path: "/v1/widgets/{widget_id}", description: "Remove a widget" }
+  request_schemas:
+    - { operation_id: "create_widget", schema: { name: { type: string, required: true } } }
+  response_schemas:
+    - { operation_id: "create_widget", status: 201, schema: { id: { type: string, format: uuid }, name: { type: string } } }
+  error_schemas:
+    - { status: 404, code: "not_found", schema: { message: string } }
+  authentication: "account-scoped bearer token"
+  authorization: "caller may only act on their own account's widgets"
+  validation_rules: ["name MUST be non-empty after trimming"]
+  loading_states: ["create_widget: disable submit while in flight"]
+  empty_states: ["list: show 'no widgets yet' prompt"]
+  failure_states: ["create_widget failure: preserve form input, allow retry"]
+  success_states: ["create_widget 201: append to visible list"]
+  data_ownership: "widget records owned by backend-engineer's widget module"
+  test_fixtures: ["fixture:widget:minimal-valid"]
+  mock_strategy: "backend generates a mock server from this contract for frontend to integrate against"
+  compatibility_requirements: ["additive fields only within a minor bump"]
+  rollback_requirements: ["prior contract_version dual-served for one release cycle"]
+  approval_status: approved

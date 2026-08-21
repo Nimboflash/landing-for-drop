@@ -1,0 +1,28 @@
+# --- OS / editor noise ---
+.DS_Store
+._*
+__MACOSX/
+Thumbs.db
+Desktop.ini
+*.swp
+*~
+.idea/
+.vscode/
+
+# --- Node / tooling ---
+node_modules/
+*.log
+
+# --- Source archives already extracted into the repo (kept locally, not committed) ---
+executive agent model.zip
+*.zip
+
+# Phase 0
+.venv/
+.phase0/
+__pycache__/
+*.egg-info/
+.pytest_cache/
+
+# Hypothesis example database (machine-local, not shared state)
+.hypothesis/

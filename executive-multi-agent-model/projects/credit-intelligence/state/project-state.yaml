@@ -1,0 +1,147 @@
+# ILLUSTRATIVE reference instance — shows the framework applied to the
+# credit-intelligence evidence. Not live runtime state.
+#
+# Conforms to: schemas/project-state.schema.yaml (schema_version 1)
+# Reference project: credit-intelligence (AI credit-underwriting engine,
+# documentation-first / pre-code, no git history — evidence-digest passim).
+#
+# Provenance labels used below: Extracted | Inferred | Recommended |
+# Unverified | Missing. Field-level ownership per schema §"field_level_ownership"
+# is annotated inline; the source had no orchestrator and no state layer at
+# all, so THIS ENTIRE FILE is a Recommended artifact — it did not exist as a
+# structured record in the source (evidence-digest §12b). What is Extracted
+# is the underlying phase/task/risk CONTENT the fields describe.
+
+schema_version: 1
+
+project_id: credit-intelligence          # OWNER: orchestrator (coordination field)
+project_name: "Credit Intelligence"      # OWNER: orchestrator
+
+# Extracted: the 3-phase roadmap and its sequencing-by-data-access is real
+# (evidence-digest §10). "Phase 1 — Foundation" is the source's own label.
+current_phase: "Phase 1 — Foundation"    # OWNER: orchestrator
+
+# Extracted content (the phase itself and its exit gate are real), Recommended
+# framing (the source never called it "v1-foundation" — that id is this
+# framework's naming convention for version.schema.yaml instances).
+active_version: v1-foundation            # OWNER: orchestrator
+
+active_milestone: "M1 — Decision API contract + synchronous audit log"
+                                          # OWNER: orchestrator
+
+# Recommended: no task artifacts exist in the source at all (evidence-digest
+# §2 stage 10, §11: "no task artifacts"). These entries are illustrative
+# tasks a task/state layer WOULD track, phrased against real Phase 1 scope
+# (evidence-digest §10 table; §1 boundaries).
+active_tasks:
+  - "TASK-0001: Land one partner's loan tape (ingestion path, raw->curated schema)"
+  - "TASK-0002: Decision API skeleton (POST /v1/decisions contract-first stub)"
+  - "TASK-0003: Wire the 4 domain-correctness gates into CI (currently specified, not implemented)"
+                                          # OWNER: orchestrator
+
+completed_tasks: []                      # OWNER: orchestrator
+                                          # Extracted: zero code exists, zero versions shipped
+                                          # (evidence-digest §1, §10) — an honest instance has
+                                          # nothing here yet.
+
+blocked_tasks: []                        # OWNER: orchestrator
+deferred_tasks: []                       # OWNER: orchestrator
+                                          # Recommended slot for the source's real "Target-section"
+                                          # deferrals (e.g. Kafka, K8s) once a task layer exists;
+                                          # none are task-level deferred yet, only version-level
+                                          # excluded_scope (see version.schema.yaml instance).
+
+# Extracted: the 10 real agents are the ones actually staffed. `orchestrator`
+# is listed as active here because this instance illustrates the framework
+# WITH the recommended addition applied — see known_risks/R2 below for the
+# explicit note that the source itself had none.
+active_agents:
+  - orchestrator              # Recommended addition — source had NO orchestrator (structural
+                               # coordination only: constitution + lanes + gates + human)
+  - product-manager            # Extracted
+  - cto                        # Extracted
+  - domain-policy-architect    # Extracted (renamed from credit-architect)
+  - backend-engineer           # Extracted
+  - frontend-engineer          # Extracted
+  - ml-engineer                # Extracted (renamed from ai-engineer)
+  - data-engineer               # Extracted
+  - security-engineer          # Extracted (renamed from security-architect)
+  - qa-engineer                # Extracted
+  - devops-engineer            # Extracted
+                                          # OWNER: orchestrator
+
+pending_handoffs: []                     # OWNER: orchestrator
+                                          # Missing in source: no handoff artifacts exist
+                                          # (evidence-digest §12b, §16). Empty here for honesty —
+                                          # no handoff has ever been recorded.
+
+pending_reviews:
+  - "REV-0001: architecture-review of decision-api skeleton (cto; human ratifies)"
+                                          # OWNER: orchestrator
+
+# OWNER: the respective gate owner (qa/security/devops), per gate. Orchestrator
+# MUST NOT write this field — reproduced here only as an illustrative snapshot.
+# Extracted: CI (`check` + `secrets` jobs) genuinely exists and genuinely
+# passes green (evidence-digest §5, §6 — the one fully-automated stage).
+# Extracted: the 4 domain-correctness gates are genuinely "specified in docs,
+# not implemented as CI" (evidence-digest §6 stage 13, §16 "M — missing").
+quality_gate_status:
+  qg-ci-format-lint-type-unit: pass          # owner: devops-engineer (CI) — Extracted, real & green
+  qg-ci-secret-scan: pass                     # owner: devops-engineer (CI, gitleaks) — Extracted, real & green
+  qg-layering-test: pass                      # owner: cto (AST enforcement, test_layering.py) — Extracted
+  qg-domain-leakage: specified-not-implemented   # owner: qa-engineer — Extracted gap
+  qg-domain-replay: specified-not-implemented    # owner: qa-engineer — Extracted gap
+  qg-domain-stability: specified-not-implemented # owner: qa-engineer — Extracted gap
+  qg-domain-monotonicity: specified-not-implemented # owner: qa-engineer — Extracted gap
+  qg-security-review: pending                 # owner: security-engineer — pre-build review not yet run in this snapshot
+
+# OWNER: the approval authority named on the approval instance. Orchestrator
+# MUST NOT write this field. Empty/pending here because the source's real
+# scope was never put through a structured human-approval record — this
+# reflects the Recommended process being applied for the first time.
+human_approvals: []                      # pending: APR-0001 (scope ratification for v1-foundation
+                                          # included_scope/excluded_scope) — see approval-log.yaml;
+                                          # not yet in this array because status is still "pending",
+                                          # not "approved" (this array holds RECEIVED sign-offs only,
+                                          # per schema comment "required and received human sign-off").
+
+release_status: not_released             # OWNER: release-manager only.
+                                          # Extracted: package version 0.1.0, never shipped, zero
+                                          # releases exist (evidence-digest §1, §10). release-manager
+                                          # itself is a Recommended addition — source had no release
+                                          # role at all (design-spine §2).
+
+# OWNER: orchestrator collates; substance owned by whoever raised it.
+# Each entry below cites the real gap it reflects (evidence-digest §7, §16,
+# cross-cutting caveats) — all Extracted-as-gaps / Missing-as-capability.
+known_risks:
+  - "R1 (Missing, Critical): no per-agent tool/file-write permissions exist — no `tools:` key in any agent frontmatter (evidence-digest §9 finding #25); normative-only enforcement"
+  - "R2 (Missing, High): no task/handoff/state layer in source — this file itself is a Recommended retrofit, not a reproduction of something that ran"
+  - "R3 (Missing, High): no release/deploy/rollback tail — CD does not exist despite Docker Compose being declared Phase 1 runtime (evidence-digest §5)"
+  - "R4 (Extracted gap, High): the 4 domain-correctness gates are specified in docs but implemented nowhere in CI (evidence-digest §6 stage 13)"
+                                          # See risk-register.yaml for the full register incl. R5/R6.
+
+open_decisions:
+  - "ADR-0004 (illustrative): whether to formalize domain-policy-architect's Target-stack language against Phase 1 gating (tension noted evidence-digest §4 'Conflict found')"
+                                          # OWNER: the decision's owner_agent (cto). Orchestrator MUST NOT write this field.
+
+# OWNER: the respective contract owner. Orchestrator MUST NOT write this field.
+contract_versions:
+  "contract:decision-api": v1            # Extracted: docs/api/decision-api.md is the source's most
+                                          # complete real artifact (evidence-digest §3)
+  "contract:partner-api": v1             # Extracted: docs/api/partner-api.md exists in the source
+
+retry_history: []                        # OWNER: orchestrator. No retries recorded yet in this snapshot.
+
+incidents: []                            # OWNER: reporting agent / devops / release-manager for resolution.
+                                          # None recorded — pre-code project, nothing has run in production.
+
+# OWNER: orchestrator (coordination field).
+next_actions:
+  - "Dispatch TASK-0002 (decision API skeleton) to backend-engineer once contract:decision-api:v1 is human-ratified"
+  - "Escalate qg-domain-* gates (specified-not-implemented) to qa-engineer + devops-engineer for CI wiring before first domain artifact merges"
+  - "Route APR-0001 (scope ratification) to human-owner — see approval-log.yaml"
+  - "Recommended: staff the orchestrator role formally — source ran coordination structurally with no dedicated agent (evidence-digest §9 finding #6)"
+
+last_updated_at: "2026-07-13T09:15:00Z"  # OWNER: orchestrator (bumped by whichever agent wrote last)
+last_updated_by: orchestrator            # self-reported; cross-check against message/event log

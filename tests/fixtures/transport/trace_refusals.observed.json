@@ -1,0 +1,58 @@
+{
+  "not_a_recording": "This is not a transport.RecordingCache entry and cannot be replayed as one. Recordings hold answers; this holds refusals, and a refusal is never cached \u2014 a vendor who starts serving traces tomorrow must be able to.",
+  "observed_at": "2026-08-09T10:28:17+00:00",
+  "refusals": [
+    {
+      "endpoint": "https://eth-mainnet.public.blastapi.io",
+      "http_status": 401,
+      "method": "trace_transaction",
+      "reason": "http_status",
+      "rpc_code": null,
+      "verbatim": "Only core evm requests are allowed."
+    },
+    {
+      "endpoint": "https://eth-mainnet.public.blastapi.io",
+      "http_status": 401,
+      "method": "debug_traceTransaction",
+      "reason": "http_status",
+      "rpc_code": null,
+      "verbatim": "Only core evm requests are allowed."
+    },
+    {
+      "endpoint": "https://eth-pokt.nodies.app",
+      "http_status": 200,
+      "method": "trace_transaction",
+      "reason": "rpc_error",
+      "rpc_code": -32601,
+      "verbatim": "Method trace_transaction requires a paid plan. Upgrade your subscription at https://nodies.app to access tracing methods."
+    },
+    {
+      "endpoint": "https://eth-pokt.nodies.app",
+      "http_status": 200,
+      "method": "debug_traceTransaction",
+      "reason": "rpc_error",
+      "rpc_code": -32601,
+      "verbatim": "Method debug_traceTransaction requires a paid plan. Upgrade your subscription at https://nodies.app to access tracing methods."
+    },
+    {
+      "endpoint": "https://rpc.mevblocker.io",
+      "http_status": 406,
+      "method": "trace_transaction",
+      "reason": "http_status",
+      "rpc_code": null,
+      "verbatim": "<html>\r\n<head><title>406 Not Acceptable</title></head>\r\n<body>\r\n<center><h1>406 Not Acceptable</h1></center>\r\n<hr><center>openresty/1.25.3.1</center>\r\n<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML=\"window.__CF$cv$params={r:'a28612b43c089aab',t:'MTc4NjI3MTI5Ng=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);\";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=doc"
+    },
+    {
+      "endpoint": "https://rpc.mevblocker.io",
+      "http_status": 406,
+      "method": "debug_traceTransaction",
+      "reason": "http_status",
+      "rpc_code": null,
+      "verbatim": "<html>\r\n<head><title>406 Not Acceptable</title></head>\r\n<body>\r\n<center><h1>406 Not Acceptable</h1></center>\r\n<hr><center>openresty/1.25.3.1</center>\r\n<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML=\"window.__CF$cv$params={r:'a28612b79993d38c',t:'MTc4NjI3MTI5Nw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);\";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=doc"
+    }
+  ],
+  "transaction": "0xb8681e7a43edca5fe12d5fc0183b901d73255f86e4188715e3d556ba57f269e3",
+  "verbatim_truncated_at": 600,
+  "what": "How each default endpoint refuses a trace for the tracer-bullet transaction.",
+  "why": "Ticket 03 names four capabilities; three are served free and traces are not. This file is the evidence, in each vendor's own words, measured rather than argued. The nodies message is a commercial refusal and names a price; the blastapi one is a policy refusal; the mevblocker one is a Cloudflare-fronted proxy declining the request before a node sees it. Those are three different problems with three different owners, which is why transport keeps the text instead of collapsing them into 'RPC failed'."
+}

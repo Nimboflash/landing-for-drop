@@ -1,0 +1,74 @@
+{
+  "endpoint": "https://rpc.mevblocker.io",
+  "key": "581478e699cff6f2db3a072f66a5bb34b914007f3d38aba711b07b1ad72e11d0",
+  "method": "eth_getTransactionReceipt",
+  "params": [
+    "0x05fef94ef8c35c5e6c21c5fc6e13dd89a32bd71a60abd3e37dbfcd22c2837715"
+  ],
+  "recorded_at": "2026-08-11T10:06:35+00:00",
+  "result": {
+    "blockHash": "0x1ad3adc0fe8a0e046ab8204dcf3078bdc34705d0a6a16a460f73b098dc3c3def",
+    "blockNumber": "0xfd62b9",
+    "contractAddress": null,
+    "cumulativeGasUsed": "0x72cea3",
+    "effectiveGasPrice": "0x3c1056319",
+    "from": "0x8a43343ef9f4c2ca9b638c2ca8cc8773c39382fa",
+    "gasUsed": "0x227cc",
+    "logs": [
+      {
+        "address": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+        "blockHash": "0x1ad3adc0fe8a0e046ab8204dcf3078bdc34705d0a6a16a460f73b098dc3c3def",
+        "blockNumber": "0xfd62b9",
+        "blockTimestamp": "0x63e79b03",
+        "data": "0x0000000000000000000000000000000000000000000000000000000011e00cb7",
+        "logIndex": "0x82",
+        "removed": false,
+        "topics": [
+          "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+          "0x0000000000000000000000003416cf6c708da44db2624d63ea0aaef7113527c6",
+          "0x0000000000000000000000008a43343ef9f4c2ca9b638c2ca8cc8773c39382fa"
+        ],
+        "transactionHash": "0x05fef94ef8c35c5e6c21c5fc6e13dd89a32bd71a60abd3e37dbfcd22c2837715",
+        "transactionIndex": "0x5a"
+      },
+      {
+        "address": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+        "blockHash": "0x1ad3adc0fe8a0e046ab8204dcf3078bdc34705d0a6a16a460f73b098dc3c3def",
+        "blockNumber": "0xfd62b9",
+        "blockTimestamp": "0x63e79b03",
+        "data": "0x0000000000000000000000000000000000000000000000000000000011e1a300",
+        "logIndex": "0x83",
+        "removed": false,
+        "topics": [
+          "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+          "0x0000000000000000000000008a43343ef9f4c2ca9b638c2ca8cc8773c39382fa",
+          "0x0000000000000000000000003416cf6c708da44db2624d63ea0aaef7113527c6"
+        ],
+        "transactionHash": "0x05fef94ef8c35c5e6c21c5fc6e13dd89a32bd71a60abd3e37dbfcd22c2837715",
+        "transactionIndex": "0x5a"
+      },
+      {
+        "address": "0x3416cf6c708da44db2624d63ea0aaef7113527c6",
+        "blockHash": "0x1ad3adc0fe8a0e046ab8204dcf3078bdc34705d0a6a16a460f73b098dc3c3def",
+        "blockNumber": "0xfd62b9",
+        "blockTimestamp": "0x63e79b03",
+        "data": "0x0000000000000000000000000000000000000000000000000000000011e1a300ffffffffffffffffffffffffffffffffffffffffffffffffffffffffee1ff3490000000000000000000000000000000000000000fff7ea3b64250cf7a38518dd00000000000000000000000000000000000000000000000009b841797af9eafefffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffd",
+        "logIndex": "0x84",
+        "removed": false,
+        "topics": [
+          "0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67",
+          "0x000000000000000000000000ef1c6e67703c7bd7107eed8303fbe6ec2554bf6b",
+          "0x0000000000000000000000008a43343ef9f4c2ca9b638c2ca8cc8773c39382fa"
+        ],
+        "transactionHash": "0x05fef94ef8c35c5e6c21c5fc6e13dd89a32bd71a60abd3e37dbfcd22c2837715",
+        "transactionIndex": "0x5a"
+      }
+    ],
+    "logsBloom": "0x00000000000001000000000008000000000000000000000000000000000000000000000000000000000000000000010000000000000020000000000000000000000000000000000808000008000000000000000000000000000000000000000000000000000000000000000000000000000000800000000000000010000800000000000000200000000100000000000000000000010000000000008000100000000800000000200000000080000000000000000000000000000000000000000000000002000000000000000000000000402000000000000000040000000000000000000000000000000000000000000000000000000000000000000080000000",
+    "status": "0x1",
+    "to": "0xef1c6e67703c7bd7107eed8303fbe6ec2554bf6b",
+    "transactionHash": "0x05fef94ef8c35c5e6c21c5fc6e13dd89a32bd71a60abd3e37dbfcd22c2837715",
+    "transactionIndex": "0x5a",
+    "type": "0x2"
+  }
+}

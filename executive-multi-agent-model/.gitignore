@@ -1,0 +1,44 @@
+# --- Secrets & credentials (never commit) ---
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+*_secret*
+*secret*.yaml
+*secret*.yml
+credentials.*
+**/secrets/**
+
+# --- Read-only source extraction (kept local; reference, not committed by default) ---
+# The original extraction is treated as READ-ONLY evidence. Keep the master copy out of the
+# repo unless explicitly authorized. Projects reference it via source-extraction/README.md.
+_extraction_src/
+**/source-extraction/original/**
+*.zip
+
+# --- Local project state that may contain sensitive runtime values ---
+# Commit schema-conforming, reviewed state. Ignore local scratch/backups.
+**/state/*.local.yaml
+**/state/*.bak
+**/state/.cache/
+
+# --- OS / editor noise ---
+.DS_Store
+._*
+__MACOSX/
+Thumbs.db
+Desktop.ini
+*.swp
+*~
+.idea/
+.vscode/
+
+# --- Build / tooling scratch ---
+_work/
+node_modules/
+.venv/
+venv/
+__pycache__/
+*.log

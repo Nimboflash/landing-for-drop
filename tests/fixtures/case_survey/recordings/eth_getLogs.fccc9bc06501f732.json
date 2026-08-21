@@ -1,0 +1,18 @@
+{
+  "endpoint": "https://rpc.mevblocker.io",
+  "key": "fccc9bc06501f732c7cea89422e6fd29d30c249d305431638e7e58f3075487a8",
+  "method": "eth_getLogs",
+  "params": [
+    {
+      "address": "0x41d1841fcedabd85eeb91b10fb069e225df67af8",
+      "fromBlock": "0xfd9c0f",
+      "toBlock": "0xfdc31e",
+      "topics": [
+        "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+        "0x0000000000000000000000006e650dff88d94f9d2e36823ede9a7dd67961f68a"
+      ]
+    }
+  ],
+  "recorded_at": "2026-08-11T09:30:44+00:00",
+  "result": []
+}

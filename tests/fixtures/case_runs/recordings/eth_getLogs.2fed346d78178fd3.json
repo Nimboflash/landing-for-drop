@@ -1,0 +1,20 @@
+{
+  "endpoint": "https://eth-mainnet.public.blastapi.io",
+  "key": "2fed346d78178fd3b130fc1005e9e8da9671759fc4ff76d9d0ae3a71034f6492",
+  "method": "eth_getLogs",
+  "params": [
+    {
+      "address": "0xff3f2a45a8a5995a2b02ba1bdd459c66564d2995",
+      "fromBlock": "0xfd4d46",
+      "toBlock": "0xfd4d4f",
+      "topics": [
+        [
+          "0x4c209b5fc8ad50758f13e2e1088ba56a560dff690a1c6fef26394f4c03821c4f",
+          "0xd78ad95fa46c994b6551d0da85fc275fe613ce37657fb8d5e3d130840159d822"
+        ]
+      ]
+    }
+  ],
+  "recorded_at": "2026-08-13T15:56:03+00:00",
+  "result": []
+}

@@ -1,0 +1,155 @@
+# ILLUSTRATIVE reference instance — shows the framework applied to the
+# credit-intelligence evidence. Not live runtime state.
+#
+# Expands project-state.yaml's `known_risks` (string summaries) into full
+# risk records. Not a named schema in design-spine §11 (no risk.schema.yaml
+# was enumerated) — this instance follows the same field discipline as
+# version.schema.yaml's inline `risks[]` entries (risk/owner/severity/
+# mitigation) plus classification/evidence_refs/confidence per design-spine
+# §1, since every classified item must carry those four.
+#
+# All six risks below are Extracted GAPS — i.e. the underlying absence each
+# risk names is directly evidenced in the source (Extracted), while the risk
+# framing itself ("this absence is a risk, here is a mitigation") is
+# Recommended analysis layered on top of that evidence.
+
+risks:
+
+  - id: R1
+    title: "No per-agent tool/file-write permissions enforced"
+    severity: critical
+    classification: Extracted
+    description: >
+      No `tools:` key (or equivalent) exists in any of the 10 real agent
+      frontmatter files. Every "you own / you do not own" boundary is
+      normative prose only — no agent is technically prevented from writing
+      outside its lane, committing, merging, or force-pushing.
+    evidence_refs:
+      - "EXT/19-evidence-index.md#finding-25 (no per-agent tool restrictions, High confidence)"
+      - "EXT/13-git-devops.md (agent git permissions undefined)"
+    confidence: high
+    recommended_mitigation: >
+      Add `agent.schema.yaml` fields `tools[]`, `permissions[]`,
+      `restrictions[]`, `file_ownership[]` per design-spine §11 field list;
+      enforce via runtime tool-gating (not prose) before any agent gains
+      write access to another lane's paths; add CODEOWNERS + branch
+      protection mirroring the roster (bootstrap guide step 3, evidence-digest §8).
+    owner: security-engineer               # co-owned in practice with cto (boundary authority)
+
+  - id: R2
+    title: "No task / handoff / state coordination layer"
+    severity: high
+    classification: Extracted
+    description: >
+      No `tasks/`, `state/`, or `handoffs/` directory exists in the source
+      (search-negative, verified by full-tree listing). Coordination is
+      entirely structural (constitution + lanes + gates + human), never a
+      structured, resumable record. This project's own state/ files (this
+      one included) are the Recommended retrofit, not a reproduction.
+    evidence_refs:
+      - "EXT/09-workflow-design.md (stage 10: task decomposition, no task artifacts)"
+      - "EXT/16-reusability.md (task decomposition/orchestration/tracking scored M — Missing)"
+    confidence: high
+    recommended_mitigation: >
+      Stand up orchestrator + task.schema.yaml + handoff.schema.yaml +
+      project-state.schema.yaml (this file's siblings) as the Recommended
+      "conveyor belt"; orchestrator owns coordination fields only, never
+      decision authority (design-spine §3.4, §3.10).
+    owner: orchestrator                    # Recommended role — see project-state.yaml known_risks note
+
+  - id: R3
+    title: "No release / deploy / rollback tail"
+    severity: high
+    classification: Extracted
+    description: >
+      CI genuinely exists and is green (`check` + `secrets` jobs), but CD
+      does not exist at all — no Dockerfile, no compose file, no environments,
+      no IaC — despite Docker Compose being declared the Phase 1 runtime.
+      devops-engineer.md specifies "deploy is a single reproducible command,
+      rollback is a single command too, test the rollback before you need
+      it" — implemented nowhere. Release approval authority: not found
+      (in practice, the human, by elimination).
+    evidence_refs:
+      - "EXT/13-git-devops.md (CD does not exist; release process/notes/changelog: Not found; rollback: doctrine only)"
+      - "EXT/14-automation.md (stages 18 Deployment, 19 Release, 20 Rollback, 21 Post-release validation all score 0)"
+    confidence: high
+    recommended_mitigation: >
+      Staff release-manager (Recommended addition) to own versioning +
+      release gates + ship/no-ship packaging on independent QA+security+
+      devops evidence; never ships without human go (design-spine §2, §4);
+      rehearse rollback before first production deploy (version.schema.yaml
+      rollback_requirements).
+    owner: release-manager                 # Recommended role
+
+  - id: R4
+    title: "Domain-correctness gates specified, not implemented"
+    severity: high
+    classification: Extracted
+    description: >
+      The 4 model/decision-path gates (leakage, replay, stability,
+      monotonicity — MODEL_REGISTRY.md's 8 promotion gates, of which these 4
+      are decision-path-specific) exist in docs with a named enforcing agent
+      each, but are not wired into CI. Automation scoring marks this stage
+      0.5 (checklist-rule-assisted), not 1.0 (fully automated) — the gap is
+      exactly these 4 gates.
+    evidence_refs:
+      - "EXT/14-automation.md (stage 13 QA gates: format/lint/type/layering/secrets automated; the four decision-path gates unimplemented)"
+      - "EXT/16-reusability.md (the four concrete ML gate definitions: keep the slot, replace the contents)"
+    confidence: high
+    recommended_mitigation: >
+      Wire the 4 domain-correctness gates into CI as quality-gate.schema.yaml
+      instances (stage: ci or model-promotion, owner: qa-engineer,
+      override_authority: none for CI-stage) before the first domain
+      artifact merges — bootstrap guide explicitly warns: "don't skip step 3
+      — specification-without-enforcement drifts; the source's 4 model gates
+      are still paper" (evidence-digest §8 pitfalls).
+    owner: qa-engineer
+
+  - id: R5
+    title: "credit-architect (domain-policy-architect) agent definition conflicts with the constitution"
+    severity: medium
+    classification: Extracted
+    description: >
+      The ONE real instruction conflict found: credit-architect.md lists the
+      Target stack (Kafka, K8s, Terraform, "design for scale from day one",
+      20 "suggested" bounded contexts) WITHOUT Phase 1 gating — which
+      PROMPT.md §7 and cto.md prohibit. Under the repo's own precedence rule
+      this makes credit-architect.md "a bug to be fixed against the
+      constitution." Root cause: credit-architect appears to be the original
+      Gen-0 seed agent that the rest of the roster was later built around and
+      narrowed from (Strong inference, Med-High confidence).
+    evidence_refs:
+      - "EXT/11-prompts-skills.md ('Conflict found': credit-architect.md vs constitution)"
+      - "EXT/20-version-evidence.md, EXT/24-agent-evolution.md (Gen-0 seed story)"
+    confidence: medium
+    recommended_mitigation: >
+      Rewrite domain-policy-architect.md (already renamed in the Recommended
+      roster) to strip un-gated Target-stack language; retain only Phase-1-
+      gated content; treat the 20-context map as the hypothesis ADR-0002
+      already labels it, not settled fact.
+    owner: documentation-engineer          # Recommended role; enforces doc-governance rules — cto ratifies the fix
+
+  - id: R6
+    title: "Human operator is a single point of failure for every control point"
+    severity: medium
+    classification: Inferred
+    description: >
+      Every piece of work is human-initiated (no scheduler/orchestrator in
+      the source); every merge is human; boundary changes go through cto but
+      are human-accepted; data-boundary decisions are security-architect-held
+      but effectively human; everything post-merge is human/unassisted/
+      undefined. There is no redundancy in the approval chain — one human
+      unavailable stalls the entire pipeline at multiple stages
+      simultaneously.
+    evidence_refs:
+      - "EXT/14-automation.md (human control points today: every stage human-initiated/human-orchestrated)"
+      - "EXT/01-repo-structure.md (no orchestrator, no scheduler artifact found)"
+    confidence: medium
+    recommended_mitigation: >
+      Introduce the orchestrator (schedules only, holds no decision
+      authority — design-spine §3.4) to remove the human from routine
+      scheduling/dispatch while preserving human sign-off on every item in
+      the human_approval_required list (design-spine §3.8); this raises
+      automation from ~37% toward the documented ~55-60% ceiling while
+      ADDING human checkpoints, not removing them (evidence-digest §6).
+    owner: human-owner                     # accepting/delegating this mitigation is a human-owner call

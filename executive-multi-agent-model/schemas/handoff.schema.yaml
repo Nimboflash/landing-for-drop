@@ -1,0 +1,217 @@
+# =============================================================================
+# handoff.schema.yaml
+# -----------------------------------------------------------------------------
+# Purpose: The formal transfer of completed (or partially completed) work from
+#   one agent to another. A handoff is how the VSO prevents the "conversational
+#   milestone, no artifact" failure mode observed in the source system —
+#   receivers validate a fixed checklist and MUST return exactly one of five
+#   statuses; nothing is silently assumed complete.
+#
+# schema_version: 1
+#
+# provenance: Recommended
+#   The source repository had no handoff artifact of any kind — work transfer
+#   between agents was implicit and left no trace (evidence digest §2, stage
+#   10: "no task artifacts"; §8 step 6 names `agent-handoff-template.md` as a
+#   necessary but previously-absent template). The receiver-validation
+#   checklist, the 5-status closed enum, and the "never silently repaired"
+#   rule are Recommended, designed to make handoffs auditable and to prevent
+#   incomplete work from being quietly waved through.
+#
+# Related schemas: task.schema.yaml, message.schema.yaml, review.schema.yaml,
+#   approval.schema.yaml, project-state.schema.yaml
+# =============================================================================
+
+fields:
+  schema_version: 1                   # integer | required | fixed at 1 for this contract generation
+
+  id: "HANDOFF-2026-07-13-01"          # string | required | globally unique handoff id
+
+  from_agent: backend-engineer          # string | required | canonical_id of the sending agent
+
+  to_agent: frontend-engineer            # string | required | canonical_id of the receiving agent.
+                                        #   MUST differ from from_agent.
+
+  task_id: "TASK-0138"                  # string | required | the task.schema.yaml instance this
+                                        #   handoff transfers
+
+  project_id: "proj-example-01"          # string | required
+
+  version: "v1"                          # string | optional | canonical_id of the active
+                                        #   version.schema.yaml instance
+
+  milestone: "M2-realtime-collab"        # string | optional
+
+  feature: "board-crud-api"              # string | optional
+
+  summary: >                             # string | required | one-paragraph plain-language summary
+    Board CRUD API implemented, OpenAPI schema published, deployed to
+    staging. Ready for frontend integration.
+                                        #   of what was done, written for a receiver with no other
+                                        #   context
+
+  original_requirements:                 # array<string> | required | what the task originally asked
+    - "CRUD endpoints for board create/read/update/delete/archive"       #   for, so the receiver can verify nothing was silently dropped
+    - "Tenant-scoped authorization on every endpoint"
+
+  completed_work:                        # array<string> | required | what was actually delivered
+    - "Implemented all 5 CRUD endpoints"
+    - "Tenant isolation enforced via RLS"
+    - "OpenAPI schema generated and published"
+
+  outputs:                               # array<string> | required | concrete deliverable references
+    - "openapi:board-api:v1"
+    - "deployment:staging:board-service"
+
+  changed_files:                         # array<string> | required | every file this task touched,
+    - "src/boards/domain/board.py"        #   for reviewer/receiver traceability
+    - "src/boards/application/create_board.py"
+    - "src/boards/adapters/http/board_router.py"
+    - "tests/boards/test_board_crud.py"
+
+  decisions:                             # array<string> | optional | decisions made during this work
+    - "adr:0005-board-soft-delete (archive instead of hard delete)"
+
+  assumptions:                           # array<string> | optional | assumptions made that the
+    - "Assumed max 500 boards per tenant (no explicit limit in PRD)"        #   receiver/reviewer should be aware of; high-risk assumptions
+                                        #   should already be flagged via the approval process
+
+  contracts:                             # array<string> | required | contract.schema.yaml ids/versions
+    - "contract:board-api:v1"             #   this handoff implements or changes
+
+  acceptance_criteria_status:            # array<object> | required | per-criterion pass/fail, so a
+    - criterion: "All 5 CRUD endpoints return correct status codes"         #   receiver never has to re-derive whether AC were met
+      status: pass
+    - criterion: "Unauthorized cross-tenant access returns 403"
+      status: pass
+
+  automated_test_results:                # array<string> | required | CI/test evidence references
+    - "ci-run:run-88190 (green)"
+    - "coverage: 94% on src/boards/**"
+
+  manual_test_results:                   # array<string> | optional | any manually-verified checks
+    - "Manually verified archive/restore flow in staging"
+
+  quality_gate_results:                  # array<string> | required | quality-gate.schema.yaml results
+    - "qg-lint:pass"                      #   attached to this task at handoff time
+    - "qg-unit-tests:pass"
+    - "qg-contract-tests:pass"
+
+  known_issues:                          # array<string> | optional | anything left rough or unresolved
+    - "Bulk archive endpoint deferred to next milestone (see deferred_work)"
+
+  unresolved_questions:                  # array<string> | optional | open questions the receiver or
+    - "Should archived boards count toward the 500-board tenant limit?"        #   next owner needs to resolve
+
+  risks:                                 # array<string> | optional | risks the receiver should track
+    - "RLS policy not yet load-tested above 10k concurrent tenants"
+
+  required_next_action: "Integrate board CRUD client into frontend board list view"
+                                        # string | required | what the receiver must do first
+
+  recommended_next_agent: frontend-engineer
+                                        # string | optional | suggested next owner if different from
+                                        #   to_agent (e.g. when a handoff fans out)
+
+  approval_required: false               # boolean | required | true if this handoff's acceptance
+                                        #   itself needs a human/authority approval before proceeding
+
+  evidence_refs:                         # array<string> | required | supporting artifact pointers
+    - "pr:acme/boards#398"
+    - "review:REV-0088 (pass)"
+
+  proposed_state_changes:                # array<object> | optional | project-state deltas this handoff
+    - field: pending_handoffs             #   proposes (orchestrator validates/applies — see
+      change: "add HANDOFF-2026-07-13-01"  #   project-state.schema.yaml field-level ownership)
+
+  created_at: "2026-07-13T09:00:00Z"     # string (ISO-8601 datetime) | required
+
+  # ---------------------------------------------------------------------------
+  # receiver_validation — filled in by to_agent upon receipt. Not part of the
+  # sender's fields above; this is the receiver's half of the contract.
+  # ---------------------------------------------------------------------------
+  receiver_validation:
+    validated_at: "2026-07-13T10:30:00Z" # string (ISO-8601 datetime) | required once reviewed
+
+    checklist:                           # object<bool> | required | the 15 items the receiver MUST
+      task_identity_confirmed: true       #   check before returning a status. Every item must be
+      scope_confirmed: true               #   explicitly true/false — no item may be silently skipped.
+      required_inputs_present: true
+      acceptance_criteria_verified: true
+      decisions_reviewed: true
+      dependencies_resolved: true
+      output_locations_correct: true
+      contract_versions_match: true
+      changed_files_reviewed: true
+      tests_verified: true
+      risks_acknowledged: true
+      remaining_work_understood: true
+      approval_status_confirmed: true
+      evidence_refs_valid: true
+      project_state_changes_reviewed: true
+
+    return_status: accepted              # string | required | enum, EXACTLY ONE of the 5 statuses
+                                        #   listed below
+
+    rejection_detail:                    # object | conditional | REQUIRED when return_status is
+      missing_field: null                 #   rejected_incomplete or blocked_by_dependency — see
+      missing_artifact: null              #   invariant below
+      failed_validation: null
+      required_correction: null
+      responsible_agent: null
+      blocking_status: null
+
+# -----------------------------------------------------------------------------
+# return_statuses — the complete, closed set of 5 statuses a receiver may
+# return. Exactly one MUST be chosen; there is no implicit sixth "partially
+# accepted" state.
+# -----------------------------------------------------------------------------
+return_statuses:                        # array<string> | required | enum, closed set of 5
+  - accepted                             # all 15 checklist items pass; receiver takes ownership
+  - accepted_with_conditions             # receiver takes ownership but records named follow-up conditions
+  - rejected_incomplete                  # one or more checklist items fail; work returns to from_agent
+  - blocked_by_dependency                # cannot be validated because a dependency is unresolved
+  - requires_human_decision              # validation surfaces a question only human-owner can resolve
+
+# -----------------------------------------------------------------------------
+# invariants
+# -----------------------------------------------------------------------------
+invariants:
+  - name: incomplete_handoff_never_silently_repaired
+    rule: >
+      If any receiver_validation.checklist item is false, return_status MUST
+      be rejected_incomplete (or blocked_by_dependency / requires_human_decision
+      as appropriate) — the receiver MUST NOT quietly fix the gap themselves
+      and mark it accepted. A rejection ALWAYS names: the missing field, the
+      missing artifact, the failed validation, the required correction, the
+      responsible agent, and the blocking status (rejection_detail, all six
+      sub-fields populated).
+
+  - name: from_agent_never_equals_to_agent
+    rule: "from_agent MUST differ from to_agent — a handoff to oneself is not a handoff."
+
+  - name: fifteen_item_checklist_is_exhaustive
+    rule: >
+      All 15 checklist items MUST be explicitly recorded (true or false) —
+      an omitted item is treated as a validation failure, not as "not
+      applicable." If an item genuinely does not apply, it is still recorded
+      true with a note in known_issues, never left absent.
+
+# --- notes ---
+# A linter validating handoff.schema.yaml instances SHOULD enforce:
+#   1. `receiver_validation.return_status`, when present, is one of the 5 return_statuses.
+#   2. All 15 keys under `receiver_validation.checklist` are present and boolean.
+#   3. If any checklist value is false, `return_status` MUST NOT be "accepted" and
+#      `rejection_detail` MUST have all six sub-fields non-null.
+#   4. If `return_status` == "accepted_with_conditions", the conditions MUST be
+#      discoverable (e.g. recorded in known_issues or a dedicated conditions list) —
+#      do not accept a bare "accepted_with_conditions" with no stated condition.
+#   5. `from_agent` != `to_agent`.
+#   6. `task_id` MUST resolve to an existing task.schema.yaml instance.
+#   7. `contracts` entries SHOULD resolve to existing contract.schema.yaml ids (soft check).
+#   8. `created_at` <= `receiver_validation.validated_at` when both present.
+#   9. `approval_required: true` handoffs MUST NOT reach return_status "accepted" without
+#      a corresponding approval.schema.yaml instance in evidence_refs.
+#  10. A handoff left with no receiver_validation for longer than a configured SLA is a
+#      staleness signal, not a validation failure — flag for orchestrator escalation
+#      rather than rejecting the file.

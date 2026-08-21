@@ -1,0 +1,11 @@
+{
+  "endpoint": "https://eth-mainnet.public.blastapi.io",
+  "key": "fa0976ffa0d5104d55b350388395d2d2e62dde299d8e36cbd62fa3467dbf2421",
+  "method": "eth_getBalance",
+  "params": [
+    "0xe15b3d62c2bce51f2a8a8d53d76c36b4fab8721c",
+    "0xfc4e5d"
+  ],
+  "recorded_at": "2026-08-09T11:37:29+00:00",
+  "result": "0x830582cba4d631"
+}

@@ -1,0 +1,67 @@
+%% blocker-escalation — legend: extracted/inferred/recommended/human/automated/gate
+%% Blocker raised, routed to responsible owner, then escalated by type up an ordered ladder.
+flowchart TD
+    raised["Blocker raised<br/>blocker.schema.yaml"]:::extracted
+    owner["Responsible owner<br/>identified by blocker cause"]:::extracted
+
+    classify{{"Escalation ladder<br/>selected by blocker type"}}:::automated
+
+    subgraph Product["Product blocker"]
+        direction TB
+        prod_pm["product-manager"]:::extracted
+        prod_human["human-owner"]:::human
+        prod_pm --> prod_human
+    end
+
+    subgraph Architecture["Architecture blocker"]
+        direction TB
+        arch_sa["software-architect"]:::inferred
+        arch_cto["cto"]:::extracted
+        arch_human["human-owner"]:::human
+        arch_sa --> arch_cto --> arch_human
+    end
+
+    subgraph Security["Security blocker"]
+        direction TB
+        sec_se["security-engineer"]:::extracted
+        sec_cto["cto"]:::extracted
+        sec_human["human-owner"]:::human
+        sec_se --> sec_cto --> sec_human
+    end
+
+    subgraph Release["Release blocker"]
+        direction TB
+        rel_rm["release-manager"]:::recommended
+        rel_human["human-owner"]:::human
+        rel_rm --> rel_human
+    end
+
+    resolution["Resolution recorded<br/>in project-state.known_risks<br/>and open_decisions"]:::extracted
+
+    raised --> owner --> classify
+    classify --> Product
+    classify --> Architecture
+    classify --> Security
+    classify --> Release
+
+    prod_human --> resolution
+    arch_human --> resolution
+    sec_human --> resolution
+    rel_human --> resolution
+
+    subgraph Legend["Legend"]
+        direction LR
+        legend_extracted["Extracted"]:::extracted
+        legend_inferred["Inferred"]:::inferred
+        legend_recommended["Recommended"]:::recommended
+        legend_human["Human-operated"]:::human
+        legend_automated["Automated-workflow"]:::automated
+        legend_gate["Quality-or-approval-gate"]:::gate
+    end
+
+    classDef extracted fill:#1b5e20,color:#fff;
+    classDef inferred fill:#e65100,color:#fff;
+    classDef recommended fill:#0d47a1,color:#fff;
+    classDef human fill:#4a148c,color:#fff;
+    classDef automated fill:#37474f,color:#fff;
+    classDef gate fill:#b71c1c,color:#fff;

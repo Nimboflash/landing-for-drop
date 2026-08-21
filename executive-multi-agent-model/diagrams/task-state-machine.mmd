@@ -1,0 +1,92 @@
+%% task-state-machine — legend: extracted/inferred/recommended/human/automated/gate
+%% The 19 canonical task states (spine section 8). Labels show which role moves the transition.
+%% RULE: no agent may move its own implementation task from in_progress to completed.
+stateDiagram-v2
+    [*] --> proposed
+
+    proposed --> requirements_analysis : orchestrator
+    requirements_analysis --> architecture_required : orchestrator
+    architecture_required --> ready : cto approves design
+    proposed --> ready : orchestrator, no arch needed
+    ready --> assigned : orchestrator
+
+    assigned --> in_progress : owner_agent starts
+
+    in_progress --> blocked : any agent reports blocker
+    blocked --> in_progress : blocker resolved, orchestrator
+
+    in_progress --> implementation_complete : owner_agent, self-claim only
+
+    implementation_complete --> integration : orchestrator
+    integration --> implementation_review : orchestrator to independent code-reviewer
+
+    implementation_review --> rework_required : code-reviewer fails review
+    rework_required --> in_progress : returns to owner_agent
+
+    implementation_review --> qa : code-reviewer passes
+
+    qa --> rework_required : qa-engineer fails
+    qa --> security_review : qa-engineer, when conditions met
+    qa --> release_ready : qa-engineer, security not required
+
+    security_review --> rework_required : security-engineer fails
+    security_review --> release_ready : security-engineer passes
+
+    release_ready --> completed : requires attached gate evidence plus required approvals
+    completed --> released : release-manager, after human approval
+
+    released --> [*]
+
+    proposed --> deferred : orchestrator, version boundary
+    ready --> deferred : orchestrator, version boundary
+    in_progress --> cancelled : product-manager decision
+    blocked --> cancelled : product-manager decision
+    deferred --> [*]
+    cancelled --> archived : orchestrator
+    released --> archived : orchestrator
+    archived --> [*]
+
+    note right of in_progress
+        No agent may move its own
+        implementation task from
+        in_progress to completed.
+        implementation_complete is
+        a claim, not an approval.
+    end note
+
+    note right of release_ready
+        completed requires attached
+        gate evidence. Status fields
+        never outrank gates.
+    end note
+
+    class implementation_review gate
+    class qa gate
+    class security_review gate
+    class release_ready gate
+    class assigned automated
+    class integration automated
+    class completed recommended
+    class released human
+
+    classDef extracted fill:#1b5e20,color:#fff;
+    classDef inferred fill:#e65100,color:#fff;
+    classDef recommended fill:#0d47a1,color:#fff;
+    classDef human fill:#4a148c,color:#fff;
+    classDef automated fill:#37474f,color:#fff;
+    classDef gate fill:#b71c1c,color:#fff;
+
+    state "Legend" as Legend {
+        state "Extracted" as legend_extracted
+        state "Inferred" as legend_inferred
+        state "Recommended" as legend_recommended
+        state "Human-operated" as legend_human
+        state "Automated-workflow" as legend_automated
+        state "Quality-or-approval-gate" as legend_gate
+    }
+    class legend_extracted extracted
+    class legend_inferred inferred
+    class legend_recommended recommended
+    class legend_human human
+    class legend_automated automated
+    class legend_gate gate

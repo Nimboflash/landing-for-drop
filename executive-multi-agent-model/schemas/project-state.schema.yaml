@@ -1,0 +1,207 @@
+# =============================================================================
+# project-state.schema.yaml
+# -----------------------------------------------------------------------------
+# Purpose: The single structured coordination record for a project — the
+#   "conveyor belt" the evidence base found missing (evidence digest §2:
+#   "every station has an owner + DoD + gates, but the conveyor belt between
+#   stations... does not exist"). One instance per project; the orchestrator's
+#   primary read/write surface, but NOT its exclusive write surface — see
+#   field-level ownership below.
+#
+# schema_version: 1
+#
+# provenance: Recommended
+#   The source repository coordinated entirely through documents, not
+#   structured state (evidence digest §12b: "the source coordinated through
+#   documents, not structured state"). There was no state/ directory, no
+#   project-state artifact, no scheduler, no orchestrator (evidence digest
+#   §9, finding #6). Every field below is Recommended — proposed to fill a
+#   gap the evidence explicitly identified, never presented as source
+#   behavior. Field NAMES and field-level ownership rules are fixed exactly
+#   per design-spine §7 — do not rename or reorder fields when instantiating.
+#
+# Related schemas: task.schema.yaml, handoff.schema.yaml, quality-gate.schema.yaml,
+#   approval.schema.yaml, blocker.schema.yaml, agent.schema.yaml
+# =============================================================================
+
+fields:
+  schema_version: 1                    # integer | required | fixed at 1 for this contract generation
+
+  project_id: "proj-example-01"         # string | required | stable project identifier
+                                        # OWNER: orchestrator (coordination field)
+
+  project_name: "Acme Boards"           # string | required | human-readable project name
+                                        # OWNER: orchestrator (coordination field)
+
+  current_phase: "Phase 1 — Foundation" # string | required | current version/phase label
+                                        # OWNER: orchestrator (coordination field; mirrors the source's
+                                        #   real falsifiable-exit-gate phase pattern, design-spine §0)
+
+  active_version: "v1"                  # string | required | canonical_id of the active version.schema
+                                        #   .yaml instance
+                                        # OWNER: orchestrator (coordination field)
+
+  active_milestone: "M2-realtime-collab" # string | optional | current milestone within active_version
+                                        # OWNER: orchestrator (coordination field)
+
+  active_tasks: ["TASK-0231", "TASK-0233"]
+                                        # array<string> | required | task ids currently in any non-
+                                        #   terminal state
+                                        # OWNER: orchestrator (coordination field)
+
+  completed_tasks: ["TASK-0138", "TASK-0140"]
+                                        # array<string> | required | task ids that reached `completed`
+                                        #   or `released` — APPEND-ONLY, never remove an entry
+                                        # OWNER: orchestrator (coordination field)
+
+  blocked_tasks: []                     # array<string> | required | task ids currently `blocked`;
+                                        #   cross-check against blocker.schema.yaml instances
+                                        # OWNER: orchestrator (coordination field)
+
+  deferred_tasks: []                    # array<string> | required | task ids moved to `deferred`
+                                        #   (Target-section pattern — explicit, reversible deferral,
+                                        #   evidence digest §11)
+                                        # OWNER: orchestrator (coordination field)
+
+  active_agents: ["backend-engineer", "frontend-engineer", "qa-engineer"]
+                                        # array<string> | required | canonical_ids currently active on
+                                        #   this project, per its project_types profile (design-spine §13)
+                                        # OWNER: orchestrator (coordination field)
+
+  pending_handoffs: ["HANDOFF-2026-07-13-01"]
+                                        # array<string> | required | handoff.schema.yaml ids awaiting
+                                        #   receiver validation/response
+                                        # OWNER: orchestrator (coordination field)
+
+  pending_reviews: ["REV-0092"]         # array<string> | required | review.schema.yaml ids awaiting
+                                        #   a result
+                                        # OWNER: orchestrator (coordination field)
+
+  quality_gate_status:                  # object/map | required | gate id -> latest status, keyed per
+    qg-ci-unit-tests: pass              #   task or per project scope
+    qg-security-review: pending
+                                        # OWNER: the respective gate owner (qa-engineer, security-
+                                        #   engineer, devops-engineer, etc. — per quality-gate.schema
+                                        #   .yaml `owner`). ORCHESTRATOR MUST NOT WRITE THIS FIELD.
+
+  human_approvals:                      # array<string> | required | approval.schema.yaml ids that
+    - "APR-0031"                        #   required and received human sign-off
+                                        # OWNER: the approval authority (human-owner or the delegated
+                                        #   approval authority recorded on the approval instance) ONLY.
+                                        #   ORCHESTRATOR MUST NOT WRITE THIS FIELD.
+
+  release_status: "not_released"        # string | required | e.g. not_released | release_ready |
+                                        #   released | rolled_back
+                                        # OWNER: release-manager ONLY. ORCHESTRATOR MUST NOT WRITE
+                                        #   THIS FIELD.
+
+  known_risks:                          # array<string> | required | short risk descriptions, collated
+    - "risk:R-04 — 3rd-party rate limit may throttle presence channel at scale"
+                                        # OWNER: orchestrator COLLATES entries submitted by owning
+                                        #   agents; each entry's substance is owned by whoever raised it
+
+  open_decisions: ["ADR-0004"]          # array<string> | required | decision.schema.yaml ids not yet
+                                        #   resolved (proposed, not accepted/rejected/superseded)
+                                        # OWNER: the respective decision's owner_agent (e.g. cto,
+                                        #   software-architect). ORCHESTRATOR MUST NOT WRITE THIS FIELD.
+
+  contract_versions:                    # object/map | required | contract_id -> current contract_version
+    "contract:board-api": "v1"
+    "contract:presence-channel": "v1"
+                                        # OWNER: the respective contract owner (per contract.schema.yaml
+                                        #   `owners`). ORCHESTRATOR MUST NOT WRITE THIS FIELD.
+
+  retry_history:                        # array<string> | required | task id -> retry_count snapshots,
+    - "TASK-0231: retry_count=1 (rework_required at 2026-07-11)"
+                                        #   supports retry tracking (design-spine §7)
+                                        # OWNER: orchestrator (coordination field; sourced from
+                                        #   task.retry_count, append-only)
+
+  incidents: []                          # array<string> | required | incident_report references for
+                                        #   this project (open or resolved)
+                                        # OWNER: reporting agent files the initial entry; devops-
+                                        #   engineer/release-manager own resolution updates.
+                                        #   ORCHESTRATOR MUST NOT WRITE incident RESULT fields (may
+                                        #   relay/collate the reference, per known_risks pattern).
+
+  next_actions:                         # array<string> | required | orchestrator's rolling to-do list
+    - "Dispatch TASK-0233 to frontend-engineer once contract:presence-channel:v1 is published"
+                                        # OWNER: orchestrator (coordination field)
+
+  last_updated_at: "2026-07-13T09:15:00Z"
+                                        # string (ISO-8601 datetime) | required | staleness signal — see
+                                        #   note below
+                                        # OWNER: orchestrator (coordination field; but see invariant:
+                                        #   any writer updating any field in this document MUST also
+                                        #   bump last_updated_at/last_updated_by for that write)
+
+  last_updated_by: orchestrator         # string | required | canonical_id of whichever agent made the
+                                        #   most recent write to ANY field in this document
+                                        # OWNER: whoever wrote last (self-reported, cross-checked
+                                        #   against message/event log)
+
+# -----------------------------------------------------------------------------
+# field_level_ownership — summary table restating the OWNER annotations above
+# in one place, per design-spine §7.
+# -----------------------------------------------------------------------------
+field_level_ownership:
+  orchestrator_owns:                    # coordination fields — orchestrator is the sole writer
+    - project_id
+    - project_name
+    - current_phase
+    - active_version
+    - active_milestone
+    - active_tasks
+    - completed_tasks
+    - blocked_tasks
+    - deferred_tasks
+    - active_agents
+    - pending_handoffs
+    - pending_reviews
+    - next_actions
+    - last_updated_at
+    - last_updated_by
+    - known_risks           # collates; substance owned by the raising agent
+    - retry_history          # sourced from task.retry_count
+
+  authority_owned_only:                 # orchestrator MUST NOT write these — approval/gate/security/
+    human_approvals: "the human or delegated approval authority named on the approval instance"
+    quality_gate_status: "the respective gate's owner (quality-gate.schema.yaml owner field)"
+    release_status: "release-manager"
+    open_decisions: "the decision's owner_agent (e.g. cto, software-architect)"
+    contract_versions: "the respective contract owner (contract.schema.yaml owners)"
+
+  invariant_orchestrator_prohibited: >
+    Per design-spine §3.4 and §3.10: orchestrator holds no decision authority
+    and MUST NOT write approval, gate, security, or release RESULT fields —
+    it may only ever collate references (e.g. known_risks) or maintain its
+    own coordination fields listed above.
+
+# --- notes ---
+# A linter validating project-state.schema.yaml instances SHOULD enforce:
+#   1. Every field in `authority_owned_only` above MUST show a `last_updated_by` value
+#      (tracked per-field in the write/audit log, not just the document-level
+#      last_updated_by) that resolves to an agent with the matching authority — an
+#      orchestrator-authored write to any of these five fields is a schema violation.
+#   2. Consequential changes (any write to human_approvals, quality_gate_status,
+#      release_status, open_decisions, contract_versions, or any task moving into
+#      completed_tasks/blocked_tasks) MUST be recorded APPEND-ONLY in the project's
+#      audit/approval/gate history — never overwritten or silently removed.
+#   3. STALENESS CHECK: if `last_updated_at` is older than 1 working day, the project-
+#      state instance is SUSPECT — flag for orchestrator review before trusting it for
+#      task resumption or duplicate-work prevention (design-spine §6, §7).
+#   4. `active_tasks`, `completed_tasks`, `blocked_tasks`, `deferred_tasks` MUST be
+#      mutually exclusive — a task id appears in exactly one of these four lists (or
+#      none, if not yet created).
+#   5. This document is the primary recovery artifact for an interrupted session: on
+#      cold resume, a consumer reads active_tasks -> pending_handoffs -> pending_reviews
+#      -> blocked_tasks (in that order) before taking any new action, to prevent
+#      duplicate work and to correctly resume in-flight tasks.
+#   6. `retry_history` entries should cross-check against the referenced task's
+#      `retry_count` (task.schema.yaml) — a mismatch signals a missed state-sync write.
+#   7. Every id referenced in any array/map here (task ids, handoff ids, review ids,
+#      contract ids, decision ids, incident refs) SHOULD resolve to an existing
+#      instance of its respective schema — dangling references are a soft-fail signal.
+#   8. `release_status` transitions MUST correspond to an actual release-manager-owned
+#      event/approval trail — a jump from not_released to released with no
+#      human_approvals entry and no quality_gate_status pass set is invalid.

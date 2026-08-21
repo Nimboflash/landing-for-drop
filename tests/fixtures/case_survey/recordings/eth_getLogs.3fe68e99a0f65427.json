@@ -1,0 +1,34 @@
+{
+  "endpoint": "https://rpc.mevblocker.io",
+  "key": "3fe68e99a0f654274c2730bdc499e748d75ae63882a0ceb15c4345b12c44c339",
+  "method": "eth_getLogs",
+  "params": [
+    {
+      "address": "0xd6f6558f1ecba5951b9e09f7ae2aaa507759838b",
+      "fromBlock": "0xfc3daf",
+      "toBlock": "0xfc3daf",
+      "topics": [
+        "0xd78ad95fa46c994b6551d0da85fc275fe613ce37657fb8d5e3d130840159d822"
+      ]
+    }
+  ],
+  "recorded_at": "2026-08-11T09:29:01+00:00",
+  "result": [
+    {
+      "address": "0xd6f6558f1ecba5951b9e09f7ae2aaa507759838b",
+      "blockHash": "0x00730c5361f95edc924d0a62ae71e8242ba5ff94a3bf28e567fe6c557d6792d0",
+      "blockNumber": "0xfc3daf",
+      "blockTimestamp": "0x63d9c883",
+      "data": "0x0000000000000000000000000000000000000000000014c0973485bf394000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000016f6ddfbfb3c7482",
+      "logIndex": "0x12e",
+      "removed": false,
+      "topics": [
+        "0xd78ad95fa46c994b6551d0da85fc275fe613ce37657fb8d5e3d130840159d822",
+        "0x000000000000000000000000ef1c6e67703c7bd7107eed8303fbe6ec2554bf6b",
+        "0x000000000000000000000000ef1c6e67703c7bd7107eed8303fbe6ec2554bf6b"
+      ],
+      "transactionHash": "0xe1819cc6d62a45d482e9504ce78e5e7239bb2e5a42239780bca813f09440511a",
+      "transactionIndex": "0x5f"
+    }
+  ]
+}

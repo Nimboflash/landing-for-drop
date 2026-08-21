@@ -1,0 +1,69 @@
+%% communication-network — legend: extracted/inferred/recommended/human/automated/gate
+%% Directed edges show who sends work to whom. Every state-changing message conforms to message.schema.
+flowchart LR
+    schema_note{{"All state-changing messages<br/>conform to message.schema<br/>19 message types, schema_version 1"}}:::automated
+
+    orchestrator["orchestrator"]:::recommended
+    product_manager["product-manager"]:::extracted
+    cto["cto"]:::extracted
+    security_engineer["security-engineer"]:::extracted
+    domain_policy_architect["domain-policy-architect"]:::extracted
+    backend_engineer["backend-engineer"]:::extracted
+    frontend_engineer["frontend-engineer"]:::extracted
+    ml_engineer["ml-engineer"]:::extracted
+    data_engineer["data-engineer"]:::extracted
+    devops_engineer["devops-engineer"]:::extracted
+    qa_engineer["qa-engineer"]:::extracted
+    code_reviewer["code-reviewer"]:::inferred
+    release_manager["release-manager"]:::recommended
+    human_owner["human-owner"]:::human
+
+    product_manager -- task_assignment --> orchestrator
+    orchestrator -- task_assignment --> backend_engineer
+    orchestrator -- task_assignment --> frontend_engineer
+    orchestrator -- task_assignment --> ml_engineer
+    orchestrator -- task_assignment --> data_engineer
+
+    backend_engineer -- clarification_request --> domain_policy_architect
+    frontend_engineer -- dependency_request --> backend_engineer
+    ml_engineer -- contract_change --> backend_engineer
+
+    backend_engineer -- handoff --> orchestrator
+    frontend_engineer -- handoff --> orchestrator
+    orchestrator -- review_request --> code_reviewer
+    code_reviewer -- review_result --> orchestrator
+
+    orchestrator -- review_request --> qa_engineer
+    qa_engineer -- quality_gate_result --> orchestrator
+    orchestrator -- review_request --> security_engineer
+    security_engineer -- quality_gate_result --> orchestrator
+
+    qa_engineer -- blocker_report --> orchestrator
+    backend_engineer -- blocker_report --> orchestrator
+    orchestrator -- escalation --> cto
+    cto -- escalation --> human_owner
+
+    qa_engineer -- release_readiness --> release_manager
+    security_engineer -- release_readiness --> release_manager
+    devops_engineer -- release_readiness --> release_manager
+    release_manager -- approval_request --> human_owner
+    human_owner -- approval_response --> release_manager
+    release_manager -- state_change_request --> devops_engineer
+    devops_engineer -- completion_notice --> orchestrator
+
+    subgraph Legend["Legend"]
+        direction LR
+        legend_extracted["Extracted"]:::extracted
+        legend_inferred["Inferred"]:::inferred
+        legend_recommended["Recommended"]:::recommended
+        legend_human["Human-operated"]:::human
+        legend_automated["Automated-workflow"]:::automated
+        legend_gate["Quality-or-approval-gate"]:::gate
+    end
+
+    classDef extracted fill:#1b5e20,color:#fff;
+    classDef inferred fill:#e65100,color:#fff;
+    classDef recommended fill:#0d47a1,color:#fff;
+    classDef human fill:#4a148c,color:#fff;
+    classDef automated fill:#37474f,color:#fff;
+    classDef gate fill:#b71c1c,color:#fff;

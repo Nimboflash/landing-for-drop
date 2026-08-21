@@ -1,0 +1,140 @@
+# =============================================================================
+# blocker.schema.yaml
+# -----------------------------------------------------------------------------
+# Purpose: Records that a task (or set of tasks) cannot proceed, why, who owns
+#   the resolution, and how it escalates if not resolved. Blockers are how the
+#   VSO makes "stuck work" visible and routable instead of silently stalling —
+#   the source system had no dependency-management mechanism at all (evidence
+#   digest §6: stage 6 "Dependency mgmt" scored 0/1.0, the only true zero
+#   alongside the entire delivery tail).
+#
+# schema_version: 1
+#
+# provenance: Recommended
+#   The source repository had no blocker artifact, no dependency graph, and
+#   no mechanism to represent "task X cannot proceed until Y." This schema is
+#   a Recommended addition. Its `escalation_sequence` field reuses the
+#   source's real, Extracted escalation-matrix pattern (question-type routing,
+#   not hierarchy — see agent.schema.yaml `escalation_paths`), applied here to
+#   blocked work specifically.
+#
+# Related schemas: task.schema.yaml, message.schema.yaml,
+#   project-state.schema.yaml, agent.schema.yaml
+# =============================================================================
+
+fields:
+  schema_version: 1                    # integer | required | fixed at 1 for this contract generation
+
+  id: "BLK-0012"                        # string | required | globally unique blocker id
+
+  blocking_task: "TASK-0245"             # string | required | id of the task that is the CAUSE of the
+                                        #   block (e.g. an unmerged dependency, an unresolved decision).
+                                        #   May be null if the cause is external (e.g. a missing human
+                                        #   decision with no task representation yet).
+
+  blocked_tasks:                        # array<string> | required | ids of every task currently unable
+    - "TASK-0231"                        #   to proceed because of this blocker. Non-empty.
+    - "TASK-0233"
+
+  reported_by: backend-engineer          # string | required | canonical_id of the agent that raised
+                                        #   this blocker
+
+  cause: >                               # string | required | plain-language description of what is
+    Presence channel implementation (TASK-0231) depends on the WebSocket
+    transport ADR being ratified; ADR-0004 is still in cto review.
+                                        #   blocking, written for a reader with no other context
+
+  impact: >                              # string | required | what happens if this stays blocked
+    Milestone M2 exit gate cannot be validated; realtime collaboration
+    demo scheduled for end of sprint is at risk.
+                                        #   (schedule, scope, downstream tasks, gate/exit-gate risk)
+
+  responsible_owner: cto                 # string | required | canonical_id of the agent (or
+                                        #   "human:<role>") who must act to resolve this blocker.
+                                        #   Distinct from reported_by in the general case.
+
+  required_resolution: >                 # string | required | what specifically must happen to clear
+    ADR-0004 (WebSocket transport) must be approved or rejected with an
+    alternative by cto.
+                                        #   this blocker — a concrete, checkable condition, not a vague
+                                        #   "figure it out"
+
+  severity: high                         # string | required | enum: critical | high | medium | low
+
+  suggested_action: >                    # string | optional | reporter's proposed way to unblock,
+    Escalate ADR-0004 review to top of cto's queue; offer to pair on
+    the transport decision if useful.
+                                        #   offered as a suggestion, not a directive — responsible_owner
+                                        #   retains decision authority
+
+  escalation_sequence:                   # array<string> | required | ordered list of agents/roles this
+    - cto                                #   blocker escalates through if unresolved past a threshold,
+    - human-owner                        #   mirroring the question-type routing in the escalation
+                                        #   matrix (see agent.schema.yaml escalation_paths) — NOT an
+                                        #   organizational hierarchy, a routing table for THIS question
+
+  human_decision_required: false         # boolean | required | true if resolution structurally requires
+                                        #   human-owner sign-off regardless of how the escalation
+                                        #   sequence plays out (e.g. blocker traces back to a scope
+                                        #   question, a security exception, or a destructive migration —
+                                        #   see design-spine §3 invariant 8)
+
+  evidence_refs:                         # array<string> | optional | supporting artifact pointers
+    - "adr:0004-websocket-transport (status: in_review)"
+    - "message:MSG-2026-07-12-00031"
+
+  status: open                           # string | required | enum: open | escalated | resolved |
+                                        #   wont_fix (mirrors the general lifecycle of a blocking
+                                        #   condition; distinct from task.status)
+
+  created_at: "2026-07-12T14:20:00Z"     # string (ISO-8601 datetime) | required
+
+  resolved_at: null                       # string (ISO-8601 datetime) | conditional | required once
+                                        #   status is resolved or wont_fix; null while open/escalated
+
+# -----------------------------------------------------------------------------
+# invariants
+# -----------------------------------------------------------------------------
+invariants:
+  - name: responsible_owner_has_authority
+    rule: >
+      responsible_owner MUST be the agent (or human role) who actually holds
+      decision authority over required_resolution per the decision-authority
+      matrix (design-spine §4) — a blocker whose responsible_owner cannot
+      actually grant the resolution is misrouted and should be corrected, not
+      escalated past a placeholder owner.
+
+  - name: escalation_by_question_pattern_not_hierarchy
+    rule: >
+      escalation_sequence routes by the TYPE of question the blocker
+      represents (architecture, scope, security, contract, etc.), matching
+      the same pattern used in agent.schema.yaml escalation_paths — never by
+      organizational rank. "A question pattern with no owner is an
+      organizational bug" (design-spine §4).
+
+  - name: blocked_tasks_reflect_task_status
+    rule: >
+      Every id listed in blocked_tasks SHOULD correspond to a task whose
+      task.schema.yaml `status` is currently `blocked` and whose `blockers[]`
+      includes this blocker's id — the two records are kept in sync
+      bidirectionally.
+
+# --- notes ---
+# A linter validating blocker.schema.yaml instances SHOULD enforce:
+#   1. `severity` is one of: critical, high, medium, low.
+#   2. `status` is one of: open, escalated, resolved, wont_fix.
+#   3. `blocked_tasks` is non-empty.
+#   4. `responsible_owner` != `reported_by` in the general case (a self-blocker where the
+#      reporter is also the sole resolver is a signal to check whether this is really a
+#      blocker or just an in-progress task — flag, don't hard-fail).
+#   5. If `status` == "resolved" or "wont_fix", `resolved_at` MUST be a non-null ISO-8601
+#      datetime >= `created_at`.
+#   6. Every id in `blocked_tasks` SHOULD resolve to an existing task.schema.yaml instance
+#      whose `status` == "blocked" (soft check, cross-file).
+#   7. `escalation_sequence` MUST be non-empty when `status` == "escalated".
+#   8. If `human_decision_required: true`, the eventual resolution evidence (evidence_refs)
+#      MUST include a reference to a human-owner approval or decision, not just an agent
+#      sign-off.
+#   9. A blocker with `severity: critical` remaining `status: open` past a configured SLA
+#      SHOULD auto-escalate to the next entry in escalation_sequence — this is a workflow
+#      rule for the orchestrator to implement, not a schema validation failure.

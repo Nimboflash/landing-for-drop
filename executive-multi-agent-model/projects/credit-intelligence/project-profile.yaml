@@ -1,0 +1,109 @@
+# =============================================================================
+# Project Profile — credit-intelligence (reference example)
+# =============================================================================
+# The credit-intelligence project is a high-risk, data/AI, regulated-adjacent
+# system. Its profile blends `data_or_ai` and `high_risk`. This profile is
+# ILLUSTRATIVE: it shows how the framework would be configured for the source
+# evidence. Provenance labels: (E)xtracted / (I)nferred / (R)ecommended.
+schema_version: 1
+
+project:
+  slug: "credit-intelligence"
+  name: "Credit Intelligence"
+  source_extraction_path: "../source-extraction/ (original extraction, read-only)"
+  output_repository_path: "UNKNOWN"                 # the app repo is separate; not modified here
+  target_application_repository: "UNKNOWN"           # captured pre-code; no repo URL in evidence
+
+profile: "data_or_ai + high_risk"   # blended; see framework/02-canonical-agent-model.md
+
+# -----------------------------------------------------------------------------
+# Agent activation. The 10 EXTRACTED source roles map to canonical framework ids
+# (3 renamed). Recommended additions are activated where this project's risk and
+# scale warrant them.
+# -----------------------------------------------------------------------------
+agents:
+  # --- the 10 real source roles (Extracted) ---
+  cto: active                        # (E) architecture authority + arbiter
+  domain-policy-architect: active    # (E) source: credit-architect — policy: probabilities -> money
+  product-manager: active            # (E) scope authority
+  ml-engineer: active                # (E) source: ai-engineer — models + feature definitions
+  data-engineer: active              # (E) ingestion, loan tape, feature substrate
+  backend-engineer: active           # (E) Decision/Partner APIs, decision log
+  frontend-engineer: active          # (E) partner console, explanation UI, RTL/Persian
+  devops-engineer: active            # (E) environments, CI/CD, observability plumbing
+  security-engineer: active          # (E) source: security-architect — HOLDS THE SCOPED VETO
+  qa-engineer: active                # (E) merge + model-promotion gates (non-overridable)
+
+  # --- Recommended additions (did NOT exist in the source) ---
+  orchestrator: active               # (R) coordination only, no decision authority
+  release-manager: active            # (R) source had no release role at all
+  code-reviewer: active              # (I) formalized from /pr-check + PR review order
+  software-architect: conditional    # (I) split from cto at scale
+  database-engineer: conditional     # (R) split from data/backend if schema workload warrants
+  test-automation-engineer: conditional # (R) when suite outgrows qa
+  documentation-engineer: conditional   # (R) doc governance for a regulated-adjacent system
+  product-owner: off                 # (R) not warranted at this scale yet
+  ux-design-system: off              # (R) folded into frontend-engineer for now
+
+# -----------------------------------------------------------------------------
+# Quality gates. Extracted CI gates are non-overridable. The 4 domain gates were
+# SPECIFIED-NOT-IMPLEMENTED in the source (a High-severity gap) — enabled here as
+# blocking, to be wired into CI before the first model ships.
+# -----------------------------------------------------------------------------
+gates:
+  format:                { enabled: true, blocking: false }               # (E) ruff format
+  lint:                  { enabled: true, blocking: true }                # (E) ruff (incl. bandit S rules)
+  type_check:            { enabled: true, blocking: true }                # (E) mypy --strict
+  unit_tests:            { enabled: true, blocking: true }                # (E)
+  integration_tests:     { enabled: true, blocking: true }                # (E) real Postgres
+  contract_tests:        { enabled: true, blocking: true }                # (E) Decision API
+  layering:              { enabled: true, blocking: true }                # (E) AST domain-purity test
+  secret_scan:           { enabled: true, blocking: true, override_authority: "none" }  # (E) gitleaks
+  security_review:       { enabled: true, blocking: true, override_authority: "none" }  # (E) veto
+  # Domain-correctness gates — (E) specified, (Missing) as CI; enable as blocking:
+  leakage_gate:          { enabled: true, blocking: true, owner: "qa-engineer" }
+  replay_gate:           { enabled: true, blocking: true, owner: "qa-engineer" }
+  explanation_stability: { enabled: true, blocking: true, owner: "qa-engineer" }   # p10 Jaccard >=0.70
+  monotonicity_gate:     { enabled: true, blocking: true, owner: "qa-engineer" }
+  fairness_gate:         { enabled: true, blocking: true, owner: "security-engineer" }
+  calibration_gate:      { enabled: true, blocking: true, owner: "ml-engineer" }
+  # Recommended delivery-tail gates (Missing in source):
+  migration_validation:  { enabled: true, blocking: true }                # (R) reversible migrations
+  build_verification:    { enabled: true, blocking: true }                # (R)
+  release_readiness:     { enabled: true, blocking: true, human_approval_required: true }  # (R)
+  deployment_verification: { enabled: true, blocking: true, human_approval_required: true } # (R)
+  post_release_validation: { enabled: true, blocking: true }              # (R) vs phase exit gate
+
+# -----------------------------------------------------------------------------
+# Human approvals (high_risk profile: all on).
+# -----------------------------------------------------------------------------
+human_approvals:
+  product_scope_change: true
+  high_risk_assumption: true
+  major_architecture_decision: true
+  new_external_dependency: true
+  destructive_migration: true
+  authentication_change: true
+  authorization_change: true
+  sensitive_data_change: true
+  security_exception: true
+  production_deployment: true
+  production_rollback: true
+  release_approval: true
+  critical_gate_override: true
+
+retry:
+  max_review_retries: 2
+  escalate_to: ["software-architect", "cto", "product-manager", "human-owner"]
+  record_retry_history: true
+
+# -----------------------------------------------------------------------------
+# The scoped veto — the source's most distinctive governance idea (Extracted).
+# -----------------------------------------------------------------------------
+scoped_veto:
+  holder: "security-engineer"                 # source: security-architect
+  question: "Does any design centralize or move raw partner credit data across a tenant boundary?"
+  cannot_be_overruled_by: ["cto", "orchestrator"]
+  requires_alternative: true                  # a veto must ship with an alternative
+  recorded_as: "state/decision-log.yaml (ADR-style)"
+  evidence_refs: ["EXT/05-organization-and-authority.md", "repo:PROMPT.md#5", "repo:SECURITY.md"]

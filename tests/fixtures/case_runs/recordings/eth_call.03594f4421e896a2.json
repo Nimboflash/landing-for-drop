@@ -1,0 +1,14 @@
+{
+  "endpoint": "https://eth-mainnet.public.blastapi.io",
+  "key": "03594f4421e896a230456bcb70a48a4b8842e3870dc366737566cbcab5950d8c",
+  "method": "eth_call",
+  "params": [
+    {
+      "data": "0x0dfe1681",
+      "to": "0x881d5c98866a08f90a6f60e3f94f0e461093d049"
+    },
+    "0x1028976"
+  ],
+  "recorded_at": "2026-08-15T10:17:24+00:00",
+  "result": "0x00000000000000000000000095ad61b0a150d79219dcf64e1e6cc01f0b64c4ce"
+}

@@ -1,0 +1,54 @@
+%% quality-approval-gates — legend: extracted/inferred/recommended/human/automated/gate
+%% The full gate stack. Blocking gates are marked; CI-class gates are non-overridable.
+flowchart TD
+    edit_hooks["Edit-time hooks<br/>domain-purity, format-python<br/>AUTOMATED"]:::automated
+
+    subgraph CI["CI gates — override_authority NONE"]
+        direction TB
+        fmt["format<br/>auto-fix, non-blocking"]:::automated
+        lint["lint<br/>BLOCKING"]:::gate
+        typecheck["type-check<br/>BLOCKING"]:::gate
+        unit["unit tests<br/>BLOCKING"]:::gate
+        integ["integration tests<br/>BLOCKING"]:::gate
+        secret["secret-scan<br/>BLOCKING non-overridable"]:::gate
+        layering["layering test<br/>BLOCKING"]:::gate
+    end
+
+    no_merge{{"Red CI = no merge<br/>no exceptions, no overrides"}}:::gate
+
+    code_review["Independent code review<br/>GATE"]:::gate
+
+    boundary["Boundary approval<br/>cto"]:::extracted
+    security_review["Security review<br/>security-engineer VETO"]:::gate
+
+    release_readiness["Release readiness<br/>GATE plus human approval"]:::gate
+    human_release["human-owner approves release"]:::human
+
+    deployment["Deployment<br/>human authorizes<br/>devops-engineer executes"]:::human
+
+    edit_hooks --> CI
+    fmt --> lint --> typecheck --> unit --> integ --> secret --> layering
+    CI --> no_merge
+    no_merge --> code_review
+    code_review --> boundary
+    code_review --> security_review
+    boundary --> release_readiness
+    security_review --> release_readiness
+    release_readiness --> human_release --> deployment
+
+    subgraph Legend["Legend"]
+        direction LR
+        legend_extracted["Extracted"]:::extracted
+        legend_inferred["Inferred"]:::inferred
+        legend_recommended["Recommended"]:::recommended
+        legend_human["Human-operated"]:::human
+        legend_automated["Automated-workflow"]:::automated
+        legend_gate["Quality-or-approval-gate"]:::gate
+    end
+
+    classDef extracted fill:#1b5e20,color:#fff;
+    classDef inferred fill:#e65100,color:#fff;
+    classDef recommended fill:#0d47a1,color:#fff;
+    classDef human fill:#4a148c,color:#fff;
+    classDef automated fill:#37474f,color:#fff;
+    classDef gate fill:#b71c1c,color:#fff;

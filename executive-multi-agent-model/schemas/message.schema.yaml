@@ -1,0 +1,192 @@
+# =============================================================================
+# message.schema.yaml
+# -----------------------------------------------------------------------------
+# Purpose: Canonical envelope for every inter-agent communication in the
+#   Virtual Software Organization (VSO). ALL agent-to-agent and agent-to-human
+#   traffic (task assignment, review requests, approvals, escalations, gate
+#   results, incidents, etc.) is carried as an instance of this schema. This is
+#   the wire format the orchestrator, agents, and tooling all read and write.
+#
+# schema_version: 1
+#
+# provenance: Recommended
+#   The source repository ("credit-intelligence") coordinated agents through
+#   conversation and documents only — no message envelope, no structured
+#   inter-agent protocol, no correlation/acknowledgement mechanism existed.
+#   This schema is a Recommended addition that formalizes a workable protocol
+#   consistent with the source's governance principles (lanes, escalation,
+#   gates-over-status). Do not present any instance of this schema as
+#   something the source system produced.
+#
+# Related schemas: task.schema.yaml, handoff.schema.yaml, event.schema.yaml,
+#   approval.schema.yaml, review.schema.yaml, blocker.schema.yaml
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# message_types — the complete, closed set of 19 message types. A message's
+# `type` field MUST be one of these exact strings. No other type is valid.
+# -----------------------------------------------------------------------------
+message_types:                       # array<string> | required | enum, closed set of 19
+  - task_assignment                  # orchestrator -> agent: here is a unit of work
+  - clarification_request            # any agent -> owner: "I need this resolved before I can proceed"
+  - information_response             # any agent -> requester: answer to a clarification_request
+  - dependency_request               # any agent -> owner: "I need an artifact/decision you own"
+  - contract_change                  # contract owner -> affected agents: an API/data contract changed
+  - review_request                   # any agent -> reviewer: "please review this work"
+  - review_result                    # reviewer -> requester: pass | fail | pass_with_conditions
+  - handoff                          # agent -> agent: formal transfer of completed work (see handoff.schema.yaml)
+  - rejection                        # reviewer/approver -> owner: work or request rejected, with reason
+  - blocker_report                   # any agent -> orchestrator/owner: work cannot proceed (see blocker.schema.yaml)
+  - escalation                       # any agent -> escalation target: routed per escalation_path
+  - approval_request                 # any agent -> approver: requesting a decision (see approval.schema.yaml)
+  - approval_response                # approver -> requester: decision rendered
+  - quality_gate_result              # gate owner -> orchestrator/owner: gate passed/failed (see quality-gate.schema.yaml)
+  - release_readiness                # release-manager -> human-owner: release evidence bundle assembled
+  - incident_report                  # any agent -> devops-engineer/release-manager: production issue
+  - state_change_request             # any agent -> orchestrator: requesting a project-state field change
+  - state_change_result              # orchestrator -> requester: state change applied or refused
+  - completion_notice                # owner_agent -> orchestrator: a task/artifact reached a terminal state
+
+# -----------------------------------------------------------------------------
+# envelope — the fixed field ORDER for every message instance. Producers
+# SHOULD emit fields in this order; consumers MUST accept them regardless of
+# order (YAML/JSON key order is not semantically significant on the wire, but
+# the spine fixes this order for human-readability and diffing).
+# -----------------------------------------------------------------------------
+envelope:
+  schema_version: 1                  # integer | required | fixed at 1 for this contract generation
+
+  id: "MSG-2026-07-13-00042"         # string | required | globally unique message id, producer-assigned
+
+  correlation_id: "MSG-2026-07-13-00040"
+                                      # string | optional | id of the message this one is causally tied to
+                                      #   (e.g. an information_response's correlation_id = the
+                                      #   clarification_request's id). Enables full conversation replay.
+
+  reply_to: "MSG-2026-07-13-00040"   # string | optional | id of the specific message being directly
+                                      #   answered (may equal correlation_id for a simple 1:1 reply;
+                                      #   differs when a thread has multiple hops)
+
+  type: task_assignment              # string | required | enum: one of the 19 message_types above
+
+  from_agent: orchestrator            # string | required | canonical_id of sending agent (or "human:<role>")
+
+  to_agent: backend-engineer          # string | required | canonical_id of receiving agent (or "human:<role>")
+
+  task_id: "TASK-0231"                # string | optional | id of the task.schema.yaml instance this
+                                      #   message concerns, when applicable
+
+  project_id: "proj-example-01"       # string | required | which project/repo this message belongs to
+
+  project_version: "v1"               # string | optional | canonical_id of the active version.schema.yaml
+                                      #   instance (see version.schema.yaml) at message time
+
+  milestone: "M2-realtime-collab"     # string | optional | milestone label this message is scoped to
+
+  feature: "presence-channel"         # string | optional | feature-level label, free text or feature_id
+
+  subject: "Implement WebSocket presence channel"
+                                      # string | required | one-line human-readable summary
+
+  context: >                          # string | optional | free-text background the receiver needs;
+    Board CRUD API (task AB-138) is complete and merged. This task adds
+    the presence channel that depends on it.
+                                      #   should be self-contained — receiver must not need to dig
+                                      #   through history to understand why this message exists
+
+  requested_action: "implement"       # string | optional | short verb phrase: what the receiver must do
+                                      #   (e.g. "implement", "review", "approve", "resolve", "acknowledge")
+
+  required_inputs:                    # array<string> | optional | artifacts/decisions the receiver needs
+    - "api-contract:presence-channel:v1"
+    - "adr:0004-websocket-transport"
+
+  expected_output: "PR with passing CI + updated handoff.schema.yaml instance"
+                                      # string | optional | what "done" looks like for this message
+
+  priority: high                      # string | required | enum: critical | high | medium | low
+
+  due_sequence: 3                     # integer | optional | relative ordering hint among concurrent
+                                      #   messages/tasks (not a calendar date — the source system and
+                                      #   this framework both plan in falsifiable gates/sequence, not
+                                      #   fixed dates)
+
+  dependencies:                       # array<string> | optional | ids of tasks/messages/contracts that
+    - "TASK-0138"                     #   must resolve before this message's requested_action can complete
+    - "contract:board-api:v1"
+
+  blocking: false                     # boolean | required | true if downstream work cannot proceed until
+                                      #   this message resolves (mirrors task/event blocking semantics)
+
+  approval_required: false            # boolean | required | true if this message's outcome needs a
+                                      #   human or authority approval before it can be actioned further
+                                      #   (see §3 invariant 8 in the design spine: certain classes of
+                                      #   change ALWAYS require human_approval regardless of this flag)
+
+  evidence_refs:                      # array<string> | optional | pointers to supporting artifacts
+    - "ci-run:run-88213"
+    - "review:REV-0091"
+
+  artifact_refs:                      # array<string> | optional | pointers to concrete deliverables
+    - "pr:acme/boards#412"
+    - "file:src/realtime/adapters/ws_gateway.py"
+
+  proposed_state_changes:             # array<object> | optional | project-state field deltas this
+    - field: active_tasks             #   message is proposing (orchestrator validates/applies; see
+      change: "add TASK-0231"          #   project-state.schema.yaml field-level ownership rules —
+                                      #   a message may PROPOSE a state change but only the owning
+                                      #   authority's write actually commits it)
+
+  status: open                        # string | required | enum: open | acknowledged | in_progress |
+                                      #   resolved | rejected | cancelled
+
+  created_at: "2026-07-13T09:15:00Z"  # string (ISO-8601 datetime) | required | producer-set at creation
+
+  acknowledged_at: null                # string (ISO-8601 datetime) | conditional | required once status
+                                      #   moves past "open" for any message type listed as requiring
+                                      #   acknowledgement (see below); null until then
+
+  resolved_at: null                    # string (ISO-8601 datetime) | conditional | required once status
+                                      #   is resolved | rejected | cancelled; null while open/in_progress
+
+# -----------------------------------------------------------------------------
+# acknowledgement_required — per design-spine §5: acknowledgement is REQUIRED
+# whenever a message changes scope, contracts, dependencies, file ownership,
+# deadlines/sequence, quality requirements, or release status. The following
+# message types are the ones that structurally carry those changes and MUST
+# NOT sit in "open" status indefinitely — a receiver must set acknowledged_at.
+# This list is a lint-time convenience derived from that rule, not a separate
+# invariant.
+# -----------------------------------------------------------------------------
+acknowledgement_required_for:         # array<string> | informational | subset of message_types
+  - task_assignment                   # changes file ownership / assignment
+  - contract_change                    # changes contracts
+  - dependency_request                 # changes dependencies
+  - blocker_report                     # changes sequence/deadlines (something is now blocked)
+  - approval_request                   # changes scope/quality/release depending on approval_type
+  - quality_gate_result                # changes quality requirements/status
+  - release_readiness                  # changes release status
+  - state_change_request               # explicitly proposes a scope/ownership/sequence change
+  - escalation                         # changes sequence — someone is now waiting on a decision
+
+# --- notes ---
+# A linter validating message.schema.yaml instances SHOULD enforce:
+#   1. `type` is one of the 19 message_types listed above — reject any other string.
+#   2. `status` is one of: open, acknowledged, in_progress, resolved, rejected, cancelled.
+#   3. `priority` is one of: critical, high, medium, low.
+#   4. `from_agent` and `to_agent` resolve to a known canonical_id (see agent.schema.yaml)
+#      or match the pattern `human:<role>`.
+#   5. If `type` is in `acknowledgement_required_for`, then once `status` != "open",
+#      `acknowledged_at` MUST be a non-null ISO-8601 datetime.
+#   6. `acknowledged_at`, if non-null, MUST be >= `created_at`.
+#   7. `resolved_at`, if non-null, MUST be >= `acknowledged_at` (when acknowledged_at is set)
+#      or >= `created_at` otherwise, and `status` MUST be one of resolved/rejected/cancelled.
+#   8. `correlation_id` and `reply_to`, if present, SHOULD resolve to an existing message id
+#      (soft check — cross-file, best-effort).
+#   9. `blocking: true` messages SHOULD NOT remain in status "open" past a configured SLA
+#      without at least one escalation message referencing them via correlation_id.
+#  10. `approval_required: true` messages of a class listed in design-spine §3 invariant 8
+#      (scope/architecture/security/release/deployment/etc.) MUST eventually be followed by
+#      an approval_request/approval_response pair referencing this message's id in evidence_refs.
+#  11. Envelope field order is a style convention, not a validation gate — do not fail an
+#      instance solely for key reordering; only fail on missing required fields or bad enums.

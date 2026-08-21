@@ -1,0 +1,195 @@
+# =============================================================================
+# event.schema.yaml
+# -----------------------------------------------------------------------------
+# Purpose: The event envelope that lets agents react to state transitions
+#   without polling. Events are the nervous system running alongside the
+#   message protocol (message.schema.yaml) — a message is addressed one-to-one
+#   (from_agent -> to_agent); an event is broadcast (publisher -> subscribers)
+#   and always carries a project_state_effect so the coordination layer stays
+#   truthful without anyone re-deriving state from scratch.
+#
+# schema_version: 1
+#
+# provenance: Recommended
+#   The source repository had no event bus, dispatcher, or pub/sub mechanism
+#   between agents of any kind — coordination was entirely structural
+#   (constitution + ownership lanes + gates + the human operator; design-spine
+#   §0, §2 "orchestrator: source had no orchestrator... coordination was
+#   structural"). In-repo "domain events" existed only as a Target-phase data
+#   concept for in-process/Kafka dispatch inside the running application
+#   (evidence-digest §1 tech-stack table, "Events" row) — that is a runtime
+#   application concern, not an inter-agent coordination concern, and is NOT
+#   what this schema models. The 32 canonical event names, the envelope shape,
+#   and the publisher/subscriber/blocking/escalation fields are Recommended,
+#   built to give the orchestrator (itself Recommended) something concrete to
+#   dispatch on (design-spine §10).
+#
+# Related schemas: message.schema.yaml, task.schema.yaml, project-state.schema.yaml,
+#   quality-gate.schema.yaml, approval.schema.yaml, contract.schema.yaml, version.schema.yaml
+# =============================================================================
+
+fields:
+  schema_version: 1                     # integer | required | fixed at 1 for this schema generation
+
+  id: "EVT-2026-07-13-0042"              # string | required | globally unique event instance id
+
+  name: contract_ready                  # string | required | ONE of the 32 canonical event names
+                                         #   below (closed enum — see event_names)
+
+  publisher: backend-engineer            # string | required | canonical_id of the agent (or
+                                         #   automated-workflow / quality-gate) that emitted this event
+
+  subscribers:                          # array<string> | required | canonical_ids that receive/react
+    - frontend-engineer                  #   to this event instance; MAY be a subset of the event
+    - qa-engineer                        #   name's typical "key subscribers" (below) if some are not
+                                         #   relevant to this specific instance
+
+  payload:                              # object | required | event-specific data; shape varies by
+    contract_id: "contract-board-api"    #   event name — this example matches contract_ready
+    contract_version: "v1"
+    task_id: "TASK-0138"
+
+  project_state_effect: >               # string | required | plain description of the project-state
+    Adds contract-board-api:v1 to project-state.contract_versions;             #   delta this event causes, so the effect is auditable even
+    marks TASK-0138 dependencies satisfied for frontend-engineer.              #   before the orchestrator applies it (project-state field-
+                                         #   level ownership still applies — see project-state.schema.yaml)
+
+  blocking: false                       # boolean | required | true if downstream work MUST NOT
+                                         #   proceed until this event's subscribers acknowledge it
+                                         #   (e.g. contract_changed, security_failed); false if it is
+                                         #   purely informational/advancing
+
+  requires_ack: true                    # boolean | required | true if every listed subscriber MUST
+                                         #   return an explicit acknowledgement before the event is
+                                         #   considered fully delivered (mirrors message.schema.yaml
+                                         #   ack rule: required when scope/contracts/dependencies/
+                                         #   file-ownership/deadlines/quality/release status change)
+
+  escalation_path:                      # array<string> | required | who this escalates to, in order,
+    - qa-engineer                        #   if a required ack does not arrive within SLA, or if the
+    - cto                                #   event signals a failure condition (empty array only valid
+                                         #   for purely informational, non-blocking events)
+
+  emitted_at: "2026-07-13T14:05:00Z"     # string (ISO-8601 datetime) | required
+
+# -----------------------------------------------------------------------------
+# event_names — the complete, closed set of 32 canonical event names
+# (design-spine §10). Each entry: publisher, key subscribers, blocking?
+# -----------------------------------------------------------------------------
+event_names:
+  # --- intake / requirements ---
+  - { name: prd_received, publisher: human-owner, key_subscribers: [product-manager, orchestrator], blocking: false }
+  - { name: prd_accepted, publisher: product-manager, key_subscribers: [orchestrator, cto, human-owner], blocking: false }
+  - { name: requirements_blocked, publisher: product-manager, key_subscribers: [human-owner, orchestrator], blocking: true }
+  - { name: scope_approved, publisher: human-owner, key_subscribers: [product-manager, orchestrator, cto], blocking: false }
+
+  # --- architecture / planning ---
+  - { name: architecture_proposed, publisher: cto, key_subscribers: [affected_agents, human-owner], blocking: false }
+  - { name: architecture_approved, publisher: human-owner, key_subscribers: [cto, orchestrator, backend-engineer, database-engineer], blocking: false }
+  - { name: version_plan_approved, publisher: human-owner, key_subscribers: [product-manager, orchestrator, release-manager], blocking: false }
+
+  # --- contracts ---
+  - { name: contract_ready, publisher: contract_owners, key_subscribers: [frontend-engineer, backend-engineer, qa-engineer], blocking: true }
+  - { name: contract_changed, publisher: contract_owners, key_subscribers: [affected_agents, orchestrator], blocking: true }
+
+  # --- task lifecycle ---
+  - { name: task_ready, publisher: orchestrator, key_subscribers: [owner_agent], blocking: false }
+  - { name: task_started, publisher: owner_agent, key_subscribers: [orchestrator], blocking: false }
+  - { name: task_blocked, publisher: owner_agent, key_subscribers: [orchestrator, responsible_owner], blocking: true }
+  - { name: implementation_complete, publisher: owner_agent, key_subscribers: [orchestrator, code-reviewer], blocking: false }
+
+  # --- review ---
+  - { name: review_requested, publisher: orchestrator, key_subscribers: [code-reviewer], blocking: false }
+  - { name: review_failed, publisher: code-reviewer, key_subscribers: [owner_agent, orchestrator], blocking: true }
+  - { name: review_passed, publisher: code-reviewer, key_subscribers: [orchestrator, qa-engineer], blocking: false }
+
+  # --- QA / security / build gates ---
+  - { name: qa_failed, publisher: qa-engineer, key_subscribers: [owner_agent, orchestrator], blocking: true }
+  - { name: qa_passed, publisher: qa-engineer, key_subscribers: [orchestrator, security-engineer], blocking: false }
+  - { name: security_failed, publisher: security-engineer, key_subscribers: [owner_agent, cto, orchestrator], blocking: true }
+  - { name: security_passed, publisher: security-engineer, key_subscribers: [orchestrator, release-manager], blocking: false }
+  - { name: build_failed, publisher: devops-engineer, key_subscribers: [owner_agent, orchestrator], blocking: true }
+  - { name: build_passed, publisher: devops-engineer, key_subscribers: [orchestrator, release-manager], blocking: false }
+
+  # --- release / deployment ---
+  - { name: release_ready, publisher: release-manager, key_subscribers: [human-owner, orchestrator], blocking: false }
+  - { name: deployment_approval_requested, publisher: release-manager, key_subscribers: [human-owner], blocking: true }
+  - { name: deployment_approved, publisher: human-owner, key_subscribers: [devops-engineer, release-manager, orchestrator], blocking: false }
+  - { name: deployment_completed, publisher: devops-engineer, key_subscribers: [release-manager, orchestrator, human-owner], blocking: false }
+
+  # --- rollback ---
+  - { name: rollback_requested, publisher: devops-engineer, key_subscribers: [release-manager, human-owner], blocking: true }
+  - { name: rollback_completed, publisher: devops-engineer, key_subscribers: [release-manager, orchestrator, human-owner], blocking: false }
+
+  # --- post-release / closure ---
+  - { name: post_release_validation_failed, publisher: release-manager, key_subscribers: [product-manager, human-owner, cto], blocking: true }
+  - { name: post_release_validation_passed, publisher: release-manager, key_subscribers: [product-manager, orchestrator, human-owner], blocking: false }
+  - { name: version_completed, publisher: release-manager, key_subscribers: [product-manager, orchestrator, human-owner], blocking: false }
+  - { name: project_completed, publisher: product-manager, key_subscribers: [human-owner, orchestrator], blocking: false }
+
+# -----------------------------------------------------------------------------
+# invariants
+# -----------------------------------------------------------------------------
+invariants:
+  - name: name_is_closed_enum
+    rule: "`name` MUST be one of the 32 entries in event_names — no ad-hoc event names."
+
+  - name: blocking_events_require_ack
+    rule: >
+      Any event instance with blocking: true MUST also have requires_ack: true
+      and a non-empty escalation_path. A blocking event with no escalation path
+      is an organizational bug (design-spine §4: "a question pattern with no
+      owner is an organizational bug" applies equally to unrouted blocking events).
+
+  - name: failure_events_are_always_blocking
+    rule: >
+      Every event whose name ends in `_failed` (requirements_blocked,
+      task_blocked, review_failed, qa_failed, security_failed, build_failed,
+      rollback_requested, post_release_validation_failed) MUST be emitted with
+      blocking: true.
+
+  - name: publisher_matches_authority
+    rule: >
+      `publisher` on a given event instance MUST match the canonical
+      publisher for that event name (see event_names), except where the name
+      maps to a role class (e.g. `contract_owners`, `owner_agent`) — in which
+      case publisher MUST resolve to one of the agents actually holding that
+      role for the task/contract in question.
+
+# --- notes ---
+# A linter validating event.schema.yaml instances SHOULD enforce:
+#   1. `name` is present in event_names (closed set, exactly 32 — reject unknown names).
+#   2. `blocking: true` implies `requires_ack: true` and `escalation_path` is non-empty.
+#   3. `publisher` is a canonical_id (or automated-workflow/quality-gate id) recognized by
+#      the agent roster — never a free-text string.
+#   4. `subscribers` is non-empty for every event except terminal events (`project_completed`)
+#      emitted with no remaining downstream work.
+#   5. `project_state_effect` is non-empty — every event MUST state its state-machine effect,
+#      even if the effect is "none" (explicit, not omitted).
+#   6. Events named `*_approved`, `*_passed`, `*_completed` MUST NOT carry a `veto` payload —
+#      vetoes are recorded via approval.schema.yaml, not smuggled into a passing event.
+#   7. `emitted_at` is monotonically non-decreasing across events sharing the same `payload.task_id`
+#      in publish order (basic ordering sanity check).
+#   8. An event with `requires_ack: true` that has no corresponding acknowledgement after a
+#      configured SLA is a staleness signal for orchestrator escalation, not a schema violation —
+#      mirrors handoff.schema.yaml note #10.
+#   9. `contract_changed` and `contract_ready` instances SHOULD cross-reference a resolvable
+#      contract.schema.yaml id in `payload`.
+
+# -----------------------------------------------------------------------------
+# example — filled event instance
+# -----------------------------------------------------------------------------
+example:
+  schema_version: 1
+  id: "EVT-2026-07-13-0091"
+  name: qa_passed
+  publisher: qa-engineer
+  subscribers: [orchestrator, security-engineer, release-manager]
+  payload:
+    task_id: "TASK-0138"
+    quality_gate_results: ["qg-unit-tests:pass", "qg-contract-tests:pass", "qg-domain-correctness:pass"]
+  project_state_effect: "Moves TASK-0138 from qa to security_review in project-state.active_tasks."
+  blocking: false
+  requires_ack: true
+  escalation_path: [security-engineer, cto]
+  emitted_at: "2026-07-13T15:20:00Z"

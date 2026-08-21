@@ -1,0 +1,279 @@
+# =============================================================================
+# task.schema.yaml
+# -----------------------------------------------------------------------------
+# Purpose: The unit of trackable work in the Virtual Software Organization
+#   (VSO). Every piece of implementation, review, gate, or release work that
+#   the orchestrator schedules is represented as one task instance moving
+#   through the 19-state lifecycle defined below. This is the "missing middle
+#   layer" the evidence base identified: the source repository had lanes,
+#   gates, and phases, but no per-feature task artifact connecting them.
+#
+# schema_version: 1
+#
+# provenance: Recommended
+#   The source repository had NO task/story/ticket artifact at all — work was
+#   proposed conversationally ("always propose the next milestone") and left
+#   no trace. `allowed_files` / `restricted_files` generalize the source's
+#   real, Extracted file-ownership-matrix pattern (every file declares an
+#   `Owner:` line) into a per-task grant. The state machine, transition
+#   authority rules, and task_type enum are Recommended, designed to be
+#   consistent with the source's real invariants (separation of duties,
+#   gates-over-status, lanes-outrank-initiative).
+#
+# Related schemas: handoff.schema.yaml, review.schema.yaml,
+#   quality-gate.schema.yaml, blocker.schema.yaml, project-state.schema.yaml
+# =============================================================================
+
+fields:
+  schema_version: 1                  # integer | required | fixed at 1 for this contract generation
+
+  id: "TASK-0231"                     # string | required | globally unique, stable, referenced by
+                                      #   messages/handoffs/reviews/gates for this task's entire life
+
+  title: "Implement WebSocket presence channel"
+                                      # string | required | short human-readable summary
+
+  project_id: "proj-example-01"       # string | required | owning project
+
+  parent_version: "v1"                 # string | optional | canonical_id of the version.schema.yaml
+                                      #   instance this task belongs to
+
+  parent_milestone: "M2-realtime-collab"
+                                      # string | optional | milestone label/id within the version
+
+  parent_epic: "EPIC-realtime"         # string | optional | epic/feature grouping, if the project
+                                      #   uses one (epics are not part of the 19 canonical top-level
+                                      #   fields below the version/milestone layer in the source's
+                                      #   real 5-level hierarchy — see design-spine §0/evidence digest
+                                      #   §11 — but many projects will want the grouping)
+
+  parent_feature: "presence"           # string | optional | feature-level grouping/id
+
+  task_type: feature                   # string | required | enum: feature | fix | docs | chore |
+                                      #   spike | refactor | security | release | review | validation
+
+  owner_agent: backend-engineer        # string | required | canonical_id of the agent implementing
+                                      #   this task (the "implementer"). Exactly one owner.
+
+  reviewer_agent: code-reviewer        # string | required once task reaches implementation_review |
+                                      #   canonical_id of the reviewing agent. MUST be independent of
+                                      #   owner_agent — see invariant below.
+
+  approver: qa-engineer                # string | conditional | canonical_id of the agent (or
+                                      #   "human:<role>") that grants final approval for this task's
+                                      #   class of work — e.g. qa-engineer for merge/promotion gates,
+                                      #   release-manager for release tasks, human-owner for scope
+                                      #   tasks. MUST NOT equal owner_agent.
+
+  priority: high                       # string | required | enum: critical | high | medium | low
+
+  status: in_progress                  # string | required | enum: one of the 19 states listed below
+
+  dependencies:                        # array<string> | optional | ids of other tasks that must
+    - "TASK-0138"                       #   reach a resolved state before this one can proceed
+
+  blockers:                            # array<string> | optional | ids of blocker.schema.yaml
+    - "BLK-0012"                        #   instances currently blocking this task (empty when unblocked)
+
+  inputs:                              # array<string> | optional | artifacts/decisions/contracts
+    - "contract:board-api:v1"           #   this task consumes
+    - "adr:0004-websocket-transport"
+
+  expected_outputs:                    # array<string> | required | what this task must produce to be
+    - "src/realtime/adapters/ws_gateway.py"
+    - "tests/realtime/test_ws_gateway.py"
+    - "updated api-contract:presence-channel:v1"
+
+  allowed_files:                       # array<string> (glob patterns) | required | ownership-lane
+    - "src/realtime/**"                 #   GRANT for this task. See invariant below: this is a lane
+    - "tests/realtime/**"               #   NARROWING, never a widening.
+
+  restricted_files:                    # array<string> (glob patterns) | optional | explicit denylist
+    - "src/decision/domain/**"          #   for this task even if the owner_agent's standing lane would
+    - "src/billing/**"                  #   otherwise allow it (defense in depth alongside allowed_files)
+
+  acceptance_criteria:                 # array<string> | required | QA-executable, testable statements
+    - "Presence channel emits join/leave events within 500ms"
+    - "Reconnect within 3s does not duplicate presence events"
+
+  test_requirements:                   # array<string> | optional | what test coverage this task must add
+    - "unit: connection lifecycle"
+    - "integration: presence + board CRUD interaction"
+
+  security_requirements:               # array<string> | optional | security-relevant constraints,
+    - "no PII in presence payload"      #   populated when security-engineer review applies
+    - "tenant isolation enforced on channel join"
+
+  documentation_requirements:          # array<string> | optional | docs this task must update
+    - "docs/api/realtime.md"
+
+  contract_versions:                   # array<string> | optional | contract.schema.yaml ids/versions
+    - "contract:presence-channel:v1"    #   this task implements against or changes
+
+  handoff_target: frontend-engineer    # string | optional | canonical_id of the agent expected to
+                                      #   receive this task's output via a handoff.schema.yaml instance
+
+  completion_evidence:                  # array<string> | conditional | REQUIRED before status may be
+    - "ci-run:run-88213 (green)"         #   set to completed — see invariant below (gates over status)
+    - "review:REV-0091 (pass)"
+    - "quality-gate:qg-unit-tests (pass)"
+
+  quality_gate_results:                 # array<string> | optional | ids of quality-gate.schema.yaml
+    - "qg-lint:pass"                     #   result instances recorded against this task
+    - "qg-unit-tests:pass"
+
+  retry_count: 0                        # integer | required | number of times this task has been
+                                      #   returned to rework_required and re-attempted; supports the
+                                      #   orchestrator's retry-tracking responsibility (project-state
+                                      #   retry_history)
+
+  created_at: "2026-07-10T08:00:00Z"    # string (ISO-8601 datetime) | required
+
+  updated_at: "2026-07-13T09:15:00Z"    # string (ISO-8601 datetime) | required | bumped on every field
+                                      #   change; orchestrator-maintained for coordination fields,
+                                      #   owning agent for evidence fields
+
+# -----------------------------------------------------------------------------
+# states — the complete, closed, ordered list of 19 task states. `status`
+# MUST be one of these exact strings.
+# -----------------------------------------------------------------------------
+states:                               # array<string> | required | enum, closed set of 19
+  - proposed                           # raised, not yet analyzed
+  - requirements_analysis              # PM/owner clarifying scope, acceptance criteria
+  - architecture_required              # needs an ADR/boundary decision before work can start
+  - ready                              # analyzed, unblocked, awaiting assignment
+  - assigned                           # orchestrator has assigned an owner_agent
+  - in_progress                        # owner_agent actively working
+  - blocked                            # cannot proceed; see blockers[] / blocker.schema.yaml
+  - implementation_complete            # owner_agent claims work is done (a claim, not an approval)
+  - implementation_review              # independent code-reviewer is reviewing
+  - rework_required                    # a reviewer/gate failed the work; returns to owner_agent
+  - integration                        # merged/integrated, awaiting downstream validation
+  - qa                                 # qa-engineer validating acceptance criteria + domain gates
+  - security_review                    # security-engineer reviewing, when conditions require it
+  - release_ready                     # all required gates/approvals attached, awaiting completion
+  - completed                          # gate evidence + required approvals attached (see invariant)
+  - released                           # shipped to production by release-manager after human approval
+  - deferred                           # explicitly moved out of current scope (Target-section pattern)
+  - cancelled                          # will not be completed
+  - archived                           # terminal, retained for history/audit only
+
+# -----------------------------------------------------------------------------
+# transition_authority — who may move a task between states. This encodes the
+# design-spine §8 state-machine rule set.
+# -----------------------------------------------------------------------------
+transition_authority:
+  scheduling_states:                   # orchestrator moves FORM-only transitions:
+    mover: orchestrator                #   proposed -> requirements_analysis -> architecture_required
+    transitions:                       #   -> ready -> assigned, and later integration -> release_ready.
+      - "proposed -> requirements_analysis"
+      - "requirements_analysis -> architecture_required"
+      - "architecture_required -> ready"
+      - "ready -> assigned"
+      - "integration -> release_ready"
+    note: >
+      Orchestrator holds no decision authority — these are scheduling/form
+      moves only. Scope and architecture content decisions remain with
+      product-manager and cto respectively even though orchestrator moves
+      the task's status field.
+
+  self_claim:                          # owner_agent may move their OWN task:
+    mover: owner_agent                 #   in_progress -> implementation_complete
+    transitions:
+      - "in_progress -> implementation_complete"
+    note: >
+      Allowed because this is a CLAIM of completion, not an approval. It
+      does not certify quality or grant merge/release rights.
+
+  independent_review:                  # orchestrator triggers dispatch; independent agents render result
+    mover: orchestrator (dispatch) + code-reviewer (result)
+    transitions:
+      - "implementation_complete -> implementation_review"
+      - "implementation_review -> qa (on review pass)"
+      - "implementation_review -> rework_required (on review fail)"
+    note: >
+      code-reviewer MUST be independent of owner_agent (see review.schema.yaml).
+
+  qa_and_security:
+    mover: qa-engineer, security-engineer
+    transitions:
+      - "qa -> security_review (when conditions met)"
+      - "qa -> rework_required (on qa fail)"
+      - "security_review -> release_ready (on pass)"
+      - "security_review -> rework_required (on fail)"
+
+  completion_and_release:
+    mover: release-manager (completed -> released, after human approval)
+    transitions:
+      - "release_ready -> completed"   # requires attached gate evidence + required approvals
+      - "completed -> released"        # release-manager, after human-owner approval
+
+  rework_return:
+    mover: any reviewer/gate owner (on failure)
+    transitions:
+      - "* -> rework_required"          # from any review/gate state, on failure
+      - "rework_required -> in_progress" # returns to owner_agent
+    note: "Set by whichever reviewer/gate found the failure; always returns to owner_agent."
+
+# -----------------------------------------------------------------------------
+# invariants — non-negotiable rules a task instance and its transitions must
+# satisfy. These mirror design-spine §3 and §8 verbatim in spirit.
+# -----------------------------------------------------------------------------
+invariants:
+  - name: no_self_approval
+    rule: >
+      No agent may move its own implementation task from `in_progress` to
+      any final approval state or to `completed`. owner_agent may only
+      self-claim `in_progress -> implementation_complete`; every state
+      beyond that requires an INDEPENDENT agent (reviewer_agent, qa-engineer,
+      security-engineer, release-manager, or human-owner) to move it forward.
+
+  - name: gates_over_status
+    rule: >
+      A task enters `completed` ONLY with completion_evidence attached
+      (quality_gate_results all passing per the task's required gate set,
+      plus any required human approvals). The status field itself never
+      outranks the evidence — a task claiming `completed` without evidence
+      is invalid regardless of what its status field says.
+
+  - name: ownership_lane_grants_narrow_never_widen
+    rule: >
+      `allowed_files` / `restricted_files` on a task are a GRANT scoped to
+      that task. A task-level grant may narrow the owner_agent's standing
+      lane (their default file ownership per agent.schema.yaml /
+      file-ownership-matrix) but must never widen it beyond what the
+      owner_agent's standing lane already permits. `restricted_files`
+      always wins over `allowed_files` when both could apply to the same path.
+
+  - name: reviewer_independence
+    rule: >
+      reviewer_agent MUST differ from owner_agent. approver MUST differ from
+      owner_agent. This is the separation-of-duties invariant (design-spine
+      §3.3): implementation and final approval are always different roles.
+
+# --- notes ---
+# A linter validating task.schema.yaml instances SHOULD enforce:
+#   1. `status` is one of the 19 states listed above — reject any other string.
+#   2. `task_type` is one of: feature, fix, docs, chore, spike, refactor, security,
+#      release, review, validation.
+#   3. `priority` is one of: critical, high, medium, low.
+#   4. `owner_agent` != `reviewer_agent` and `owner_agent` != `approver` (reviewer_independence).
+#   5. If `status` == "completed", `completion_evidence` MUST be non-empty and every
+#      referenced quality_gate_results entry MUST resolve to a passing gate instance.
+#   6. If `status` == "implementation_review" or later, `reviewer_agent` MUST be set
+#      and MUST NOT equal `owner_agent`.
+#   7. Any transition into `completed` or `released` MUST have been performed by an
+#      agent other than `owner_agent` (cross-check against the message/event log that
+#      recorded the transition, not just this file).
+#   8. `restricted_files` patterns, if they overlap `allowed_files` patterns for the
+#      same path, take precedence (deny wins).
+#   9. `dependencies` and `blockers` referenced here SHOULD resolve to existing task /
+#      blocker ids (soft check).
+#  10. `retry_count` increments only on `rework_required -> in_progress` transitions;
+#      flag (don't necessarily fail) tasks whose retry_count exceeds a configured
+#      threshold as a signal for escalation to software-architect/cto (recurring
+#      rework often indicates a design defect, per the "untestable as designed"
+#      escalation rule).
+#  11. A task moving directly from `proposed` to `in_progress` or later, skipping
+#      `ready`/`assigned`, SHOULD be flagged — orchestrator scheduling states exist
+#      to make dispatch auditable.

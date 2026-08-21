@@ -1,0 +1,168 @@
+# =============================================================================
+# review.schema.yaml
+# -----------------------------------------------------------------------------
+# Purpose: Records an independent review of a piece of work — code,
+#   architecture, QA validation, security, contract, or release readiness —
+#   including every finding, its severity, and who owns fixing it. This is
+#   the structured form of the source system's real code-review discipline
+#   (`/pr-check` skill: "verify, don't tick" — Extracted) generalized to
+#   every review type the VSO needs.
+#
+# schema_version: 1
+#
+# provenance: Recommended
+#   The source repository's code-review PRACTICE was real and Extracted
+#   (`/pr-check` skill, PR template, fixed review-priority order: boundaries
+#   -> hidden business rules -> replayability -> PII -> test level -> style).
+#   But there was no structured review RECORD/artifact — reviews happened as
+#   PR comments with no queryable schema, and only one review_type (code)
+#   existed at all; architecture/qa/security/contract/release review records
+#   did not exist as artifacts. This schema formalizes the review record
+#   itself as Recommended, while its `reviewer_agent independent_of owner`
+#   rule and verify-don't-tick spirit are carried forward from the real
+#   Extracted practice.
+#
+# Related schemas: task.schema.yaml, handoff.schema.yaml,
+#   quality-gate.schema.yaml, approval.schema.yaml
+# =============================================================================
+
+fields:
+  schema_version: 1                     # integer | required | fixed at 1 for this contract generation
+
+  id: "REV-0091"                         # string | required | globally unique review id
+
+  review_type: code                      # string | required | enum: code | architecture | qa |
+                                        #   security | contract | release
+
+  task_id: "TASK-0231"                    # string | required | the task.schema.yaml instance under review
+
+  requested_by: orchestrator              # string | required | canonical_id of the agent that
+                                        #   dispatched this review (typically orchestrator on behalf
+                                        #   of the task's transition rules, but may be the owner_agent
+                                        #   submitting for review)
+
+  reviewer_agent: code-reviewer           # string | required | canonical_id of the reviewing agent.
+                                        #   MUST be independent of the task's owner_agent — see
+                                        #   invariant below. For review_type: qa, this is qa-engineer;
+                                        #   for security, security-engineer; for architecture, cto
+                                        #   (or software-architect drafting or cto approving); for
+                                        #   release, release-manager.
+
+  inputs:                                # array<string> | required | what the reviewer examined
+    - "pr:acme/boards#412"
+    - "handoff:HANDOFF-2026-07-13-01"
+    - "contract:presence-channel:v1"
+
+  checklist:                              # array<object> | required | fixed-order concern groups the
+    - order: 1                             #   reviewer works through — verify, don't tick: each item
+      concern: "boundaries"                 #   requires the reviewer to have actually looked (grep,
+      checked: true                         #   read, run), not assumed. Order is fixed per review_type
+    - order: 2                             #   (this example follows the source's real code-review
+      concern: "hidden business rules"       #   priority order: boundaries -> hidden business rules ->
+      checked: true                         #   replayability -> PII -> test level -> style).
+    - order: 3
+      concern: "replayability"
+      checked: true
+    - order: 4
+      concern: "PII handling"
+      checked: true
+    - order: 5
+      concern: "test level"
+      checked: false
+    - order: 6
+      concern: "style"
+      checked: true
+
+  findings:                               # array<object> | required (may be empty array on clean pass) |
+    - severity: medium                     #   every issue the reviewer surfaced
+      location: "src/realtime/adapters/ws_gateway.py:88"
+      owning_agent: backend-engineer        #   who must fix this — always the task's owner_agent or a
+                                          #   more specific responsible agent if the finding implicates
+                                          #   a different lane (e.g. a contract issue implicating the
+                                          #   contract owner)
+      required_correction: >
+        Test coverage for the reconnect-within-3s path is missing;
+        add an integration test before this can pass.
+
+  result: pass_with_conditions            # string | required | enum: pass | fail | pass_with_conditions
+
+  blocking: true                          # boolean | required | true if a fail/pass_with_conditions
+                                        #   result prevents the task from advancing until resolved
+                                        #   (mirrors quality-gate.schema.yaml blocking semantics —
+                                        #   most review types are blocking by design)
+
+  evidence_refs:                          # array<string> | optional | supporting artifact pointers
+    - "ci-run:run-88213"
+    - "diff:acme/boards#412"
+
+  created_at: "2026-07-13T09:20:00Z"      # string (ISO-8601 datetime) | required
+
+  resolved_at: null                        # string (ISO-8601 datetime) | conditional | required once
+                                        #   result is finalized and any required_correction items are
+                                        #   closed out; null while findings remain open
+
+# -----------------------------------------------------------------------------
+# review_types — the complete, closed set. `review_type` MUST be one of these.
+# -----------------------------------------------------------------------------
+review_types:                           # array<string> | required | enum, closed set of 6
+  - code                                 # standing code-reviewer review of an implementation
+  - architecture                        # cto / software-architect review of a design/ADR
+  - qa                                   # qa-engineer validation of acceptance criteria + domain gates
+  - security                            # security-engineer review of compliance/data-boundary surface
+  - contract                            # review of an API/data contract change
+  - release                             # release-manager review of a release-readiness bundle
+
+# -----------------------------------------------------------------------------
+# result_enum
+# -----------------------------------------------------------------------------
+result_enum:                            # array<string> | required | enum, closed set of 3
+  - pass                                 # no blocking findings; task may advance
+  - fail                                 # blocking findings present; task returns to rework_required
+  - pass_with_conditions                # advances, but named conditions/follow-ups must be tracked
+                                        #   (mirrors handoff.schema.yaml accepted_with_conditions)
+
+# -----------------------------------------------------------------------------
+# invariants
+# -----------------------------------------------------------------------------
+invariants:
+  - name: reviewer_independence
+    rule: >
+      reviewer_agent MUST differ from the task's owner_agent. This is
+      non-negotiable across every review_type — code review, architecture
+      review, QA validation, security review, contract review, and release
+      review are ALL performed by an agent independent of the one who
+      produced the work under review. No agent reviews its own output.
+
+  - name: findings_carry_severity_owner_and_correction
+    rule: >
+      Every entry in `findings[]` MUST specify severity, owning_agent, and
+      required_correction. A finding with no named owning_agent or no
+      concrete required_correction is incomplete and MUST NOT be used to
+      justify a result of fail or pass_with_conditions — vague findings do
+      not block work; specific, owned findings do.
+
+  - name: verify_dont_tick
+    rule: >
+      Each `checklist[]` item's `checked: true` represents that the reviewer
+      actually looked (grepped, read, ran something) — not that the item was
+      assumed satisfied. An unverified tick is worse than an admitted gap
+      (checked: false is always preferable to a false true).
+
+# --- notes ---
+# A linter validating review.schema.yaml instances SHOULD enforce:
+#   1. `review_type` is one of the 6 review_types listed above.
+#   2. `result` is one of: pass, fail, pass_with_conditions.
+#   3. `reviewer_agent` != the owner_agent of the referenced `task_id` (cross-file check
+#      against task.schema.yaml).
+#   4. If `result` == "fail" or "pass_with_conditions", `findings` MUST be non-empty and
+#      every finding MUST have severity, owning_agent, and required_correction populated.
+#   5. If `result` == "pass", `findings` MAY be empty; if non-empty, all findings MUST be
+#      informational/non-blocking (no severity of critical or high without blocking: false).
+#   6. `checklist` items MUST appear in a fixed order for a given `review_type` — flag
+#      (don't necessarily fail) instances that reorder or omit standard concerns for that type.
+#   7. If `blocking: true` and `result` != "pass", the associated task's status MUST NOT
+#      advance past its current review-gated state until `resolved_at` is set and a
+#      follow-up review with `result: pass` exists.
+#   8. `resolved_at`, if non-null, MUST be >= `created_at`.
+#   9. `severity` on findings, when present, is one of: critical, high, medium, low
+#      (consistent with blocker.schema.yaml and quality-gate.schema.yaml severity vocab).

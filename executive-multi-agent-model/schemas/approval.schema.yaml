@@ -1,0 +1,133 @@
+# =============================================================================
+# approval.schema.yaml
+# -----------------------------------------------------------------------------
+# Purpose: A recorded sign-off (or rejection, or veto) for anything the
+#   framework requires explicit authority over before it may proceed —
+#   architecture, scope, security exceptions, quality gates, releases,
+#   deployments, assumptions, or a human checkpoint. This is the structured
+#   home for the source's real "recorded as an ADR/decision" discipline, and
+#   the ONLY place a veto's required alternative is captured.
+#
+# schema_version: 1
+#
+# provenance: Recommended
+#   The source repository had no approval artifact at all — sign-off lived
+#   inside prose (ADRs, PR reviews, "Owner:" lines) and human convention, never
+#   a structured, queryable record (evidence digest §12b: approval.schema.yaml
+#   listed among the Recommended additions). What IS Extracted and preserved
+#   exactly is the real behavior this schema formalizes: the scoped security
+#   veto that the cto/arbiter cannot overrule and that must ship with an
+#   alternative (design-spine §3.5, evidence digest cross-cutting caveats —
+#   "the one deliberate asymmetry to preserve"), and the source's real list
+#   of decision types requiring human sign-off (design-spine §3.8).
+#
+# Related schemas: task.schema.yaml, quality-gate.schema.yaml,
+#   review.schema.yaml, agent.schema.yaml, project-state.schema.yaml
+# =============================================================================
+
+fields:
+  schema_version: 1                    # integer | required | fixed at 1 for this contract generation
+
+  id: "APR-0044"                        # string | required | globally unique, stable, referenced by
+                                        #   task.completion_evidence, project-state.human_approvals,
+                                        #   quality-gate.evidence_recorded
+
+  subject: "Sensitive-data boundary: presence-channel location metadata"
+                                        # string | required | short description of what is being
+                                        #   approved/rejected/vetoed
+
+  requested_by: backend-engineer        # string | required | canonical_id of the agent (or
+                                        #   "human:<role>") requesting the approval
+
+  approver: "security-engineer"        # string | required | canonical_id of the agent, OR the literal
+                                        #   string "human:<role>" (e.g. "human:product-owner",
+                                        #   "human:release-authority") — the entity that RENDERS this
+                                        #   approval decision
+
+  approval_type: security_veto_clearance
+                                        # string | required | enum: architecture | scope |
+                                        #   security_veto_clearance | quality_gate | release |
+                                        #   deployment | assumption | human_checkpoint
+
+  status: vetoed                        # string | required | enum: pending | approved |
+                                        #   approved_with_conditions | rejected | vetoed
+
+  conditions:                           # array<string> | conditional | required if status ==
+    []                                   #   approved_with_conditions; empty otherwise
+                                        #   e.g. "Location metadata truncated to city-level before storage"
+
+  veto:                                 # object | required (present, values null/false when not a veto)
+    vetoed: true                        #   boolean | required
+    rationale: >                        #   string | required when vetoed=true | why this crosses the
+      Precise device location in presence-channel payloads exceeds the
+      project's declared sensitive-data boundary for this jurisdiction and
+      creates an unauthorized secondary data-collection surface.
+    offered_alternative: >              #   string | REQUIRED when vetoed=true — see invariant below
+      Ship presence with city-level location granularity only, derived
+      server-side from IP geolocation; do not transmit device GPS
+      coordinates through the presence channel at all.
+
+  evidence_refs:                        # array<string> | required | what this approval decision is
+    - "contract:presence-channel:v1#data_ownership"
+    - "task:TASK-0233#security_requirements"
+    - "review:REV-0091"
+
+  timestamp: "2026-07-13T09:00:00Z"     # string (ISO-8601 datetime) | required | when this approval
+                                        #   instance was recorded (not necessarily when discussion began)
+
+# --- notes ---
+# human_approval_required — the canonical decision list (design-spine §3.8). Any
+# item below MUST have a corresponding approval.schema.yaml instance with
+# approver == "human:<role>" (or a human co-signing an agent decision) before the
+# affected task/decision may advance past the state that requires it:
+#   - product-scope change
+#   - high-risk assumption
+#   - major architecture decision
+#   - new external dependency
+#   - destructive migration
+#   - auth(n/z) change
+#   - sensitive-data change
+#   - security exception
+#   - production deployment
+#   - production rollback
+#   - release approval
+#   - critical gate override
+#
+# --- notes ---
+# A linter validating approval.schema.yaml instances SHOULD enforce:
+#   1. `approval_type` is one of the 8 enum values listed above; `status` is one of:
+#      pending, approved, approved_with_conditions, rejected, vetoed.
+#   2. INVARIANT — VETO MUST CARRY AN ALTERNATIVE: whenever `veto.vetoed` == true,
+#      `veto.offered_alternative` MUST be a non-empty string. A veto with no
+#      alternative is an invalid instance, full stop (design-spine §3.5, §11).
+#   3. INVARIANT — THE SECURITY VETO IS TERMINAL: when `approval_type` ==
+#      security_veto_clearance and `veto.vetoed` == true, no subsequent
+#      approval.schema.yaml instance with `approver` == cto or approver ==
+#      orchestrator may set status to approved/approved_with_conditions for the
+#      SAME subject — the veto cannot be overruled by cto or orchestrator (design-
+#      spine §3.5, §4). The only path past a security veto is (a) the offered
+#      alternative is adopted instead, recorded as a new, separate approval/decision,
+#      or (b) a human-approved, evidence-backed, time-bound, explicitly-recorded
+#      exception per the human_approval_required list above — and even then the
+#      veto instance itself is never edited to say "approved."
+#   4. `approver` MUST NOT equal `requested_by` — no agent approves its own request
+#      (design-spine §3.3, §3.9: no self-approval).
+#   5. If `approval_type` == quality_gate and this approval represents an OVERRIDE of
+#      a failing gate, it MUST be: explicit (a distinct instance, not a silent status
+#      flip), evidence-backed (evidence_refs non-empty and substantive), time-bound
+#      (conditions or rationale states an expiry/follow-up), recorded (this instance
+#      persists), and human-approved (approver == "human:<role>", or conditions
+#      explicitly name the joint pair per the one documented source precedent —
+#      ml-engineer + product-manager jointly — design-spine §12).
+#   5b. No override of a CI-stage blocking gate (quality-gate.schema.yaml
+#      override_authority: none) is ever valid via this schema or any other — see
+#      quality-gate.schema.yaml invariant #1; an approval instance cannot manufacture
+#      an override_authority the gate itself does not carry.
+#   6. `orchestrator` is never a valid value for `approver` — orchestrator holds no
+#      decision authority and may request approvals on behalf of a task, but never
+#      renders one (design-spine §3.4).
+#   7. `approver` values other than a recognized canonical_id or the literal pattern
+#      "human:<role>" should be rejected — no free-text approver identities.
+#   8. Every subject matching an item on the human_approval_required list above MUST
+#      have at least one linked approval instance with a human approver before the
+#      corresponding task/state transition is considered valid.

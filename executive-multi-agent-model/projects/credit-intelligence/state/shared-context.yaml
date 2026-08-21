@@ -1,0 +1,180 @@
+# ILLUSTRATIVE reference instance — shows the framework applied to the
+# credit-intelligence evidence. Not live runtime state.
+#
+# This is the CONSTITUTION for the credit-intelligence reference project —
+# the shared-context.yaml instance described in design-spine §6. It OUTRANKS
+# every other document and every agent for this project (design-spine §3.1).
+# A doc that disagrees with this file is a bug, not a difference of opinion.
+#
+# Provenance: Extracted content, Recommended structure. The real source had
+# an equivalent constitution — `PROMPT.md` ("When a doc and this file
+# disagree, this file wins — and the doc is a bug", evidence-digest §1, §4)
+# plus `CLAUDE.md`. What is Recommended is packaging that prose into this
+# schema's per-section owner/reviewer/staleness structure (design-spine §6)
+# — the source itself governed by prose sections, not a structured file.
+# schema note: sections + ownership per design-spine §6 (no separate
+# shared-context.schema.yaml was enumerated; this instance follows the
+# section list and ownership rules given there verbatim).
+
+constitution_precedence: >
+  This document outranks ROADMAP.md, ARCHITECTURE.md, DOMAINS.md,
+  DECISION_ENGINE.md, every agent definition, and every ADR for this project.
+  Extracted rule (verbatim source precedent): "When a doc and this file
+  disagree, this file wins — and the doc is a bug." Disagreement with this
+  file itself is never resolved by quietly writing around it — escalate to
+  human-owner (design-spine §11, evidence-digest §4).
+
+sections:
+
+  product-overview:
+    owner: product-manager
+    required_reviewers: [human-owner]
+    last_updated: "2026-07-10"           # staleness: >1 working day old = suspect (design-spine §6)
+    content: >
+      Credit Intelligence is an INTELLIGENCE LAYER for lenders — it scores,
+      explains, and audits credit decisions. It is explicitly NOT a lender:
+      it does not originate loans, hold capital, or carry lending risk itself.
+      Product is "Stripe for Credit Intelligence" framing (Extracted, but see
+      provenance note: this framing line actually originates in
+      credit-architect.md's aspirational founder-voice, a Gen-0 seed-agent
+      artifact — evidence-digest §10 — not the ratified constitution; carried
+      here as Inferred product framing pending cto/PM confirmation).
+    classification: Extracted
+    evidence_refs: ["EXT/01-repo-structure.md", "repo:PROMPT.md", "repo:docs/product/vision.md"]
+    confidence: high
+
+  approved-scope:
+    owner: product-manager
+    required_reviewers: [human-owner]
+    last_updated: "2026-07-10"
+    content: >
+      Phase 1 — Foundation ONLY is in approved scope. Included: single-tenant
+      decision API (POST /v1/decisions), one partner integration, one
+      loan-tape ingestion path, an explainable + audited decision. See
+      state/version-registry equivalent (version.schema.yaml instance,
+      id v1-foundation) for the full included_scope / excluded_scope split.
+    classification: Extracted
+    evidence_refs: ["EXT/20-version-evidence.md", "repo:ROADMAP.md"]
+    confidence: high
+
+  non-goals:
+    owner: product-manager
+    required_reviewers: [human-owner]
+    last_updated: "2026-07-10"
+    content: >
+      Explicitly OUT for Phase 1 — "do not negotiate these back in" without a
+      new version plan or a demonstrably fired migration trigger (design-spine
+      invariant, version.schema.yaml): federated learning, model consortium,
+      multi-tenancy, billing, admin console, mobile SDKs, Kafka, Kubernetes,
+      ClickHouse, microservices split. Each has a named migration trigger on
+      file (e.g. Kafka <- "a second consumer of decision events appears";
+      multi-tenancy <- "a second tenant onboards or independent-scaling
+      demand appears") — none has fired (Extracted: evidence-digest §10, §12d).
+    classification: Extracted
+    evidence_refs: ["EXT/20-version-evidence.md", "EXT/25-build-evolution.md", "repo:ROADMAP.md"]
+    confidence: high
+
+  business-rules:
+    owner: domain-policy-architect
+    required_reviewers: [product-manager, qa-engineer]
+    last_updated: "2026-07-09"
+    content: >
+      Core non-negotiable: MODEL PROBABILITIES AND BUSINESS POLICY ARE NEVER
+      MERGED. The model (ml-engineer) produces a probability/prediction; only
+      domain-policy-architect converts that into a decision (threshold, limit,
+      terms). Backend implements the policy; it never authors it
+      (design-spine §2 roster; evidence-digest §1 "inference and policy are
+      never merged — non-negotiable #4"). `policy_version` is pinned per
+      decision for reproducibility (evidence-digest §5 versioning table).
+    classification: Extracted
+    evidence_refs: ["EXT/01-repo-structure.md", "repo:ARCHITECTURE.md", "repo:DECISION_ENGINE.md"]
+    confidence: high
+
+  security-requirements:
+    owner: security-engineer
+    required_reviewers: [cto]
+    last_updated: "2026-07-10"
+    content: >
+      THE SCOPED SECURITY VETO (the project's one deliberate authority
+      asymmetry): security-engineer holds an unoverridable veto on exactly
+      ONE existential-compliance question — the sensitive-data / regulatory
+      collection boundary (data legality, given "unlicensed centralization is
+      illegal" as one of the 4 constraining facts). cto/arbiter CANNOT
+      overrule this veto; it outranks the roadmap; it MUST ship with an
+      offered_alternative; it is recorded as a decision/ADR
+      (design-spine §3.5; evidence-digest cross-cutting caveats: "the one
+      deliberate asymmetry to preserve"). Security review happens BEFORE
+      anything is built, not after (evidence-digest §2 stage 18).
+      Scoped to exactly this one question — extending it further degrades
+      into obstruction (evidence-digest §8 pitfalls).
+    classification: Extracted
+    evidence_refs: ["EXT/01-repo-structure.md", "EXT/12-org-matrices.md", "repo:SECURITY.md", "repo:PROMPT.md#4-5"]
+    confidence: high
+
+  architecture-decisions:
+    owner: cto                            # drafted by software-architect when split — not split at this scale
+    required_reviewers: [cto]
+    last_updated: "2026-07-08"
+    content: >
+      "A decision that is not an ADR does not exist" (Extracted, verbatim
+      cultural rule). Only cto may change a boundary (DOMAINS.md). Three ADRs
+      on file: 0001 monorepo, 0002 DDD/bounded-contexts, 0003 event-driven
+      with synchronous audit write. See decision-log.yaml for the illustrative
+      instances. Triple-enforced architecture rule: hook (domain-purity.sh,
+      PostToolUse, blocks framework imports in domain/) + CI test
+      (test_layering.py, AST-based) + PR checklist.
+    classification: Extracted
+    evidence_refs: ["EXT/01-repo-structure.md", "repo:ADR/0001-monorepo.md", "repo:ADR/0002-ddd.md", "repo:ADR/0003-event-driven.md"]
+    confidence: high
+
+  known-risks:
+    owner: orchestrator                   # collates; substance owned by owners — Recommended addition
+    required_reviewers: []
+    last_updated: "2026-07-13"
+    content: >
+      See risk-register.yaml for the full illustrative register (R1-R6).
+      Collation itself is a Recommended function — the source had no
+      orchestrator to collate risks; risks lived implicitly in gaps the
+      evidence base later named.
+    classification: Recommended
+    evidence_refs: ["design-spine.md#7"]
+    confidence: high
+
+  approved-assumptions:
+    owner: product-manager
+    required_reviewers: [human-owner]     # for high-risk assumptions
+    last_updated: "2026-07-10"
+    content: >
+      Source has NO assumption register (Missing — evidence-digest §2 stage 4
+      "Partial": "only via ADRs; no assumption register"). Illustrative
+      assumption recorded here as a Recommended addition: "One design
+      partner's loan tape is representative enough of Phase 1 target
+      borrowers to validate the decision loop" — risk mark: high;
+      falsification condition: "partner cohort data arrives structurally
+      incompatible with the declared feature contract."
+    classification: Recommended
+    evidence_refs: ["EXT/09-workflow-design.md#4"]
+    confidence: medium
+
+  current-status:
+    owner: orchestrator                   # Recommended addition — task owners contribute their own status
+    required_reviewers: []
+    last_updated: "2026-07-13"
+    content: >
+      See state/project-state.yaml for the live coordination snapshot. As of
+      this instance: Phase 1 — Foundation in progress, 0 completed tasks,
+      0 shipped versions (Extracted: package 0.1.0, never shipped —
+      evidence-digest §1, §10).
+    classification: Recommended
+    evidence_refs: ["design-spine.md#7"]
+    confidence: high
+
+# --- staleness rule (design-spine §6) ---
+# Any section's `last_updated` older than 1 working day relative to
+# last_updated_at in project-state.yaml is SUSPECT and should be flagged for
+# owner review before being trusted as current.
+
+# --- conflict-resolution path ---
+# A doc that disagrees with a `sections.*.content` entry above is a bug in
+# the doc, not in this file (design-spine §11, escalation ladder:
+# "Doc disagrees with constitution -> fix the doc").

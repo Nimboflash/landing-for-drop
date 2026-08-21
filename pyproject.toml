@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "phase0"
+version = "0.1.0"
+description = "Phase 0 — Hypothesis Falsification Test. Governance, preconditions, and run records."
+requires-python = ">=3.9"
+dependencies = []
+
+[project.scripts]
+# Two entry points, two questions. ``phase0`` injects a trivial runner and answers "does governance
+# work?"; ``pipeline-stage`` injects the real registry and answers "does this stage work, under
+# governance?". See pipeline/execute.py for why neither is dead code.
+phase0 = "phase0.cli:main"
+pipeline-stage = "pipeline.execute:main"
+provisioning-probe = "tools.provisioning.cli:main"
+
+[project.optional-dependencies]
+dev = ["pytest>=7.4", "hypothesis>=6.90"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-q"

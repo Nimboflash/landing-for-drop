@@ -1,0 +1,155 @@
+# ILLUSTRATIVE reference instance — shows the framework applied to the
+# credit-intelligence evidence. Not live runtime state.
+#
+# APPEND-ONLY decision log (design-spine §6: "Append-only decision-log.yaml
+# for approved decisions"). ADR-shaped, mirroring decision.schema.yaml field
+# list (evidence-digest §12b): id, title, status, superseded_by, date,
+# owner_agent, context, decision, alternatives_rejected, consequences_accepted,
+# reversal_trigger, requires_security_review, fired_migration_trigger.
+#
+# Entries 1-3 below are Extracted — they generalize the three real ADRs on
+# file in the source (ADR/0001-monorepo, 0002-ddd, 0003-event-driven,
+# evidence-digest §1, §10). Dates are phase-stamped in the source, not
+# date-stamped ("Date: Phase 1" — deliberate); this instance assigns
+# illustrative ISO dates for schema conformance only — treat the exact dates
+# as Recommended scaffolding, not an Extracted claim (source has no git
+# history, so no real dates are recoverable — evidence-digest §9 doc 26).
+# Entry 4 is an illustrative instance of the scoped security veto pattern
+# (Extracted BEHAVIOR, illustrative INSTANCE — no such veto instance is
+# recorded verbatim in the source; the veto AUTHORITY itself is Extracted).
+
+decisions:
+
+  - id: ADR-0001
+    title: "Monorepo for all Phase 1 modules"
+    status: accepted
+    superseded_by: null
+    date: "2026-06-01"                   # illustrative — source ADRs are phase-stamped, not date-stamped
+    owner_agent: cto
+    context: >
+      Four Phase 1 modules (ingest, features, decision, explain) will be
+      built in parallel by multiple agents. A polyrepo split at this stage
+      would multiply cross-cutting CI/tooling setup for a team that does not
+      yet know its true service boundaries.
+    decision: >
+      Single monorepo, hexagonal module layout (domain/application/adapters
+      per module), package auto-discovery so adding a module never requires
+      a shared-file edit — avoids the "every module = one-line edit to a
+      shared file" merge-conflict pattern for parallel agents.
+    alternatives_rejected:
+      - alternative: "Polyrepo, one repo per module"
+        why: "Premature service boundaries; multiplies CI/tooling setup before boundaries are proven"
+      - alternative: "Monorepo with a single flat src/ (no hexagonal split)"
+        why: "Would not enforce the domain-purity boundary the constitution requires"
+    consequences_accepted:
+      - "All Phase 1 modules share one CI pipeline and one dependency lockfile"
+      - "Module boundaries must be enforced by convention + tooling (hook + layering test), not by repo isolation"
+    reversal_trigger: "Team exceeds ~6 engineers working the same modules concurrently, or independent per-module release cadence becomes necessary"
+    requires_security_review: false
+    fired_migration_trigger: ""          # empty = none fired
+    classification: Extracted
+    evidence_refs: ["EXT/01-repo-structure.md", "repo:ADR/0001-monorepo.md"]
+    confidence: high
+
+  - id: ADR-0002
+    title: "Domain-Driven Design / bounded contexts (Core 9 / Supporting 9 / Generic 3)"
+    status: accepted
+    superseded_by: null
+    date: "2026-06-03"
+    owner_agent: cto
+    context: >
+      credit-architect.md's free-form seed document proposed 20 "suggested"
+      bounded contexts without Phase 1 gating or ratification — a hypothesis,
+      not a settled decision.
+    decision: >
+      Adopt DDD with 20 bounded contexts (Core 9 / Supporting 9 / Generic 3),
+      but this ADR explicitly labels the twenty contexts "a hypothesis, not a
+      fact" pending Phase 1 evidence, only cto may change a boundary
+      thereafter (DOMAINS.md).
+    alternatives_rejected:
+      - alternative: "Adopt the 20 contexts as final/ratified immediately"
+        why: "credit-architect.md is a Gen-0 seed artifact predating the disciplined agent roster; treating its hypothesis as settled would violate the settled-decision protocol"
+      - alternative: "No formal bounded-context map; organize by technical layer only"
+        why: "Would blur the ingest/features/decision/explain module seams the Phase 1 architecture depends on"
+    consequences_accepted:
+      - "Only 4 of the 20 contexts (ingest, features, decision, explain) are built in Phase 1; the remaining 16 exist only as a documented hypothesis"
+      - "Any future boundary change requires cto approval + a new/superseding ADR"
+    reversal_trigger: "Phase 1 production evidence contradicts the 4-module split (e.g. a module needs splitting or merging under real load)"
+    requires_security_review: false
+    fired_migration_trigger: ""
+    classification: Extracted
+    evidence_refs: ["EXT/01-repo-structure.md", "repo:ADR/0002-ddd.md", "repo:DOMAINS.md"]
+    confidence: high
+
+  - id: ADR-0003
+    title: "Event-driven architecture with in-process dispatch; synchronous audit write"
+    status: accepted
+    superseded_by: null
+    date: "2026-06-05"
+    owner_agent: cto
+    context: >
+      Decision events need to notify other modules (e.g. explain module
+      reacting to a completed decision). A message-bus/Kafka-style transport
+      is the eventual Target-phase plan but has exactly one consumer today.
+      Separately, the audit record of a credit decision must never be lost
+      or eventually-consistent — it is the one place the system refuses
+      eventual consistency.
+    decision: >
+      Use domain events with versioned schemas dispatched IN-PROCESS for
+      Phase 1 (not Kafka). The audit write is SYNCHRONOUS, inside the
+      decision transaction itself — the one structural non-negotiable where
+      eventual consistency is explicitly refused.
+    alternatives_rejected:
+      - alternative: "Adopt Kafka now, ahead of a second consumer"
+        why: "Violates the standing rule that infra adoption requires a demonstrably fired migration trigger, written before the proposal, in an ADR — no trigger has fired"
+      - alternative: "Asynchronous / eventually-consistent audit write"
+        why: "A bug that lends someone the wrong amount of money must be traceable at the moment it happens, not eventually — audit is the one place consistency is non-negotiable"
+    consequences_accepted:
+      - "Decision throughput is bounded by the synchronous audit write path — accepted for Phase 1 partner volume"
+      - "'Only the transport changes' when Kafka is eventually adopted — event schema/versioning discipline carries forward unchanged"
+    reversal_trigger: "A second consumer of decision events appears (fires the Kafka migration trigger, per ADR's own pre-written condition)"
+    requires_security_review: false
+    fired_migration_trigger: ""          # empty = none fired; "an architecture change without a fired trigger is a rejected PR"
+    classification: Extracted
+    evidence_refs: ["EXT/01-repo-structure.md", "EXT/25-build-evolution.md", "repo:ADR/0003-event-driven.md", "repo:ARCHITECTURE.md"]
+    confidence: high
+
+  - id: ADR-0004
+    title: "Security veto: reject device-level location capture in loan-tape ingestion payloads"
+    status: accepted
+    superseded_by: null
+    date: "2026-07-12"
+    owner_agent: security-engineer
+    context: >
+      ILLUSTRATIVE instance of the scoped security veto pattern applied to
+      Phase 1 loan-tape ingestion. During architecture review, backend-
+      engineer proposed accepting a partner's raw device-GPS field alongside
+      the loan tape "in case it's useful for fraud signals later."
+    decision: >
+      security-engineer VETOES ingestion of raw device-level location data.
+      This crosses the project's declared sensitive-data boundary for an
+      unlicensed centralization risk (one of the 4 constraining facts:
+      "unlicensed centralization is illegal"). cto cannot overrule this veto
+      — it is scoped to exactly this one question and outranks the roadmap.
+    alternatives_rejected:
+      - alternative: "Accept raw device GPS, restrict access via application-layer permissions only"
+        why: "Application-layer restriction is not a lawful substitute for not collecting the data at all under the declared jurisdictional boundary"
+    consequences_accepted:
+      - "Loan-tape ingestion contract excludes any device-location field; partners are told not to send it"
+      - "Fraud-signal exploration must use partner-declared, coarse-grained geography only (offered_alternative)"
+    reversal_trigger: "A licensed, jurisdiction-cleared data-processing agreement is signed covering device-level location — re-open as a new ADR, never edit this one to say approved"
+    requires_security_review: true
+    fired_migration_trigger: ""
+    offered_alternative: >
+      Accept only partner-declared, coarse (city-level or coarser) geography
+      fields; derive nothing finer server-side. Recorded per the invariant
+      that a veto MUST ship with an alternative (approval.schema.yaml).
+    classification: Recommended
+    notes: >
+      Illustrative — no verbatim veto instance exists in the source; the
+      VETO AUTHORITY and its "must ship with an alternative" rule are
+      Extracted (design-spine §3.5). This specific subject/rationale/
+      alternative is invented to demonstrate the pattern, not transcribed
+      from a real security-engineer decision.
+    evidence_refs: ["design-spine.md#3.5", "EXT/12-org-matrices.md", "repo:SECURITY.md"]
+    confidence: high

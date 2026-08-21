@@ -1,0 +1,120 @@
+# =============================================================================
+# Project Profile (EXAMPLE) — copy to projects/<slug>/project-profile.yaml
+# =============================================================================
+# The project profile decides which agents, gates, and human approvals are
+# active for ONE project, so a small project does not inherit a large or
+# high-risk organization. The global framework is never forked per project;
+# per-project variation lives here and in projects/<slug>/state/.
+#
+# schema_version follows the framework release; see CHANGELOG.md.
+schema_version: 1
+
+project:
+  slug: "example-project"                 # kebab-case; matches projects/<slug>/
+  name: "Example Project"                 # human-readable
+  source_extraction_path: "UNKNOWN"       # path to a prior extraction, or UNKNOWN
+  output_repository_path: "UNKNOWN"       # where framework runtime is scaffolded, or UNKNOWN
+  target_application_repository: "UNKNOWN" # the app repo this org will build, or UNKNOWN
+
+# One of: minimal | standard | high_risk | regulated | infrastructure_heavy |
+#         frontend_only | backend_only | mobile | data_or_ai | experimental
+profile: "standard"
+
+# -----------------------------------------------------------------------------
+# Agent activation. Core is always on. Conditional specialists activate by
+# profile; override here when the default does not fit. Values: active |
+# conditional | off. (Provenance in framework/02-canonical-agent-model.md.)
+# -----------------------------------------------------------------------------
+agents:
+  # --- always-on core ---
+  orchestrator: active            # Recommended: coordinates, no decision authority
+  product-manager: active         # Extracted: owns scope & priority
+  cto: active                     # Extracted: architecture authority + arbiter
+  qa-engineer: active             # Extracted: owns merge/promotion gates
+  security-engineer: active       # Extracted: scoped veto holder
+  code-reviewer: active           # Inferred: independent reviewer
+  backend-engineer: active        # Extracted: default implementation lane
+  # human-owner is implicit and always present (sequencing, merges, release approval)
+
+  # --- conditional specialists (defaults shown for "standard") ---
+  software-architect: conditional # Inferred: split from cto at scale
+  product-owner: off              # Recommended: carve from PM at scale
+  domain-policy-architect: conditional # Extracted: activate when domain decision logic exists
+  frontend-engineer: active       # Extracted
+  ml-engineer: off                # Extracted (renamed): data_or_ai profile
+  data-engineer: off              # Extracted: data_or_ai / infrastructure_heavy
+  database-engineer: conditional  # Recommended: activate for heavy schema/migration work
+  ux-design-system: off           # Recommended: frontend_only / mobile
+  test-automation-engineer: off   # Recommended: when the suite outgrows QA
+  devops-engineer: active         # Extracted
+  release-manager: active         # Recommended: ship/no-ship authority (off for experimental)
+  documentation-engineer: off     # Recommended: high_risk / regulated
+
+# -----------------------------------------------------------------------------
+# Quality gates. blocking gates stop progress on failure and are non-overridable
+# for CI-stage checks (override_authority: none). Toggle per project; do not set
+# CI-stage blocking gates to non-blocking without human sign-off.
+# -----------------------------------------------------------------------------
+gates:
+  requirement_validation: { enabled: true,  blocking: true }
+  architecture_review:     { enabled: true,  blocking: true }
+  format:                  { enabled: true,  blocking: false } # auto-fix
+  lint:                    { enabled: true,  blocking: true }
+  type_check:              { enabled: true,  blocking: true }
+  unit_tests:              { enabled: true,  blocking: true }
+  integration_tests:       { enabled: true,  blocking: true }
+  contract_tests:          { enabled: true,  blocking: true }
+  e2e_tests:               { enabled: false, blocking: false } # enable for standard+ with UI
+  visual_qa:               { enabled: false, blocking: false }
+  accessibility:           { enabled: false, blocking: false } # blocking for frontend_only/mobile
+  performance:             { enabled: false, blocking: false }
+  security_review:         { enabled: true,  blocking: true, override_authority: "none" }
+  dependency_check:        { enabled: true,  blocking: true }
+  secret_scan:             { enabled: true,  blocking: true, override_authority: "none" }
+  migration_validation:    { enabled: false, blocking: true } # enable when a DB exists
+  build_verification:      { enabled: true,  blocking: true }
+  documentation_completeness: { enabled: false, blocking: false }
+  release_readiness:       { enabled: true,  blocking: true, human_approval_required: true }
+  deployment_verification: { enabled: true,  blocking: true, human_approval_required: true }
+  post_release_validation: { enabled: true,  blocking: true }
+  # Domain-correctness gates: project-defined checks that catch "looks-better-when-broken"
+  # failures (e.g. data leakage, decision replay, explanation stability, monotonicity).
+  domain_correctness:      { enabled: false, blocking: true, defined_in: "state/shared-context.yaml" }
+
+# -----------------------------------------------------------------------------
+# Human control points. true = human approval required before proceeding.
+# (See framework/16-human-control-model.md.)
+# -----------------------------------------------------------------------------
+human_approvals:
+  product_scope_change: true
+  high_risk_assumption: true
+  major_architecture_decision: true
+  new_external_dependency: true
+  destructive_migration: true
+  authentication_change: true
+  authorization_change: true
+  sensitive_data_change: true
+  security_exception: true
+  production_deployment: true
+  production_rollback: true
+  release_approval: true
+  critical_gate_override: true
+
+# -----------------------------------------------------------------------------
+# Retry / escalation thresholds (configurable per project).
+# -----------------------------------------------------------------------------
+retry:
+  max_review_retries: 2           # after N failed reviews, escalate
+  escalate_to: ["software-architect", "cto", "product-manager", "human-owner"]
+  record_retry_history: true      # persisted in project-state.yaml
+
+# -----------------------------------------------------------------------------
+# The one scoped veto. Name the single existential-compliance question for this
+# project. If none exists, say so — do not invent one.
+# -----------------------------------------------------------------------------
+scoped_veto:
+  holder: "security-engineer"
+  question: "<the single legally/existentially fatal question, e.g. 'does any design move raw regulated data across the tenant boundary?'>"
+  cannot_be_overruled_by: ["cto", "orchestrator"]
+  requires_alternative: true      # a veto must ship with an alternative
+  recorded_as: "decision-log.yaml (ADR-style)"

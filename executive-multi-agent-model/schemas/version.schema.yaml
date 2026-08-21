@@ -1,0 +1,216 @@
+# =============================================================================
+# version.schema.yaml
+# -----------------------------------------------------------------------------
+# Purpose: The top level of the reusable planning hierarchy. A "version" is a
+#   scoped slice of the product defined by ONE falsifiable exit condition, not
+#   by a date or a feature list. It is the unit that can be declared "done" or
+#   "not done" without argument.
+#
+# schema_version: 1
+#
+# provenance: Recommended
+#   Generalizes an Extracted pattern. The source's real "versions" were not
+#   semver releases — they were 3 roadmap phases (Foundation / AI / Partners),
+#   each carrying exactly one externally observable, falsifiable exit gate
+#   (e.g. "a design partner says: run this on our next cohort"), sequenced by
+#   *risk-to-company-survival and data-access*, never by calendar date
+#   (evidence-digest §10). This schema generalizes that phase shape into a
+#   reusable, technology-independent `version` object any project can emit.
+#   The `deferred_work` field generalizes the source's distinctive "Target-
+#   section" pattern: deferred scope is written INLINE in the same document as
+#   the version, each entry naming the exact migration trigger that would fire
+#   it back in — never a silent backlog drop (evidence-digest §10, "evolution-
+#   as-contract"). Nothing below claims the source ever executed a version;
+#   zero versions shipped in the source (evidence-digest §10).
+#
+# Reusable planning hierarchy (this schema occupies the top slot):
+#   Product -> Release strategy -> Version -> Milestone -> Epic -> Feature ->
+#   User story -> Technical task -> Agent assignment -> Review task ->
+#   Validation task -> Release task
+#   (the source's real hierarchy stopped at Phase -> Critical path -> Lane;
+#   everything below Lane was Missing and is supplied as Recommended schemas
+#   elsewhere — design-spine §11, evidence-digest §11.)
+#
+# Related schemas: milestone (folded in here as a field until split out),
+#   task.schema.yaml, contract.schema.yaml, quality-gate.schema.yaml,
+#   approval.schema.yaml, event.schema.yaml, project-state.schema.yaml
+# =============================================================================
+
+fields:
+  schema_version: 1                     # integer | required | fixed at 1 for this schema generation
+
+  id: "v1"                              # string | required | canonical, stable, kebab-case-or-short
+                                         #   version identifier, referenced by task/handoff/event
+                                         #   instances as `project_version`
+
+  name: "Foundation"                    # string | required | short human name for the version
+
+  objective: >                          # string | required | one paragraph: the single outcome this
+    Prove the core decision loop works end-to-end for one design partner on   #   version exists to produce. Not a feature list.
+    one loan tape, with an explainable, auditable decision.
+
+  # ---------------------------------------------------------------------------
+  # exit_gate — the single most important field on this schema. Exactly ONE
+  # falsifiable condition, checkable by someone outside the team, that decides
+  # whether the version is done. A version with zero or multiple exit gates is
+  # a schema violation (see notes).
+  # ---------------------------------------------------------------------------
+  exit_gate: >                          # string | required | SINGLE falsifiable condition, externally
+    A design partner says: "run this on our next cohort."                    #   observable — not "80% of stories done", not a date
+
+  included_scope:                       # array<string> | required | what THIS version builds
+    - "Single-tenant decision API (POST /v1/decisions)"
+    - "One partner integration, one loan-tape ingestion path"
+    - "Explainable, audited credit decision with human-readable rationale"
+
+  excluded_scope:                       # array<string> | required | explicitly OUT for this version —
+    - "Multi-tenancy, billing, admin console"                                #   "do not negotiate back in" without a new version plan or a
+    - "Federated learning, model consortium"                                 #   fired migration trigger (see deferred_work below). This list
+    - "Kafka, Kubernetes, ClickHouse, microservices split"                   #   exists precisely so scope creep has a named thing to point at.
+    - "Mobile SDKs"
+
+  milestones:                           # array<object> | required | ordered increments inside this
+    - id: "M1"                          #   version; each is the "next concrete increment", never the
+      name: "Decision API contract + audit log"                             #   whole version at once (see workflows/milestone-planning.md)
+      objective: "Contract-first decision API, synchronous audit write"
+      critical_path: true               # boolean | exactly one milestone-level item per version is
+                                         #   marked the true critical path; the rest are parallelizable
+                                         #   and, if necessary, cuttable (evidence-digest §11)
+      status: in_progress               # enum: planned|in_progress|at_risk|blocked|done|cancelled
+    - id: "M2"
+      name: "Explainability + SHAP stability contract"
+      objective: "Every decision ships a stable, reproducible explanation"
+      critical_path: false
+      status: planned
+
+  architecture_requirements:            # array<string> | optional | architecture constraints or ADRs
+    - "adr:0001-monorepo"               #   this version depends on or must respect
+    - "adr:0003-event-driven (in-process dispatch only; Kafka is Target)"
+
+  dependencies:                         # array<string> | optional | external or cross-version
+    - "Design partner data-sharing agreement signed"                         #   dependencies this version cannot exit without
+    - "Legal sign-off on loan-tape data boundary"
+
+  risks:                                # array<object> | optional | known risks tracked against this
+    - risk: "Design partner cohort data arrives late"                        #   version, each with an owner so a risk is never ownerless
+      owner: product-manager
+      severity: high                    # enum: critical|high|medium|low
+      mitigation: "Confirm data delivery date before milestone M2 starts"
+
+  agent_assignments:                    # array<object> | required | which agent lanes are active for
+    - agent: backend-engineer            #   this version and what they own within it
+      owns: "Decision API implementation, audit log write path"
+    - agent: domain-policy-architect
+      owns: "Decision thresholds, policy versioning"
+    - agent: security-engineer
+      owns: "Data-boundary review before build; scoped veto authority"
+    - agent: qa-engineer
+      owns: "Domain-correctness gates, acceptance-criteria verification"
+
+  quality_gates:                        # array<string> | required | quality-gate.schema.yaml ids that
+    - "qg-contract-tests"               #   must all pass before this version may exit
+    - "qg-security-review"
+    - "qg-domain-correctness"
+    - "qg-release-readiness"
+
+  release_criteria:                     # array<string> | required | conditions, distinct from the exit
+    - "release-manager assembles evidence bundle: all quality_gates green"    #   gate, that must hold before shipping the version's contents
+    - "Rollback tested and rehearsed at least once before first deploy"
+    - "human-owner approves release"
+
+  # ---------------------------------------------------------------------------
+  # deferred_work — generalizes the source's "Target-section" pattern
+  # (Extracted, evidence-digest §10, §12d "evolution-as-contract"). Deferral is
+  # written HERE, inline, at version-authoring time — never silently dropped
+  # into an untracked backlog. Each entry names the trigger that would fire it.
+  # ---------------------------------------------------------------------------
+  deferred_work:                        # array<object> | optional | each entry MUST name a trigger
+    - item: "Kafka event transport"
+      reason: "In-process dispatch sufficient for a single consumer"
+      migration_trigger: "A second consumer of decision events appears"
+      fired: false                      # boolean | required per entry | true only once the named
+                                         #   trigger has actually fired — "an architecture change
+                                         #   without a fired trigger is a rejected PR"
+    - item: "Multi-tenant service extraction"
+      reason: "Single design partner; module boundary sufficient"
+      migration_trigger: "Second tenant onboards, or independent scaling demand appears"
+      fired: false
+
+  rollback_requirements:                # array<string> | required | what must be true for this
+    - "Single reproducible rollback command, rehearsed before first production deploy"
+    - "Database migrations reversible (Alembic down-migration verified)"
+
+  post_release_validation:              # array<string> | required | how this version's exit_gate is
+    - "Confirm exit_gate condition holds against real partner traffic, not staging"
+    - "release-manager + product-manager jointly sign off against the exit_gate"
+
+  lessons_carried:                      # array<string> | optional | what this version's retro carries
+    - "Contract-first FE/BE split reduced integration rework — keep for v2"      #   forward into the next version's planning
+
+  evidence_confidence: high             # enum: high|medium|low | required | confidence in this
+                                         #   version instance's own data (distinct from the framework's
+                                         #   provenance labels — this is about THIS instance's inputs)
+
+# -----------------------------------------------------------------------------
+# invariants
+# -----------------------------------------------------------------------------
+invariants:
+  - name: exactly_one_exit_gate
+    rule: >
+      exit_gate MUST be a single condition. If a version needs more than one
+      falsifiable check to be "done", split it into two versions or fold the
+      extra checks into release_criteria — do not pluralize exit_gate.
+
+  - name: excluded_scope_is_not_a_suggestion
+    rule: >
+      Items in excluded_scope MUST NOT be built during this version. Moving an
+      item from excluded_scope back into included_scope requires either a new
+      version plan revision with human-owner approval, or a deferred_work entry
+      whose migration_trigger has actually fired (fired: true).
+
+  - name: exactly_one_critical_path_milestone
+    rule: "At most one milestone per version may be marked critical_path: true."
+
+# --- notes ---
+# A linter validating version.schema.yaml instances SHOULD enforce:
+#   1. `exit_gate` is a non-empty string and reads as a checkable condition, not a metric
+#      threshold list (heuristic: reject if it contains multiple "and"-joined falsifiable
+#      clauses without an explicit conjunction rationale).
+#   2. `included_scope` and `excluded_scope` do not share an item (no item may be both in and out).
+#   3. Every `deferred_work[].migration_trigger` is non-empty; `fired: true` entries SHOULD
+#      link an `evidence_refs`-style pointer (e.g. an ADR id) — track via the owning
+#      decision.schema.yaml instance, not inline here.
+#   4. `milestones[].critical_path` has at most one `true` across the array.
+#   5. `agent_assignments` references only canonical_id values from the agent roster.
+#   6. `quality_gates` entries resolve to existing quality-gate.schema.yaml ids.
+#   7. `release_criteria` is non-empty for any version whose status implies shipping —
+#      a version cannot go to "released" state with an empty release_criteria list.
+#   8. `rollback_requirements` and `post_release_validation` are non-empty whenever
+#      `included_scope` includes anything user-facing or data-mutating.
+#   9. `evidence_confidence: low` SHOULD trigger a human review flag before the version
+#      is approved (see approval.schema.yaml, approval_type: scope).
+
+# -----------------------------------------------------------------------------
+# example — a second filled generic instance (technology-independent), shown
+# compact since `fields:` above is itself a fully filled example instance.
+# -----------------------------------------------------------------------------
+example:
+  schema_version: 1
+  id: "v1"
+  name: "Foundation"
+  objective: "Prove the core workflow end-to-end for one pilot customer, with an auditable, explainable primary decision."
+  exit_gate: "A pilot customer says: run this on our real workload."
+  included_scope: ["Single-tenant core API", "One pilot integration", "Auditable primary decision with human-readable rationale"]
+  excluded_scope: ["Multi-tenancy, billing, admin console", "Distributed event bus, container orchestration, secondary data store"]
+  milestones:
+    - { id: "M1", name: "Core API contract + audit trail", objective: "Contract-first API, synchronous audit write", critical_path: true, status: in_progress }
+  agent_assignments:
+    - { agent: backend-engineer, owns: "Core API implementation, audit trail" }
+    - { agent: qa-engineer, owns: "Acceptance-criteria verification, domain-correctness gates" }
+  quality_gates: ["qg-contract-tests", "qg-security-review", "qg-release-readiness"]
+  release_criteria: ["All quality_gates green", "Rollback rehearsed at least once", "human-owner approves release"]
+  deferred_work:
+    - { item: "Distributed event bus", reason: "Single consumer today", migration_trigger: "A second consumer of core events appears", fired: false }
+  rollback_requirements: ["Single reproducible rollback command"]
+  post_release_validation: ["Confirm exit_gate holds against real pilot traffic"]
+  evidence_confidence: high

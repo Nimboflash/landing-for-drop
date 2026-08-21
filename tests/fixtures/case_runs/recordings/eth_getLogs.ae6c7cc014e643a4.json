@@ -1,0 +1,36 @@
+{
+  "endpoint": "https://eth-mainnet.public.blastapi.io",
+  "key": "ae6c7cc014e643a46581452e1eaee5c16f4ba3fb0c9526843b8cd6f360123bbd",
+  "method": "eth_getLogs",
+  "params": [
+    {
+      "address": "0xc4cfe360809e32aae17fe7bdb2ad2e51198244fd",
+      "fromBlock": "0xfef354",
+      "toBlock": "0xfef35d",
+      "topics": [
+        [
+          "0x4c209b5fc8ad50758f13e2e1088ba56a560dff690a1c6fef26394f4c03821c4f",
+          "0xd78ad95fa46c994b6551d0da85fc275fe613ce37657fb8d5e3d130840159d822"
+        ]
+      ]
+    }
+  ],
+  "recorded_at": "2026-08-13T15:04:44+00:00",
+  "result": [
+    {
+      "address": "0xc4cfe360809e32aae17fe7bdb2ad2e51198244fd",
+      "blockHash": "0x0fe6790b68b318d8b3a5ed9895cca8fbd89dce76c0e69e070ad62e851b3e1b91",
+      "blockNumber": "0xfef354",
+      "blockTimestamp": "0x63fa9403",
+      "data": "0x00000000000000000000000000000000000000000000000017979cfe362a00000000000000000000000000000000000000000000032aa31273a87dac54000000",
+      "logIndex": "0x74",
+      "removed": false,
+      "topics": [
+        "0x4c209b5fc8ad50758f13e2e1088ba56a560dff690a1c6fef26394f4c03821c4f",
+        "0x0000000000000000000000007a250d5630b4cf539739df2c5dacb4c659f2488d"
+      ],
+      "transactionHash": "0x28ffeca7c4dcf6fd5cc438c0070c2ce79895550f8c609f00a0395e7898ae7caf",
+      "transactionIndex": "0x33"
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+%% frontend-backend-coordination — legend: extracted/inferred/recommended/human/automated/gate
+%% Contract-first coordination. Contract is defined and approved before FE and BE fan out.
+flowchart TD
+    start(["Feature ready for coordination"]):::extracted
+    draft["Contract drafted<br/>backend-engineer plus<br/>domain-policy-architect"]:::extracted
+    boundary_check{{"cto boundary approval<br/>GATE"}}:::gate
+    contract["Shared contract<br/>contract.schema.yaml<br/>SHARED ARTIFACT"]:::gate
+
+    fanout{{"Fan-out point"}}:::automated
+    be_impl["backend-engineer<br/>implements endpoints"]:::extracted
+    fe_generate["frontend-engineer generates<br/>typed client from contract"]:::extracted
+    fe_impl["frontend-engineer<br/>implements UI against client"]:::extracted
+
+    integration["Integration against<br/>shared contract"]:::inferred
+    contract_tests{{"Contract tests<br/>GATE"}}:::gate
+
+    change_msg["contract_change message<br/>proposed by owner"]:::extracted
+    change_ack["Acknowledgement required<br/>from affected agents"]:::extracted
+    bump["Bump contract_version"]:::extracted
+    regen["Regenerate mocks<br/>and typed client"]:::recommended
+    resume["Resume FE and BE work"]:::recommended
+
+    start --> draft --> boundary_check --> contract
+    contract --> fanout
+    fanout --> be_impl
+    fanout --> fe_generate --> fe_impl
+
+    be_impl --> integration
+    fe_impl --> integration
+    integration --> contract_tests
+
+    be_impl -. detects break .-> change_msg
+    fe_impl -. detects break .-> change_msg
+    change_msg --> change_ack --> bump --> regen --> resume
+    resume -.-> be_impl
+    resume -.-> fe_impl
+
+    subgraph Legend["Legend"]
+        direction LR
+        legend_extracted["Extracted"]:::extracted
+        legend_inferred["Inferred"]:::inferred
+        legend_recommended["Recommended"]:::recommended
+        legend_human["Human-operated"]:::human
+        legend_automated["Automated-workflow"]:::automated
+        legend_gate["Quality-or-approval-gate"]:::gate
+    end
+
+    classDef extracted fill:#1b5e20,color:#fff;
+    classDef inferred fill:#e65100,color:#fff;
+    classDef recommended fill:#0d47a1,color:#fff;
+    classDef human fill:#4a148c,color:#fff;
+    classDef automated fill:#37474f,color:#fff;
+    classDef gate fill:#b71c1c,color:#fff;

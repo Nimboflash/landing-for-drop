@@ -1,0 +1,112 @@
+%% organization — legend: extracted/inferred/recommended/human/automated/gate
+%% 19-role virtual organization chart. Authority is over question types, not hierarchy.
+%% Orchestrator coordinates only and holds no decision authority (dashed edges).
+flowchart TD
+    constitution["Constitution<br/>shared-context.yaml<br/>outranks every doc and agent"]
+    human_owner["human-owner<br/>sequences, ratifies, releases"]
+
+    subgraph Authority["Authority holders"]
+        direction LR
+        cto["cto<br/>architecture arbiter<br/>only one who changes a boundary"]
+        product_manager["product-manager<br/>scope and priority"]
+        security_engineer["security-engineer<br/>SCOPED VETO<br/>cannot be overruled"]
+    end
+
+    orchestrator["orchestrator<br/>temporal layer only<br/>no decision authority"]
+
+    subgraph DomainOwners["Domain owners"]
+        direction LR
+        software_architect["software-architect"]
+        domain_policy_architect["domain-policy-architect"]
+        backend_engineer["backend-engineer"]
+        frontend_engineer["frontend-engineer"]
+        ml_engineer["ml-engineer"]
+        data_engineer["data-engineer"]
+        database_engineer["database-engineer"]
+        ux_design_system["ux-design-system"]
+        devops_engineer["devops-engineer"]
+        product_owner["product-owner"]
+    end
+
+    subgraph ReviewAndRelease["Review, QA and release"]
+        direction LR
+        code_reviewer["code-reviewer<br/>independent review"]
+        qa_engineer["qa-engineer<br/>owns gates not code"]
+        test_automation_engineer["test-automation-engineer"]
+        release_manager["release-manager"]
+        documentation_engineer["documentation-engineer"]
+    end
+
+    gate_merge{{"Merge and promotion gates<br/>non-overridable"}}
+
+    constitution --> human_owner
+    constitution --> Authority
+    human_owner --> orchestrator
+    human_owner --> release_manager
+
+    orchestrator -.-> product_manager
+    orchestrator -.-> cto
+    orchestrator -.-> security_engineer
+    orchestrator -.-> DomainOwners
+    orchestrator -.-> ReviewAndRelease
+
+    product_manager --> product_owner
+    cto --> software_architect
+    cto --> domain_policy_architect
+    security_engineer --> gate_merge
+
+    software_architect --> backend_engineer
+    software_architect --> frontend_engineer
+    domain_policy_architect --> ml_engineer
+    domain_policy_architect --> data_engineer
+    data_engineer --> database_engineer
+    frontend_engineer --> ux_design_system
+    backend_engineer --> devops_engineer
+
+    backend_engineer --> code_reviewer
+    frontend_engineer --> code_reviewer
+    code_reviewer --> qa_engineer
+    qa_engineer --> test_automation_engineer
+    qa_engineer --> gate_merge
+    gate_merge --> release_manager
+    documentation_engineer -.-> DomainOwners
+
+    subgraph Legend["Legend"]
+        direction LR
+        legend_extracted["Extracted"]:::extracted
+        legend_inferred["Inferred"]:::inferred
+        legend_recommended["Recommended"]:::recommended
+        legend_human["Human-operated"]:::human
+        legend_automated["Automated-workflow"]:::automated
+        legend_gate["Quality-or-approval-gate"]:::gate
+    end
+
+    class constitution extracted
+    class human_owner human
+    class product_manager extracted
+    class cto extracted
+    class security_engineer extracted
+    class backend_engineer extracted
+    class frontend_engineer extracted
+    class ml_engineer extracted
+    class data_engineer extracted
+    class devops_engineer extracted
+    class qa_engineer extracted
+    class domain_policy_architect extracted
+    class software_architect inferred
+    class code_reviewer inferred
+    class orchestrator recommended
+    class release_manager recommended
+    class product_owner recommended
+    class database_engineer recommended
+    class test_automation_engineer recommended
+    class documentation_engineer recommended
+    class ux_design_system recommended
+    class gate_merge gate
+
+    classDef extracted fill:#1b5e20,color:#fff;
+    classDef inferred fill:#e65100,color:#fff;
+    classDef recommended fill:#0d47a1,color:#fff;
+    classDef human fill:#4a148c,color:#fff;
+    classDef automated fill:#37474f,color:#fff;
+    classDef gate fill:#b71c1c,color:#fff;

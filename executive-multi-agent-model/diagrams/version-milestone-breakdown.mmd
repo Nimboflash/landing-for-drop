@@ -1,0 +1,44 @@
+%% version-milestone-breakdown — legend: extracted/inferred/recommended/human/automated/gate
+%% Hierarchy from Product down to Release task. Deferred work and Target branch shown.
+flowchart TD
+    product["Product"]:::extracted
+    release_strategy["Release strategy"]:::recommended
+    version["Version<br/>single falsifiable exit gate"]:::extracted
+    milestone["Milestone"]:::extracted
+    epic["Epic"]:::recommended
+    feature["Feature"]:::extracted
+    story["User story"]:::recommended
+    task["Technical task"]:::recommended
+    assignment["Agent assignment"]:::extracted
+    review_task["Review task"]:::recommended
+    validation_task["Validation task"]:::recommended
+    release_task["Release task"]:::recommended
+
+    product --> release_strategy --> version
+    version --> milestone --> epic --> feature --> story --> task
+    task --> assignment
+    assignment --> review_task --> validation_task --> release_task
+
+    deferred["deferred_work<br/>written into version.schema<br/>with a migration trigger"]:::inferred
+    target["Target branch<br/>stay-compatible-with, not build-now"]:::inferred
+
+    version -. excluded_scope .-> deferred
+    deferred -. fired trigger .-> target
+    target -. future version .-> version
+
+    subgraph Legend["Legend"]
+        direction LR
+        legend_extracted["Extracted"]:::extracted
+        legend_inferred["Inferred"]:::inferred
+        legend_recommended["Recommended"]:::recommended
+        legend_human["Human-operated"]:::human
+        legend_automated["Automated-workflow"]:::automated
+        legend_gate["Quality-or-approval-gate"]:::gate
+    end
+
+    classDef extracted fill:#1b5e20,color:#fff;
+    classDef inferred fill:#e65100,color:#fff;
+    classDef recommended fill:#0d47a1,color:#fff;
+    classDef human fill:#4a148c,color:#fff;
+    classDef automated fill:#37474f,color:#fff;
+    classDef gate fill:#b71c1c,color:#fff;

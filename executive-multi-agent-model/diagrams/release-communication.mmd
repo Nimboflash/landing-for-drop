@@ -1,0 +1,44 @@
+%% release-communication.mmd
+%% Release communication flow — the release-manager assembles INDEPENDENT evidence from
+%% qa-engineer and security-engineer (never an implementation agent's summary), requests human
+%% approval, then devops deploys and post-release validation runs against the version exit gate.
+%% Legend classes: extracted / inferred / recommended / human / automated / gate
+sequenceDiagram
+    autonumber
+    participant QA as qa-engineer [extracted]
+    participant SEC as security-engineer [extracted, veto]
+    participant DEV as devops-engineer [extracted]
+    participant RM as release-manager [recommended]
+    participant HO as human-owner [human]
+    participant GATE as release-readiness gate [gate]
+
+    Note over QA,SEC: QA and Security produce results INDEPENDENTLY of implementation agents
+    QA->>RM: quality_gate_result (QA pass/fail, defects, regression impact)
+    SEC->>RM: quality_gate_result (security pass/fail, veto status + alternative if vetoed)
+    DEV->>RM: build_passed + rollback tested + migration reversible
+
+    RM->>GATE: assemble release-readiness evidence bundle
+    alt any independent result is fail or a veto stands
+        GATE-->>RM: release blocked
+        RM->>QA: return to rework (task -> rework_required)
+    else all independent evidence green
+        GATE-->>RM: release_ready
+        RM->>HO: approval_request (release + production deployment)
+        alt human approves
+            HO-->>RM: deployment_approved
+            RM->>DEV: authorize deployment
+            DEV->>DEV: deployment_completed
+            DEV->>RM: post-release metrics vs version exit_gate
+            alt post_release_validation_passed
+                RM->>HO: version_completed (summary)
+            else post_release_validation_failed
+                RM->>HO: rollback_requested (recommend rollback)
+                HO-->>DEV: rollback_approved
+                DEV->>RM: rollback_completed
+            end
+        else human rejects
+            HO-->>RM: release withheld
+        end
+    end
+
+    Note over QA,HO: Legend — extracted: proven in source · inferred: implied · recommended: added for reuse · human: human-operated · gate: blocking quality/approval gate · (automated CI feeds QA/DEV upstream)

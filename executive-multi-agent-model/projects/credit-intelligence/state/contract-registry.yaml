@@ -1,0 +1,200 @@
+# ILLUSTRATIVE reference instance — shows the framework applied to the
+# credit-intelligence evidence. Not live runtime state.
+#
+# Conforms to: schemas/contract.schema.yaml (schema_version 1). Registry of
+# the two real API contracts referenced in the source, expressed as full
+# contract.schema.yaml instances. The underlying artifacts (decision-api.md,
+# partner-api.md) are Extracted — the source's most complete real artifacts
+# (evidence-digest §1, §3: "docs/api/decision-api.md, most complete
+# artifact"). The full schema envelope (request/response schemas broken out,
+# loading/empty/failure/success states, test_fixtures, mock_strategy, etc.)
+# is a Recommended formalization of that real content (design-spine §11).
+
+contracts:
+
+  # ---------------------------------------------------------------------
+  # Contract 1 — Decision API. Extracted: the source's self-declared
+  # product ("/v1/ — Phase 1. This is the product", evidence-digest §3).
+  # ---------------------------------------------------------------------
+  - schema_version: 1
+    contract_id: contract-decision-api
+    contract_version: v1
+    feature_id: decision-api-phase1
+    classification: Extracted
+    evidence_refs: ["EXT/10-feature-trace.md", "repo:docs/api/decision-api.md", "repo:ARCHITECTURE.md"]
+    confidence: high
+
+    owners:                                # Extracted: real co-ownership pattern
+      - backend-engineer                   # implementation
+      - domain-policy-architect             # decision semantics (renamed from credit-architect)
+      - cto                                # boundaries
+    affected_agents:
+      - frontend-engineer                  # FE client is generated from this contract, never hand-written
+      - qa-engineer
+      - ml-engineer                        # prediction inputs feed this contract's decision object
+      - security-engineer                  # data-boundary review of request/response fields
+
+    user_flow: >
+      A partner submits a loan-tape-backed application; the system returns
+      a credit decision (approve/decline/refer) with a bound (binding_cap),
+      an explanation, and an audit-traceable policy_version — synchronously,
+      with the audit write inside the same transaction (ADR-0003).
+
+    acceptance_criteria:
+      - "POST /v1/decisions returns a decision object with binding_cap, explanation_warning, and policy_version populated"
+      - "Every decision is synchronously audit-logged before the response is returned (ADR-0003 non-negotiable)"
+      - "A decision's model probability and business policy are never merged into a single opaque score (non-negotiable #4)"
+      - "Explanation output is stable/reproducible for identical inputs (see explainability contract)"
+
+    endpoints:
+      - { operation_id: create_decision, method: POST, path: "/v1/decisions", description: "Submit an application for a credit decision" }
+      - { operation_id: get_decision, method: GET, path: "/v1/decisions/{decision_id}", description: "Retrieve a previously issued decision, including its full explanation and audit trail reference" }
+
+    request_schemas:
+      - operation_id: create_decision
+        schema:
+          applicant_ref: { type: string, required: true }
+          loan_tape_ref: { type: string, required: true }
+          requested_amount: { type: number, required: true }
+          partner_id: { type: string, required: true }
+
+    response_schemas:
+      - operation_id: create_decision
+        status: 201
+        schema:
+          decision_id: { type: string, format: uuid }
+          outcome: { type: string, enum: [approve, decline, refer] }
+          binding_cap: { type: number }
+          explanation_warning: { type: string, required: false }
+          policy_version: { type: string }
+          model_version: { type: string }
+          created_at: { type: string, format: date-time }
+
+    error_schemas:
+      - { status: 400, code: validation_error, schema: { field: string, message: string } }
+      - { status: 422, code: incomplete_loan_tape, schema: { message: string } }
+      - { status: 403, code: partner_boundary_violation, schema: { message: string } }
+
+    authentication: "tenant-scoped bearer token; partner_id derived from the credential, never a request field"
+    authorization: "caller may only submit/retrieve decisions for their own partner_id"
+
+    validation_rules:
+      - "requested_amount MUST be positive"
+      - "a decision, once issued, is immutable — corrections require a new decision referencing the original"
+
+    loading_states: ["create_decision: synchronous request, no partial/streaming state — response includes full explanation or the request fails"]
+    empty_states: ["get_decision on unknown decision_id: 404, never an empty 200"]
+    failure_states: ["create_decision failure: no decision is recorded (all-or-nothing with the synchronous audit write)"]
+    success_states: ["create_decision 201: full decision object including explanation returned in one response"]
+
+    data_ownership: "decision records + audit log owned by backend-engineer's decision module; policy thresholds owned by domain-policy-architect (ports, never cross-module JOINs)"
+
+    feature_flags: []
+    analytics_events: ["decision_issued", "decision_referred"]
+
+    test_fixtures:
+      - "fixture:decision:approve-minimal"
+      - "fixture:decision:decline-minimal"
+      - "fixture:decision:incomplete-loan-tape"
+
+    mock_strategy: "backend generates a mock decision server from this contract; frontend integrates against the mock until backend implementation is contract-test green"
+
+    compatibility_requirements:
+      - "additive response fields only within a minor contract_version bump"
+      - "any change to outcome semantics counts as breaking, even if the field shape is unchanged"
+
+    migration_requirements: ["none — this is the initial version"]
+    rollback_requirements: ["prior contract_version retained and dual-served for one release cycle before removal"]
+
+    approval_status: under_review          # illustrative: pending human/cto ratification alongside ADR-0003
+
+  # ---------------------------------------------------------------------
+  # Contract 2 — Partner API. Extracted: docs/api/partner-api.md exists in
+  # the source (evidence-digest §1 layer 3).
+  # ---------------------------------------------------------------------
+  - schema_version: 1
+    contract_id: contract-partner-api
+    contract_version: v1
+    feature_id: partner-onboarding-phase1
+    classification: Extracted
+    evidence_refs: ["EXT/01-repo-structure.md", "repo:docs/api/partner-api.md"]
+    confidence: high
+
+    owners:
+      - backend-engineer
+      - domain-policy-architect
+      - cto
+    affected_agents:
+      - data-engineer                      # loan-tape ingestion path consumes this contract
+      - qa-engineer
+      - security-engineer                  # partner data-sharing boundary review
+
+    user_flow: >
+      A design partner registers, uploads or streams a single loan tape, and
+      receives ingestion status; this is the one-partner, one-loan-tape path
+      the Phase 1 exit gate depends on.
+
+    acceptance_criteria:
+      - "POST /v1/partners/{partner_id}/loan-tapes returns 202 with an ingestion_id"
+      - "GET ingestion status reflects raw -> curated -> features schema progression"
+      - "A partner can only ever see their own ingestion records (tenant boundary enforced at the data layer)"
+
+    endpoints:
+      - { operation_id: submit_loan_tape, method: POST, path: "/v1/partners/{partner_id}/loan-tapes", description: "Submit a loan tape for ingestion" }
+      - { operation_id: get_ingestion_status, method: GET, path: "/v1/partners/{partner_id}/loan-tapes/{ingestion_id}", description: "Check ingestion progress" }
+
+    request_schemas:
+      - operation_id: submit_loan_tape
+        schema:
+          file_ref: { type: string, required: true }
+          schema_version: { type: string, required: true }
+
+    response_schemas:
+      - operation_id: submit_loan_tape
+        status: 202
+        schema:
+          ingestion_id: { type: string, format: uuid }
+          status: { type: string, enum: [received, validating, curated, feature_ready, failed] }
+
+    error_schemas:
+      - { status: 400, code: schema_mismatch, schema: { message: string } }
+      - { status: 403, code: cross_partner_forbidden, schema: { message: string } }
+
+    authentication: "tenant-scoped bearer token; partner_id derived from the credential"
+    authorization: "partner may only submit/view their own loan-tape ingestions; Postgres RLS enforced"
+
+    validation_rules:
+      - "file_ref MUST reference an already-uploaded, virus-scanned object before ingestion starts"
+      - "raw device-level location fields are rejected at validation time (security veto, ADR-0004)"
+
+    loading_states: ["get_ingestion_status: poll until status is curated/feature_ready/failed"]
+    empty_states: ["no ingestions yet for partner: empty list, not an error"]
+    failure_states: ["submit_loan_tape schema_mismatch: partner shown the exact failing field, not a generic 400"]
+    success_states: ["get_ingestion_status feature_ready: loan tape available to the decision API's downstream feature contracts"]
+
+    data_ownership: "raw/curated/features schemas owned by data-engineer's ingestion module (per-module schema ownership, ports not JOINs)"
+
+    feature_flags: ["partner_onboarding_v1_enabled"]
+    analytics_events: ["loan_tape_submitted", "loan_tape_feature_ready"]
+
+    test_fixtures:
+      - "fixture:loan-tape:minimal-valid"
+      - "fixture:loan-tape:schema-mismatch"
+
+    mock_strategy: "backend generates a mock ingestion server from this contract for frontend/data-engineer integration before real ingestion is contract-test green"
+
+    compatibility_requirements:
+      - "additive fields only within a minor contract_version bump"
+      - "schema_version field itself is never removed — it is the compatibility anchor"
+
+    migration_requirements: ["none — this is the initial version"]
+    rollback_requirements: ["prior contract_version dual-served for one release cycle before removal"]
+
+    approval_status: draft
+
+# --- registry-level note ---
+# Any typed client (e.g. the frontend console) consuming EITHER contract
+# above MUST be generated from request_schemas/response_schemas — never
+# hand-authored (Extracted invariant, contract.schema.yaml
+# "fe_client_is_generated_never_handwritten"; evidence-digest §2 stage 13:
+# "FE client generated from schema; breaking change = new version").
