@@ -1,0 +1,352 @@
+/*
+ * Menu deck (brief §7.3, ticket 07).
+ *
+ * Tokens only — every colour and type size resolves from src/app/globals.css, mixed where a
+ * surface needs a fraction of one. The numbers that remain are geometry, and they are split
+ * deliberately:
+ *
+ *   - the component sets the per-card fan POSITION (`--card-step`, `--card-angle`, `--card-arc`,
+ *     `--card-index`), because that adapts to the item count and must match on server and client;
+ *   - this file sets how far one step TRAVELS at this viewport, so brief §15's "narrower fan
+ *     angles and vertical offsets" on mobile is one media query rather than a resize listener;
+ *   - `--deck-arrival` / `--deck-fan` / `--deck-open` are the scrub, written to the deck by the
+ *     component, and every reference to them carries the FINISHED value as its fallback.
+ *
+ * That last point is the no-JavaScript contract: with scripting off nothing sets those
+ * properties, the fallbacks apply, and the deck renders arrived, open and face-up — the taste
+ * edit as it finally reads, not a wall of card backs.
+ *
+ * Sharp corners are a hard rule: nothing in this file sets a border-radius, and the only round
+ * shape on a card is the O inside the DROP mark, where the brand's own geometry requires one.
+ */
+
+/*
+ * No colour of its own: the shell sets the page's text colour from the reducer's contrast
+ * verdict, and a heading that fixed its own would go dark-on-dark the moment a lens changed
+ * which ground this scene sits on.
+ */
+.heading {
+  font-size: var(--title-md);
+  font-weight: 800;
+}
+
+.stage {
+  display: grid;
+  place-items: center;
+  inline-size: 100%;
+  min-inline-size: 0;
+}
+
+/* ------------------------------------------------------------------- deck */
+
+.deck {
+  /*
+   * The card, and the distances one fan step covers. `--deck-count` and `--deck-gaps` arrive
+   * from the component as plain numbers, so the open spread below can be divided by the number
+   * of gaps without this file ever knowing how many items a lens has.
+   */
+  --card-width: clamp(9rem, 19vw, 14rem);
+  --card-height: calc(var(--card-width) * 4 / 3);
+  --card-depth: 9px;
+  /* Half the card's thickness. Invisible as a scale at this perspective; decisive as a sort. */
+  --face-lift: 1.5px;
+
+  /* Width the fan may open into: the page's content column, less a scrollbar's worth. */
+  --deck-usable: calc(100vw - 2 * var(--page-gutter) - 1rem);
+
+  /* The arrival fan: a deck, still overlapping heavily. */
+  --fan-step-base: calc(var(--card-width) * 0.17);
+  /*
+   * The reading spread the deck opens into as it reveals: a little under one card apart, so the
+   * cards still overlap and still read as a deck, but never wider than the content column can
+   * hold — a six-card lens stays a deck instead of a row that runs off the page.
+   */
+  --fan-step-open: min(
+    calc(var(--card-width) * 0.88),
+    calc((var(--deck-usable) - var(--card-width)) / var(--deck-gaps))
+  );
+  /* Outer cards settle a little lower, the way a held fan sags at its edges. */
+  --fan-lift: calc(var(--card-height) * 0.045);
+  --fan-step-y: 0px;
+  --fan-angle-scale: 1;
+
+  /* Far enough that the reconstructed stack is genuinely below the viewport, at any height. */
+  --deck-rise: calc(60svh + var(--card-height));
+
+  position: relative;
+  inline-size: 100%;
+  /*
+   * The cards are absolutely positioned and centred in this box, so the box has to reserve the
+   * whole VERTICAL extent of the fan or the cascade would ride up over the section heading. On
+   * desktop `--fan-step-y` is `0px` and this is exactly one card tall; on mobile, where the fan
+   * becomes a downward cascade, it grows by one step per gap.
+   */
+  block-size: calc(var(--card-height) + var(--fan-step-y) * (var(--deck-count) - 1));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  /* Brief §7.3: perspective on the deck. Deep enough to read as depth, not as a fisheye. */
+  perspective: 1600px;
+  perspective-origin: 50% 45%;
+
+  transform: translate3d(0, calc((1 - var(--deck-arrival, 1)) * var(--deck-rise)), 0)
+    scale(calc(0.92 + 0.08 * var(--deck-arrival, 1)));
+}
+
+/* ------------------------------------------------------------------- card */
+
+.card {
+  /*
+   * One composed transform. The fan, the pointer tilt and the flip all live in this single
+   * declaration, so no two of them can ever fight over an inline `transform` string: the
+   * component drives them through custom properties instead.
+   */
+  --fan-x: calc(
+    var(--card-step) *
+      (
+        var(--fan-step-base) * var(--deck-fan, 1) +
+          (var(--fan-step-open) - var(--fan-step-base)) * var(--deck-open, 1)
+      )
+  );
+  --fan-y: calc(
+    (var(--card-arc) * var(--fan-lift) + var(--card-step) * var(--fan-step-y)) *
+      var(--deck-fan, 1)
+  );
+  /*
+   * The FIRST card is the nearest and the topmost — the top of a stack, which is also the card
+   * that turns first. Two consequences the composition depends on: the cards fan from index 0
+   * outward with each one tucked behind the last, and the overlap eats the far edge of the card
+   * behind rather than the near edge where the Persian name begins.
+   */
+  --fan-z: calc((var(--deck-count) - 1 - var(--card-index)) * var(--card-depth));
+  /* The fan opens, then flattens as it reveals, so a face-up card sits nearly upright. */
+  --fan-rotate: calc(
+    var(--card-angle) * 1deg * var(--fan-angle-scale) * var(--deck-fan, 1) *
+      (1 - 0.62 * var(--deck-open, 1))
+  );
+  /*
+   * Which face is turned toward the reader, as a HARD 0/1 step at the half-turn: below 90° the
+   * back, above it the front. Multiplying by 1000 saturates the clamp, so this is a switch and
+   * never a fade — the two faces are never both partly visible.
+   *
+   * It exists because backface culling is not universal. Measured by screenshot (paint, not
+   * hit-testing: the centre pixel of each card, black back vs. white front) against a control
+   * card carrying `backface-visibility: hidden` and nothing else, at flips of 0/89.9/90.1/180
+   * inside this same perspective:
+   *
+   *   - Blink: the control culls correctly — back below the half-turn, front above it;
+   *   - WebKit, the engine Safari ships: at 0° the control painted the FRONT — a mirror-imaged
+   *     card front exactly where the black back belongs.
+   *
+   * With this step in front of it, BOTH engines painted the back below the half-turn and the
+   * front above it (the same probe, same frames). `backface-visibility` stays declared below for
+   * the engines that honour it; this step is what guarantees one face per card in every engine.
+   */
+  --front-shown: clamp(0, (var(--card-flip, 180) - 90) * 1000, 1);
+
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  z-index: calc(var(--deck-count) - var(--card-index));
+  inline-size: var(--card-width);
+  block-size: var(--card-height);
+
+  /* Brief §7.3: transform-style preserve-3d on each card, so the two faces stay in 3D. */
+  -webkit-transform-style: preserve-3d;
+  transform-style: preserve-3d;
+
+  transform: translate3d(var(--fan-x), var(--fan-y), var(--fan-z))
+    rotateX(calc(var(--deck-tilt-x, 0) * 1deg)) rotateY(calc(var(--deck-tilt-y, 0) * 1deg))
+    rotate(var(--fan-rotate)) rotateY(calc(var(--card-flip, 180) * 1deg));
+}
+
+/* ------------------------------------------------------------------ faces */
+
+.face {
+  position: absolute;
+  inset: 0;
+  /* Sharp corners, everywhere on the card system. */
+  border-radius: 0;
+  overflow: hidden;
+  /*
+   * The away-facing side disappears for two independent reasons, because one engine's gap must
+   * not cost the reader the card:
+   *
+   *   1. the `--front-shown` step above, which is the one that holds in EVERY engine;
+   *   2. backface culling — the prefixed pair, since WebKit still reads the `-webkit-` form.
+   *
+   * Z-order is deliberately NOT on that list. `--face-lift` gives the card a real thickness, but
+   * the same probe showed it does not decide the paint: in WebKit the front painted over the back
+   * at 0° even though the back is the nearer face there, so DOM order — not depth — wins that
+   * engine. Only (1) is load-bearing; (2) is the belt to its braces.
+   */
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  /* The deck's weight. Mixed from the brand's own black, not a loose shadow colour. */
+  box-shadow: 0 1.2rem 2.6rem -1.4rem color-mix(in srgb, var(--drop-black) 55%, transparent);
+}
+
+/* Brief §7.3: pure/near black, one centred white DROP primary logo, no additional copy. */
+.back {
+  display: grid;
+  place-items: center;
+  background: var(--drop-black);
+  /* 1 while the card is face-down, 0 the instant it passes the half-turn. Never in between. */
+  opacity: calc(1 - var(--front-shown));
+  /*
+   * Half the card's thickness toward the reader. The front takes the same lift AFTER its half
+   * turn, which puts it the same distance behind — so the pair separates along Z and reads as a
+   * card with a real edge rather than a decal. Depth alone does not decide which face PAINTS
+   * (see `.face`); `--front-shown` does.
+   */
+  transform: translateZ(var(--face-lift));
+}
+
+.backLogo {
+  inline-size: 62%;
+  block-size: auto;
+}
+
+.front {
+  display: flex;
+  flex-direction: column;
+  background: var(--drop-ink);
+  color: var(--drop-off-white);
+  transform: rotateY(180deg) translateZ(var(--face-lift));
+  /*
+   * The mirror of the back's switch. `opacity: 0` hides the paint without touching the
+   * accessibility tree, so the item's name and maker stay readable to assistive technology and
+   * in the server-rendered HTML while the card is still face-down.
+   */
+  opacity: var(--front-shown);
+}
+
+/* ------------------------------------------------------------------ media */
+
+.frame {
+  position: relative;
+  flex: 1 1 auto;
+  min-block-size: 0;
+  overflow: hidden;
+  background: var(--drop-black);
+}
+
+.image {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+
+/*
+ * The stand-in for an asset this environment may not paint. Branded on purpose — a DROP ground
+ * with the DROP mark on it, never an empty box and never a broken image.
+ */
+.placeholder {
+  display: grid;
+  place-items: center;
+  background:
+    repeating-linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--drop-off-white) 6%, transparent) 0 2px,
+      transparent 2px 10px
+    ),
+    var(--drop-ink);
+}
+
+.placeholderMark {
+  inline-size: 58%;
+  block-size: auto;
+}
+
+/* ------------------------------------------------------------------- text */
+
+.meta {
+  display: grid;
+  gap: 0.15rem;
+  padding: clamp(0.55rem, 1.1vw, 0.85rem) clamp(0.65rem, 1.2vw, 1rem)
+    clamp(0.75rem, 1.4vw, 1.05rem);
+}
+
+.name {
+  font-size: var(--body);
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--drop-off-white);
+}
+
+.maker {
+  font-size: var(--label);
+  letter-spacing: 0.06em;
+  color: var(--drop-off-white);
+}
+
+.category {
+  font-size: var(--label);
+  letter-spacing: 0.04em;
+  color: var(--drop-gray);
+}
+
+/*
+ * The selection rationale: lens content the brief keeps off the card, held in the accessibility
+ * tree and in the server-rendered HTML instead of being dropped from the page.
+ */
+.rationale {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* -------------------------------------------------------------- responsive */
+
+/*
+ * Brief §15: "Menu deck uses narrower fan angles and vertical offsets." The angles shrink, the
+ * horizontal travel shrinks with the narrower column, and the cards pick up a vertical step so
+ * a larger deck cascades down the screen instead of piling into one silhouette.
+ */
+@media (max-width: 767px) {
+  .deck {
+    --card-width: clamp(10rem, 46vw, 15rem);
+
+    /*
+     * A narrow column cannot hold a horizontal fan, so the deck trades it for a cascade: the
+     * horizontal step all but disappears and the offset becomes vertical, running DOWNWARD with
+     * the first card highest and on top. Each card behind is then overlapped across its image
+     * and keeps a full-width band of its own name, maker and category showing below the card in
+     * front of it — nothing is buried, whatever the item count.
+     */
+    --fan-step-base: calc(var(--card-width) * 0.05);
+    --fan-step-open: calc(var(--card-width) * 0.07);
+    /*
+     * How far one card drops below the one in front of it. Measured against the card, so a
+     * SMALL deck — which is what a lens usually has — steps far enough that every card shows a
+     * band of its own PHOTOGRAPH as well as its name, not only its text; capped against the
+     * viewport so a six-card deck still fits a short phone by compressing to text bands.
+     */
+    --fan-step-y: min(calc(var(--card-height) * 0.62), calc(50svh / var(--deck-gaps)));
+    --fan-lift: calc(var(--card-height) * 0.02);
+    --fan-angle-scale: 0.5;
+    --card-depth: 6px;
+    perspective: 1100px;
+  }
+}
+
+/*
+ * Reduced motion (brief §16): the resting state, held. No rise, no fan scrub, no tilt — the
+ * component keeps the fronts face-up, and nothing here hides a word of the taste edit.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .deck {
+    --deck-arrival: 1;
+    --deck-fan: 1;
+    --deck-open: 1;
+    --deck-tilt-x: 0;
+    --deck-tilt-y: 0;
+  }
+}

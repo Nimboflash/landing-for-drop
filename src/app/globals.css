@@ -1,0 +1,139 @@
+/**
+ * DROP design tokens — transcribed from the master build brief Section 4.
+ * The brief's tokens are canon; the brand PDF's exploratory palettes are not.
+ */
+
+:root {
+  /* Color (brief §4) */
+  --drop-black: #000000;
+  --drop-ink: #111111;
+  --drop-white: #fffffe;
+  --drop-off-white: #f2f2f2;
+  --drop-gray: #838383;
+  --drop-orange: #ff5a00;
+  --drop-purple: #480082;
+  --drop-grid-green: #102b19;
+  --drop-grid-line: #245236;
+
+  /* Type scale (brief §4) */
+  --display-xl: clamp(3.3rem, 7.2vw, 8.5rem);
+  --display-lg: clamp(2.5rem, 5.4vw, 6.4rem);
+  --title-lg: clamp(2rem, 3.8vw, 4.5rem);
+  --title-md: clamp(1.5rem, 2.4vw, 2.8rem);
+  --body-lg: clamp(1.1rem, 1.35vw, 1.45rem);
+  --body: clamp(0.98rem, 1vw, 1.12rem);
+  --label: clamp(0.68rem, 0.72vw, 0.82rem);
+
+  /* Families — bound to next/font CSS variables in src/app/layout.tsx */
+  --font-latin: var(--font-montserrat), "Helvetica Neue", Arial, sans-serif;
+  --font-persian: var(--font-vazirmatn), var(--font-montserrat), Tahoma, sans-serif;
+
+  /* Layout */
+  --page-gutter: clamp(1.25rem, 4vw, 4.5rem);
+  --header-height: 4.5rem;
+
+  /* Motion */
+  --ease-cinematic: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-material: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  /* Lenis drives smooth scroll; never let the browser fight it. */
+  scroll-behavior: auto;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--drop-off-white);
+  color: var(--drop-ink);
+}
+
+body {
+  font-family: var(--font-persian);
+  font-size: var(--body);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+/* Persian is the primary editorial language; Latin runs get the Latin stack. */
+[lang="en"],
+.latin {
+  font-family: var(--font-latin);
+}
+
+h1,
+h2,
+h3,
+h4 {
+  margin: 0;
+  font-weight: 800;
+  line-height: 1.02;
+  letter-spacing: -0.015em;
+}
+
+p {
+  margin: 0;
+}
+
+img,
+video {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+a {
+  color: inherit;
+}
+
+/* Sharp corners are a hard rule: no rounded SaaS card styling anywhere. */
+.card,
+.media {
+  border-radius: 0;
+}
+
+/* Visible focus is an accessibility acceptance criterion. */
+:focus-visible {
+  outline: 2px solid var(--drop-orange);
+  outline-offset: 3px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Decorative WebGL layers sit behind semantic DOM and are hidden from AT. */
+.webgl-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

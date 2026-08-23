@@ -1,0 +1,50 @@
+/*
+ * The shared background layer.
+ *
+ * Brief Section 12: "Use one shared, fixed WebGL background canvas … DOM content remains semantic
+ * and above the canvas." Fixed, inert, and non-interactive; nothing here may intercept scroll,
+ * pointer input, or assistive technology.
+ *
+ * Stacking contract for the shell: this element is a positioned box at `z-index: 0`, so page
+ * content must be rendered AFTER it inside a positioned wrapper (`position: relative`, or an
+ * explicit `z-index: 1`). A non-positioned content block would paint beneath it.
+ * `z-index: -1` is deliberately NOT used: `globals.css` paints an opaque background on `body`,
+ * which would cover a negative-stacked child.
+ */
+
+.root {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  /* The layer paints itself; it must never contribute to page layout or scrolling. */
+  contain: layout paint style;
+}
+
+/* Always-present styled ground. It is what the page shows when WebGL is unavailable or the
+   context is lost, and it sits under the canvas the rest of the time. */
+.fallback {
+  position: absolute;
+  inset: 0;
+  background-color: var(--drop-off-white);
+}
+
+/* R3F's own wrapper div; it already sets position/size inline, so this only lifts it above the
+   fallback ground and fades it out when the context goes away. */
+.canvas {
+  position: relative;
+  z-index: 1;
+  opacity: 1;
+  transition: opacity 240ms var(--ease-cinematic);
+}
+
+.canvasHidden {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .canvas {
+    transition-duration: 120ms;
+  }
+}

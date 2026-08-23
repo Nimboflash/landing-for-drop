@@ -1,0 +1,334 @@
+/*
+ * The final scene (brief §7.10). Tokens only — every colour, size and easing resolves from
+ * src/app/globals.css, and every dimension of the wordmark comes from the brand geometry.
+ *
+ * The ground here is the pure black the Monochrome Mesh faded into and the prismatic horizon the
+ * shared canvas is painting; this file never paints a background of its own. Nothing rounds:
+ * the CTA slot is a sharp bordered box, and the only circle in the scene is the O, because the
+ * physical form requires one.
+ *
+ * ## The custom properties
+ *
+ * All nine are written by the component — seven from reducer output, so every value below rewinds
+ * exactly when scroll reverses, and two constants read out of the brand geometry and the shader.
+ * The defaults declared on `.footer` are the settled state: they only ever apply if the element is
+ * rendered without its inline style.
+ *
+ * | property | drives |
+ * | --- | --- |
+ * | `--footer-wordmark-aspect` | the figure's aspect ratio, from the lockup's own box |
+ * | `--footer-horizon-settled` | where the beam rests, from the shader: the word hangs on it |
+ * | `--footer-outline-strength` | outline opacity: floors above zero, never high-contrast |
+ * | `--footer-outline-edge` | the bottom-up wipe that draws the word in |
+ * | `--footer-outline-lift` | how far the outline settles upward |
+ * | `--footer-light-intensity` | how hard the illuminated copy burns (the shader's core intensity) |
+ * | `--footer-horizon` | where the beam is, in the shader's own UV-y (0 = bottom of the frame) |
+ * | `--footer-content-opacity` / `--footer-content-lift` | the closing block and metadata settle |
+ */
+
+.footer {
+  --footer-wordmark-aspect: 4.472;
+  --footer-horizon-settled: 0.38;
+  --footer-outline-strength: 1;
+  --footer-outline-edge: 122%;
+  --footer-outline-lift: 0svh;
+  --footer-light-intensity: 1;
+  --footer-horizon: 0.38;
+  --footer-content-opacity: 1;
+  --footer-content-lift: 0svh;
+
+  /*
+   * Horizontal bleed of the wordmark, as a percentage of the viewport width. Brief §15 lets the
+   * footer word overflow "but must keep DROP recognizable", and the geometry says exactly how far
+   * that is: a tile is 1/4.75 of the lockup, and its letterform sits in the middle ~45% of it, so
+   * the outermost letterform starts ~5.7% of the lockup width in from each edge. Bleeding more
+   * than that per side would start cutting the D and the P themselves.
+   */
+  --footer-wordmark-bleed: 112vw;
+  /* Ceiling on very tall viewports, so the word stays a band across the lower half, not a wall. */
+  --footer-wordmark-max-block: 42svh;
+  /* The figure's own size. Width is the bleed; height follows from the lockup's aspect ratio. */
+  --footer-wordmark-block: min(
+    calc(var(--footer-wordmark-bleed) / var(--footer-wordmark-aspect)),
+    var(--footer-wordmark-max-block)
+  );
+  --footer-wordmark-inline: calc(var(--footer-wordmark-block) * var(--footer-wordmark-aspect));
+
+  /*
+   * Vertical slack between the bottom of this block and the bottom of the VIEWPORT — where the
+   * shader measures its horizon from. It is the scene stage's own bottom padding plus whatever
+   * its centred layout leaves under this block. Deliberately approximate and deliberately one
+   * number: it aims a soft, broad glow and a decorative word, so a few rem out shifts light,
+   * never layout, and the stage's padding is another component's business.
+   */
+  --footer-stage-slack: 5rem;
+
+  /*
+   * Where the word hangs. Not a taste value: it puts the figure's middle on the settled beam, so
+   * the horizon crosses the letters instead of floating over them at any viewport size — the
+   * light rises from below the word during the reveal and lands across it. Floored so the word
+   * always clears the metadata row on a short viewport.
+   */
+  --footer-wordmark-min-drop: 2.5rem;
+  --footer-wordmark-drop: max(
+    var(--footer-wordmark-min-drop),
+    calc(
+      var(--footer-horizon-settled) * 100svh - var(--footer-wordmark-block) * 0.5 -
+        var(--footer-stage-slack)
+    )
+  );
+
+  /* Distance from the viewport's bottom edge to the bottom edge of the wordmark figure. */
+  --footer-light-origin: calc(var(--footer-wordmark-drop) + var(--footer-stage-slack));
+  /* Half-height of the illuminated band. Broad enough to absorb the beam's tilt across the word. */
+  --footer-light-spread: clamp(4.5rem, 12svh, 10rem);
+
+  /*
+   * Outline colours. The base is off-white at a low alpha, which on black reads as the thin DARK
+   * line the brief asks for — present before the light arrives, never high-contrast. The lit copy
+   * is near-white with the horizon's own cyan in its glow (the same cyan the shader and its CSS
+   * fallback use for the beam's edge).
+   */
+  --footer-outline-color: color-mix(in srgb, var(--drop-off-white) 18%, transparent);
+  --footer-outline-lit: color-mix(in srgb, var(--drop-white) 95%, transparent);
+  --footer-lit-glow: rgb(107 184 255);
+
+  position: relative;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: clamp(1.5rem, 4svh, 3rem);
+  /*
+   * Tall enough to fill the stage almost exactly, which is what keeps `--footer-stage-slack`
+   * small, and short enough that the stage's own padding still fits inside one viewport — a
+   * pinned scene that overflows its sticky child loses its bottom edge off-screen.
+   */
+  min-block-size: 78svh;
+}
+
+/* ------------------------------------------------------------ outline word */
+
+/*
+ * The wordmark stage spans the whole scene and hangs the figure off its bottom edge, so the word
+ * lands across the lower half. Inert and decorative: it never intercepts a pointer, and the
+ * horizontal bleed is clipped by the page rather than adding a scrollbar.
+ */
+.wordmarkStage {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-block-end: var(--footer-wordmark-drop);
+  pointer-events: none;
+}
+
+/*
+ * The figure box, sized from the two tuning values above and the lockup's own aspect ratio —
+ * never from a guessed height.
+ *
+ * The reveal is a bottom-up wipe rather than a fade, because the brief's motion language keeps
+ * opacity as support only (§9). Opacity does the "never high-contrast" half of the job; the mask
+ * does the arriving.
+ */
+.wordmark {
+  position: relative;
+  flex: none;
+  inline-size: var(--footer-wordmark-inline);
+  block-size: var(--footer-wordmark-block);
+  opacity: var(--footer-outline-strength);
+  transform: translate3d(0, var(--footer-outline-lift), 0);
+  -webkit-mask-image: linear-gradient(
+    to top,
+    #000 var(--footer-outline-edge),
+    transparent calc(var(--footer-outline-edge) + 22%)
+  );
+  mask-image: linear-gradient(
+    to top,
+    #000 var(--footer-outline-edge),
+    transparent calc(var(--footer-outline-edge) + 22%)
+  );
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+
+.outline {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  color: var(--footer-outline-color);
+  overflow: visible;
+}
+
+/*
+ * The illuminated copy: the same contour, near-white, shown only inside a soft band centred on the
+ * beam. `--footer-horizon` is the shader's UV-y (0 = the bottom of the frame) and this gradient is
+ * measured from the bottom edge too, so the band travels with the light as the reveal drifts it
+ * upward. Its strength is the beam's own core intensity, so the outline lights up exactly as hard
+ * as the light that is lighting it.
+ *
+ * The beam also descends slightly to the right, at an angle that depends on the viewport's aspect
+ * ratio and so cannot be expressed here; the band is broad and soft enough to cover it. Tuning
+ * that mismatch is `--footer-light-spread`, and it is a [manual] visual check.
+ */
+.outlineLit {
+  color: var(--footer-outline-lit);
+  opacity: var(--footer-light-intensity);
+  -webkit-mask-image: linear-gradient(
+    to top,
+    transparent calc(var(--footer-light-y) - var(--footer-light-spread)),
+    rgb(0 0 0 / 50%) calc(var(--footer-light-y) - var(--footer-light-spread) * 0.4),
+    #000 var(--footer-light-y),
+    rgb(0 0 0 / 50%) calc(var(--footer-light-y) + var(--footer-light-spread) * 0.4),
+    transparent calc(var(--footer-light-y) + var(--footer-light-spread))
+  );
+  mask-image: linear-gradient(
+    to top,
+    transparent calc(var(--footer-light-y) - var(--footer-light-spread)),
+    rgb(0 0 0 / 50%) calc(var(--footer-light-y) - var(--footer-light-spread) * 0.4),
+    #000 var(--footer-light-y),
+    rgb(0 0 0 / 50%) calc(var(--footer-light-y) + var(--footer-light-spread) * 0.4),
+    transparent calc(var(--footer-light-y) + var(--footer-light-spread))
+  );
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+
+  /* Band centre, as a distance up from the figure's bottom edge. */
+  --footer-light-y: calc(var(--footer-horizon) * 100svh - var(--footer-light-origin));
+}
+
+/* ---------------------------------------------------------------- content */
+
+/*
+ * Positioned so the closing block and the metadata row paint above the absolutely positioned
+ * wordmark stage. The settle never hides anything: opacity floors well above zero, so every
+ * string stays readable at any reveal — including with JavaScript disabled.
+ */
+.closing,
+.links {
+  position: relative;
+  z-index: 1;
+  opacity: var(--footer-content-opacity);
+  transform: translate3d(0, var(--footer-content-lift), 0);
+}
+
+.closing {
+  grid-row: 1;
+  display: grid;
+  justify-items: center;
+  gap: clamp(0.75rem, 2svh, 1.5rem);
+  text-align: center;
+}
+
+.statement {
+  font-size: var(--title-lg);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.015em;
+  max-inline-size: 18ch;
+  text-wrap: balance;
+}
+
+.statementEn {
+  font-size: var(--label);
+  letter-spacing: 0.22em;
+  color: color-mix(in srgb, currentColor 62%, transparent);
+}
+
+/*
+ * The CTA slot. Present because the brief keeps it configurable, disabled because no final copy or
+ * action has been supplied — so it renders as inert text in a sharp bordered box, dimmed well
+ * below the closing statement. Not a button, not a link, not focusable, and never a demo or
+ * waitlist pill: the layout reference's pill is exactly what §7.10 forbids.
+ */
+.cta {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.75em;
+  margin-block-start: clamp(0.5rem, 1.5svh, 1.25rem);
+  border: 1px solid color-mix(in srgb, currentColor 22%, transparent);
+  border-radius: 0;
+  padding: 0.7rem 1.6rem;
+  font-size: var(--label);
+  letter-spacing: 0.16em;
+  color: color-mix(in srgb, currentColor 45%, transparent);
+  text-shadow: 0 0 0.7rem var(--drop-black);
+}
+
+.cta[data-enabled="true"] {
+  color: inherit;
+  border-color: color-mix(in srgb, currentColor 55%, transparent);
+  text-decoration: none;
+}
+
+.ctaEn {
+  color: color-mix(in srgb, currentColor 75%, transparent);
+}
+
+/*
+ * Metadata slots. A flat row of Latin labels: `dir` is on the list because the labels are a Latin
+ * run inside a right-to-left document, and the count of slots is whatever the data carries.
+ *
+ * The dark halo is a legibility device, not decoration: the beam passes low across the frame early
+ * in the reveal and this row sits in its path, so the halo is what keeps the labels at AA over the
+ * brightest shader frames. [manual] contrast check.
+ */
+.links {
+  grid-row: 3;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.6rem clamp(0.9rem, 2.5vw, 2.5rem);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--label);
+  letter-spacing: 0.14em;
+  color: color-mix(in srgb, currentColor 58%, transparent);
+  text-shadow: 0 0 0.7rem var(--drop-black);
+}
+
+.link a {
+  text-decoration: underline;
+  text-underline-offset: 0.35em;
+  text-decoration-thickness: 1px;
+}
+
+/* --------------------------------------------------------------- responsive */
+
+@media (max-width: 767px) {
+  .footer {
+    /*
+     * The word is a small band of its own height on a phone, so the beam crosses it steeply and a
+     * narrow band would light only a sliver. A wide one lights the whole word as the beam passes,
+     * which is the effect the brief describes.
+     */
+    --footer-light-spread: 20svh;
+  }
+
+  .statement {
+    max-inline-size: 22ch;
+  }
+}
+
+/*
+ * The glow is a desktop enhancement: a blurred shadow under a mask that moves every scroll frame
+ * is the most expensive thing in this scene, and the tiers the brief writes for mobile (§14) do
+ * not have it to spend.
+ */
+@media (min-width: 768px) {
+  .outlineLit {
+    filter: drop-shadow(0 0 0.6rem color-mix(in srgb, var(--footer-lit-glow) 55%, transparent));
+  }
+}
+
+/*
+ * Reduced motion is already handled in the component — the outline arrives fully drawn, with no
+ * wipe and no drift — because the reveal is computed, not transitioned. This only drops the glow,
+ * the one effect here that repaints as the band moves.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .outlineLit {
+    filter: none;
+  }
+}

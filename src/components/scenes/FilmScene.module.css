@@ -1,0 +1,347 @@
+/*
+ * Film and series recommendations (brief §7.6) and the film half of pixel transition B (§7.7).
+ *
+ * Tokens only — every colour, type step and easing resolves from src/app/globals.css. Colour is
+ * taken from `currentColor` rather than a fixed value, so the scene follows the contrast the
+ * reducer sets on the page root instead of guessing at the shader underneath it.
+ *
+ * Two hard rules are structural here and outlive any tuning pass:
+ *   - `border-radius: 0` on the poster and every paper layer. The natural poster rectangle is
+ *     kept from the asset's own dimensions; nothing in this scene is a rounded card.
+ *   - the left/right composition is held by GRID with an explicit `direction: ltr`, never by a
+ *     document-direction hack (brief §16). Each text run carries its own `dir`, so the Persian
+ *     column reads — and aligns — right-to-left inside a composition whose order is fixed.
+ *
+ * There is no commerce surface: no price, buy, cart, like or favourite control exists in this
+ * file, and the reference layout's stacked card over a full-bleed render is not reproduced.
+ */
+
+/* ------------------------------------------------------------------- scene */
+
+.scene {
+  display: grid;
+  align-content: center;
+  gap: clamp(0.9rem, 2.6vh, 2rem);
+  inline-size: 100%;
+  /* Pixel transition B: film content leaves by fading, never by cutting (brief §7.7). */
+  opacity: var(--drop-film-fade, 1);
+}
+
+/*
+ * The holding layer. While the scene is live it sits on the viewport in exactly the place the
+ * stage put it — same padding as the scene stage in SceneSection.module.css — so film 03 can
+ * hold through the hand-over into pixel transition B instead of scrolling away before the
+ * mosaic starts. Below the persistent header (z-index 20), above the decorative canvas (0).
+ */
+.scene[data-film-hold="true"] {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  padding: calc(var(--header-height) + 2rem) var(--page-gutter) 4rem;
+  /* The layer itself is never a click target; only the film being read is. */
+  pointer-events: none;
+}
+
+.scene[data-film-hold="true"] .film[data-active="true"] {
+  pointer-events: auto;
+}
+
+/* Faded out: whatever is left of the scene stops taking input. */
+.scene[data-film-fade="cleared"],
+.scene[data-film-fade="cleared"] .film[data-active="true"] {
+  pointer-events: none;
+}
+
+/*
+ * Persian section label. No letter-spacing and no text-transform: both break the cursive
+ * joining of Persian type, and the label is Persian first.
+ */
+.heading {
+  font-family: var(--font-persian);
+  font-size: var(--body);
+  font-weight: 700;
+  color: color-mix(in srgb, currentColor 58%, transparent);
+}
+
+/* ------------------------------------------------------------------- stage */
+
+.stage {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  gap: clamp(2rem, 6vh, 4rem);
+  min-block-size: 0;
+  /* The fade carries a small lift with it, so the content leaves rather than dissolving. */
+  transform: translate3d(0, calc((1 - var(--drop-film-fade, 1)) * -3svh), 0);
+}
+
+/*
+ * One recommendation at a time (brief §7.6): every film shares a single grid cell, so exactly
+ * one is ever legible and the cell keeps one steady height between swaps.
+ *
+ * `editorial` is the server-rendered and no-GSAP state: the same three recommendations, simply
+ * listed, so a JavaScript-disabled render loses no content (brief §17).
+ */
+.stage[data-film-stage="cinematic"] {
+  gap: 0;
+}
+
+.stage[data-film-stage="cinematic"] > .film {
+  grid-area: 1 / 1;
+}
+
+.stage[data-film-stage="cinematic"] .film[data-active="false"] {
+  pointer-events: none;
+}
+
+/* -------------------------------------------------------------------- film */
+
+.film {
+  display: grid;
+  /* Brief §7.6/§16: information physically left, poster physically right. Held by the grid. */
+  direction: ltr;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: clamp(1.5rem, 4vw, 3.5rem);
+  align-items: center;
+  border-radius: 0;
+}
+
+/* ------------------------------------------------------------ information */
+
+.info {
+  grid-column: 1;
+  display: grid;
+  align-content: center;
+  gap: clamp(0.4rem, 1.1vh, 0.85rem);
+  /* Editorial parallax: the column drifts against the poster, gently and reversibly. */
+  transform: translate3d(0, calc((var(--drop-film-progress, 0.5) - 0.5) * 1.4svh), 0);
+}
+
+/*
+ * The clip mask. The run inside it is what travels, so text leaves behind a real edge instead
+ * of sliding across its neighbour. The padding/margin pair keeps descenders and Persian
+ * diacritics from being shaved off by that edge.
+ */
+.line {
+  display: block;
+  overflow: hidden;
+  padding-block: 0.16em;
+  margin-block: -0.16em;
+}
+
+.label {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6em;
+  font-size: var(--label);
+  color: color-mix(in srgb, currentColor 70%, transparent);
+}
+
+/* Latin ordinal, derived from position in the data — letter-spacing is safe here. */
+.number {
+  font-family: var(--font-latin);
+  font-weight: 700;
+  letter-spacing: 0.18em;
+}
+
+/*
+ * The Persian column reads right-to-left, so every run in it starts at the column's right edge
+ * — which is what `dir="rtl"` gives the Persian runs for free. The title and the credit are
+ * Latin runs carrying their own `dir="ltr"`, so `end` is what puts them on that same edge.
+ */
+.title {
+  font-family: var(--font-latin);
+  font-size: var(--title-lg);
+  line-height: 1.02;
+  overflow-wrap: break-word;
+  text-align: end;
+}
+
+/* A source link is an affordance, not a CTA: the rule is always visible, never hover-only. */
+.titleLink {
+  color: inherit;
+  text-decoration: none;
+  border-block-end: 1px solid color-mix(in srgb, currentColor 40%, transparent);
+  padding-block-end: 0.04em;
+  transition: border-color 240ms var(--ease-material);
+}
+
+.titleLink:hover,
+.titleLink:focus-visible {
+  border-block-end-color: currentColor;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5em;
+  font-size: var(--body);
+  color: color-mix(in srgb, currentColor 82%, transparent);
+}
+
+.separator {
+  color: color-mix(in srgb, currentColor 45%, transparent);
+}
+
+.rationale {
+  font-size: var(--body);
+  line-height: 1.75;
+  max-inline-size: 44ch;
+  color: color-mix(in srgb, currentColor 78%, transparent);
+}
+
+/*
+ * Media credit from the data (brief §18). These are original DROP concept posters; the caption
+ * is what keeps them from reading as official film artwork.
+ */
+.credit {
+  font-family: var(--font-latin);
+  font-size: var(--label);
+  line-height: 1.5;
+  max-inline-size: 46ch;
+  text-align: end;
+  color: color-mix(in srgb, currentColor 42%, transparent);
+}
+
+/* ----------------------------------------------------------------- poster */
+
+.posterColumn {
+  grid-column: 2;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  inline-size: 100%;
+  /* Counter-drift to the text column: the two move at slightly different speeds. */
+  transform: translate3d(0, calc((0.5 - var(--drop-film-progress, 0.5)) * 2.8svh), 0);
+}
+
+/*
+ * The poster keeps the asset's own rectangle: `--drop-poster-ratio` is width ÷ height from the
+ * media data, so nothing here assumes a 2:3 crop. Height leads, width follows the ratio, and the
+ * column width is the cap — the poster is large and vertical without ever overflowing.
+ */
+.posterCard {
+  --drop-poster-height: min(60svh, 46vw);
+  position: relative;
+  isolation: isolate;
+  aspect-ratio: var(--drop-poster-ratio, 0.6667);
+  inline-size: min(100%, calc(var(--drop-poster-height) * var(--drop-poster-ratio, 0.6667)));
+  border-radius: 0;
+}
+
+/*
+ * One or two subtle paper layers behind the active poster (brief §7.6) — the only cue the
+ * layout reference contributes. Sharp corners, and light enough to read as edges rather than as
+ * a second poster. They travel with the card, so they arrive and leave with it.
+ */
+.paper {
+  position: absolute;
+  inset: 0;
+  border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+  background: color-mix(in srgb, currentColor 5%, transparent);
+  border-radius: 0;
+}
+
+.paper[data-film-paper="1"] {
+  transform: translate(2.4%, 3.2%) rotate(1.7deg);
+}
+
+.paper[data-film-paper="2"] {
+  transform: translate(4.8%, 6.4%) rotate(3.4deg);
+}
+
+/* Painted after the paper layers in document order, so it sits on top without a z-index. */
+.posterMedia {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 0;
+  background: color-mix(in srgb, var(--drop-black) 88%, transparent);
+}
+
+.posterImage {
+  object-fit: cover;
+}
+
+/*
+ * Rights withheld (production, or a `rights-pending` asset without the internal flag): a
+ * branded DROP frame rather than a broken image. The asset's localized description stays the
+ * frame's accessible name.
+ */
+.withheld {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, currentColor 28%, transparent);
+}
+
+.withheldMark {
+  inline-size: 46%;
+  block-size: auto;
+  opacity: 0.5;
+}
+
+/* ------------------------------------------------------------- responsive */
+
+/* Tablet: two columns are kept while they stay readable (brief §15). */
+@media (max-width: 1199px) {
+  .title {
+    font-size: var(--title-md);
+  }
+
+  .posterCard {
+    --drop-poster-height: min(48svh, 44vw);
+  }
+}
+
+/*
+ * Mobile: the poster sits above the text rather than beside it, and shrinks so the whole
+ * recommendation — label, title, credits and rationale — still fits one viewport without
+ * losing readability (brief §15).
+ */
+@media (max-width: 767px) {
+  .film {
+    grid-template-columns: minmax(0, 1fr);
+    align-content: center;
+    gap: clamp(1rem, 3vh, 1.75rem);
+  }
+
+  .info,
+  .posterColumn {
+    grid-column: 1;
+  }
+
+  .posterColumn {
+    grid-row: 1;
+    justify-content: center;
+  }
+
+  .posterCard {
+    --drop-poster-height: min(32svh, 62vw);
+  }
+
+  .rationale {
+    max-inline-size: none;
+    line-height: 1.65;
+  }
+}
+
+/*
+ * Reduced motion: the swap is handled in JavaScript as a plain crossfade, so all that is left
+ * here is to stop the parallax. Belt and braces — the reducer passes the same preference down
+ * as a prop, and this scene neutralises the drift from that prop too.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .info,
+  .posterColumn,
+  .stage {
+    transform: none;
+  }
+
+  .titleLink {
+    transition: none;
+  }
+}

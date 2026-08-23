@@ -1,0 +1,335 @@
+/*
+ * Art Pieces / field notes (brief §7.9).
+ *
+ * Tokens only — every colour, size and easing resolves from src/app/globals.css. The numbers
+ * here are layout and the four custom properties the scene writes per row:
+ *
+ *   --art-dim          text priority, 1 for the active row
+ *   --art-veil         how far the media steps back when it is not the active row
+ *   --art-enter        0 while the row is still below, 1 once it has entered
+ *   --art-*-shift      parallax offsets; media, text column and title move at different speeds
+ *   --art-media-zoom   entry zoom on the media, resolving to 1
+ *
+ * Nothing in this file ever hides content: the masked state is written by GSAP after mount, so a
+ * JavaScript-disabled render shows the rows exactly as they finally read.
+ */
+
+.scene {
+  display: grid;
+  gap: clamp(1.5rem, 4svh, 3rem);
+  inline-size: 100%;
+  /*
+   * Brief §7.9 and §16: information physically left, media physically right, held by CSS grid
+   * rather than by flipping the document's direction. The composition is LTR and every text run
+   * below carries its own `dir`, so the Persian copy still reads right-to-left.
+   */
+  direction: ltr;
+}
+
+/* ------------------------------------------------------------------ heading */
+
+.heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem clamp(1rem, 4vw, 3rem);
+  padding-block-end: clamp(1rem, 4svh, 3rem);
+}
+
+.headingFa {
+  font-size: var(--title-lg);
+}
+
+.headingMeta {
+  display: flex;
+  align-items: baseline;
+  gap: clamp(0.75rem, 2vw, 1.5rem);
+}
+
+.headingEn,
+.headingCount {
+  font-family: var(--font-latin);
+  font-size: var(--label);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, currentColor 72%, transparent);
+}
+
+.headingCount {
+  color: currentColor;
+}
+
+/* ------------------------------------------------------------------- rows */
+
+.rows {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: clamp(1.5rem, 4vw, 4rem);
+  align-items: center;
+  /*
+   * The row's layout pitch, matched to the scroll the shell budgets for one row, so the row the
+   * reducer calls active is near the middle of the viewport when it takes priority.
+   */
+  min-block-size: var(--art-row-pitch, 60svh);
+  padding-block: clamp(1.5rem, 4svh, 3rem);
+  /* Brief §7.9: a thin horizontal divider between items. Sharp everything, no card. */
+  border-block-start: 1px solid color-mix(in srgb, currentColor 26%, transparent);
+  border-radius: 0;
+}
+
+/* ------------------------------------------------------------- text column */
+
+.text {
+  grid-column: 1;
+  grid-row: 1;
+  display: grid;
+  gap: clamp(0.35rem, 1.1svh, 0.8rem);
+  align-self: center;
+  max-inline-size: 46rem;
+  opacity: var(--art-dim, 1);
+  transform: translate3d(0, var(--art-text-shift, 0svh), 0);
+  /*
+   * The Monochrome Mesh underneath is alive and carries light tiles; a restrained shadow keeps
+   * the copy readable over its worst frame without putting a panel behind the text.
+   */
+  text-shadow: 0 1px 20px color-mix(in srgb, var(--drop-black) 62%, transparent);
+}
+
+/*
+ * Line masks. Each field clips; the element inside it is what GSAP moves. The padding/negative
+ * margin pair gives Persian descenders room inside the clip without changing the rhythm.
+ */
+.index,
+.category,
+.title,
+.meta,
+.rationale,
+.line {
+  display: block;
+  overflow: hidden;
+  padding-block-end: 0.16em;
+  margin-block-end: -0.16em;
+}
+
+.lineInner {
+  display: block;
+}
+
+.index {
+  font-size: var(--label);
+  color: color-mix(in srgb, currentColor 70%, transparent);
+}
+
+.latin {
+  font-family: var(--font-latin);
+  letter-spacing: 0.22em;
+}
+
+.category {
+  font-size: var(--label);
+  color: color-mix(in srgb, currentColor 76%, transparent);
+}
+
+.title {
+  font-size: var(--title-md);
+  transform: translate3d(0, var(--art-title-shift, 0svh), 0);
+}
+
+.titleLink {
+  text-decoration: none;
+  border-block-end: 1px solid color-mix(in srgb, currentColor 45%, transparent);
+}
+
+/* Decorative outward marker: a pseudo-element, so it never joins the title's text content. */
+.titleLink::after {
+  content: "↗";
+  margin-inline-start: 0.25em;
+  font-size: 0.6em;
+  vertical-align: super;
+}
+
+.meta {
+  font-size: var(--label);
+  color: color-mix(in srgb, currentColor 76%, transparent);
+}
+
+.meta .lineInner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.3rem clamp(0.6rem, 1.5vw, 1rem);
+}
+
+.metaItem {
+  font-family: var(--font-persian);
+}
+
+.metaItem[lang="en"] {
+  font-family: var(--font-latin);
+  letter-spacing: 0.12em;
+}
+
+/*
+ * A rule rather than a glyph between fields: it carries no text content, and it follows the
+ * writing direction. Optional fields that are absent leave no separator behind.
+ */
+.metaItem + .metaItem {
+  border-inline-start: 1px solid color-mix(in srgb, currentColor 35%, transparent);
+  padding-inline-start: clamp(0.6rem, 1.5vw, 1rem);
+}
+
+.rationale {
+  font-size: var(--body);
+  line-height: 1.75;
+  max-inline-size: 46ch;
+  color: color-mix(in srgb, currentColor 80%, transparent);
+}
+
+/* ------------------------------------------------------------ media column */
+
+.mediaColumn {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: center;
+  display: grid;
+  gap: 0.6rem;
+  margin: 0;
+}
+
+.media {
+  position: relative;
+  overflow: hidden;
+  /* Sharp media edges are a hard rule; the ratio is the asset's own, so nothing shifts on load. */
+  border-radius: 0;
+  border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+  aspect-ratio: var(--art-media-ratio, 4 / 3);
+  max-block-size: 62svh;
+  background: color-mix(in srgb, var(--drop-black) 55%, transparent);
+}
+
+/* The vertical crop reveal. Open by default; GSAP closes it after mount. */
+.mediaClip {
+  position: absolute;
+  inset: 0;
+  clip-path: inset(0% 0% 0% 0%);
+}
+
+.mediaShift {
+  position: absolute;
+  inset: 0;
+  transform: translate3d(0, var(--art-media-shift, 0svh), 0) scale(var(--art-media-zoom, 1));
+  will-change: transform;
+}
+
+.mediaAsset {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+  border-radius: 0;
+}
+
+.mediaVeil {
+  position: absolute;
+  inset: 0;
+  background: var(--drop-black);
+  opacity: var(--art-veil, 0);
+  pointer-events: none;
+}
+
+/*
+ * The restrained image treatment the brief allows: a single bright edge riding the top of the
+ * crop, gone by the time the row settles. Readability is primary, so it never touches the copy.
+ */
+.mediaSweep {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--drop-white) 28%, transparent) 0%,
+    transparent 26%
+  );
+  opacity: calc(1 - var(--art-enter, 1));
+  pointer-events: none;
+}
+
+/* Rights withheld the asset: a branded DROP slot in the same frame, never a broken image. */
+.mediaWithheld {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  opacity: 0.3;
+}
+
+.withheldMark {
+  display: block;
+}
+
+.credit {
+  font-family: var(--font-latin);
+  font-size: var(--label);
+  line-height: 1.5;
+  margin: 0;
+  color: color-mix(in srgb, currentColor 62%, transparent);
+}
+
+/* Pausable loop video (brief §16). Sharp, quiet, and never dependent on hover. */
+.mediaControl {
+  position: absolute;
+  inset-block-end: 0.75rem;
+  inset-inline-start: 0.75rem;
+  padding: 0.4rem 0.8rem;
+  border: 1px solid currentColor;
+  border-radius: 0;
+  background: color-mix(in srgb, var(--drop-black) 70%, transparent);
+  color: inherit;
+  font-family: var(--font-persian);
+  font-size: var(--label);
+  cursor: pointer;
+  /* Undo the frame's entry zoom so the control keeps its own size. */
+  transform: scale(calc(1 / var(--art-media-zoom, 1)));
+  transform-origin: bottom left;
+}
+
+/* ------------------------------------------------------------------ mobile */
+
+/*
+ * Brief §15: "Art Pieces become one column: title/details followed by media." The grid does it;
+ * the document's direction is not involved at any width.
+ */
+@media (max-width: 767px) {
+  .row {
+    grid-template-columns: minmax(0, 1fr);
+    min-block-size: auto;
+    gap: clamp(1rem, 3svh, 2rem);
+  }
+
+  .text {
+    grid-column: 1;
+    grid-row: 1;
+    max-inline-size: none;
+  }
+
+  .mediaColumn {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .media {
+    max-block-size: 52svh;
+  }
+
+  .heading {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
