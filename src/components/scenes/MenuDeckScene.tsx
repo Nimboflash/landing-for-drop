@@ -39,9 +39,9 @@
  *
  * | layer | owner | why |
  * | --- | --- | --- |
- * | per-card fan position (`--card-step`, `--card-angle`, `--card-arc`) | this file, from `items.length` | count adaptation is data-driven and must be identical on server and client |
- * | how far one step travels at this viewport | the stylesheet | mobile gets narrower angles and offsets (brief §15) with no resize listener |
- * | deck scrub (`--deck-arrival`, `--deck-fan`, `--deck-open`) | an effect, written imperatively | changes every scroll frame; keeping it out of the render output also keeps SSR and hydration identical |
+ * | per-card place in the deck (`--card-index`) | this file | it never changes, so it belongs in the render output |
+ * | how far one conveyor step travels at this viewport | the stylesheet | a phone gets a smaller card and a shallower recede with no resize listener |
+ * | deck scrub (`--deck-arrival`, `--deck-fan`, `--deck-position`) | an effect, written imperatively | changes every scroll frame; keeping it out of the render output also keeps SSR and hydration identical |
  * | the flip (`--card-flip`) and the tilt (`--deck-tilt-*`) | GSAP | a real stagger, reverse ordering, and one shared ticker |
  *
  * Everything composes inside ONE CSS transform per card, so the fan, the flip and the tilt can
@@ -92,27 +92,23 @@ import styles from "./MenuDeckScene.module.css";
 /* ------------------------------------------------------------------ tuning */
 
 /**
- * Brief §7.3: "Initial fan angles may begin around `-8deg, -3deg, 3deg, 8deg` and adapt to
- * count." Those four numbers are a four-card deck spread evenly across ±8°, so the spread is
- * what generalises: {@link fanAngle} distributes any count evenly between `-spread` and
- * `+spread`.
+ * How much of a card's band it spends centred on the stage before handing over to the next.
+ * The remainder is the travel. Raising it makes the deck read as a slideshow, lowering it opens
+ * a gap where no card is centred.
  */
-const MAX_FAN_SPREAD_DEG = 8;
-
-/**
- * Angle between adjacent cards, taken from the brief's own four-card example: ±8° across three
- * gaps is 5.33° per gap. Small decks keep that step instead of splaying to the full ±8°.
- */
-const FAN_STEP_DEG = (MAX_FAN_SPREAD_DEG * 2) / 3;
-
-/** Floor on the spread, so the smallest allowed deck still reads as a fan and not as a pair. */
-const MIN_FAN_SPREAD_DEG = 4.5;
+const CARD_DWELL = 0.46;
 
 /** Flip stagger. Brief §7.3 asks for 70–110ms; this is the middle of that window. */
 const FLIP_STAGGER_S = 0.09;
 
-/** One card's flip. Weighted at both ends — a card turning over, not a UI toggle. */
-const FLIP_DURATION_S = 0.62;
+/**
+ * One card's flip. Weighted at both ends — a card turning over, not a UI toggle.
+ *
+ * Paced against the card's new size: the same 0.62s that read as deliberate on a 14rem card
+ * reads as a snap on one nearly twice as wide, because the edge now travels much further in the
+ * same time. The stagger is unchanged — brief §7.3 fixes that window at 70-110ms.
+ */
+const FLIP_DURATION_S = 0.75;
 const FLIP_EASE = "power3.inOut";
 
 /** The spread follows the flip out, not in: it settles as the card lands. */
@@ -131,7 +127,7 @@ const RISE_SPAN_OF_ENTRY = 0.62;
 const FAN_START_OF_ENTRY = 0.35;
 
 /** Pointer tilt: peak rotation in degrees, and how long the deck takes to follow / release. */
-const TILT_MAX_DEG = 2.6;
+const TILT_MAX_DEG = 3.6;
 const TILT_FOLLOW_S = 0.7;
 const TILT_RELEASE_S = 1.1;
 
@@ -178,35 +174,55 @@ export function deckEntrySpan(itemCount: number): number {
   return 1 / (Math.max(itemCount, 1) + 1);
 }
 
-/** Total fan spread in degrees for a deck of `count` cards: the outermost card sits at ±this. */
-export function fanSpreadDeg(count: number): number {
-  if (count <= 1) return 0;
-  const stepped = (FAN_STEP_DEG * (count - 1)) / 2;
-  return Math.min(MAX_FAN_SPREAD_DEG, Math.max(MIN_FAN_SPREAD_DEG, stepped));
-}
-
-/** Card position across the fan, -1 (first) … +1 (last). 0 for a single card. */
-export function fanPosition(index: number, count: number): number {
-  if (count <= 1) return 0;
-  return (index / (count - 1)) * 2 - 1;
-}
-
-/** In-plane rotation of card `index`, evenly distributed across the spread. */
-export function fanAngle(index: number, count: number): number {
-  return fanPosition(index, count) * fanSpreadDeg(count);
-}
-
-/** Signed distance from the deck's centre in card steps: ∓0.5 for two, -1/0/+1 for three. */
-export function fanStep(index: number, count: number): number {
-  return index - (count - 1) / 2;
-}
-
 /** How far the stack has arrived: 0 below the viewport, 1 fully risen. */
 export function deckArrival(progress: number, flippedCards: number, count: number): number {
   // A card can only be face-up after the entry band, so the deck is certainly in place by then.
   if (flippedCards > 0) return 1;
   const rise = deckEntrySpan(count) * RISE_SPAN_OF_ENTRY;
   return rise <= 0 ? 1 : clamp01(clamp01(progress) / rise);
+}
+
+/**
+ * The deck's position along its conveyor, as a continuous float.
+ *
+ * The presentation is one card at a time: the card whose index equals this value is centred on
+ * the stage, lower indices have already travelled up and out, higher ones are still waiting
+ * below. Every card's own offset is then `index - position`, which the stylesheet derives — this
+ * is the single per-frame number the scene writes.
+ *
+ * It is the CONTINUOUS analogue of the reducer's `flippedCards`, and deliberately mirrors that
+ * function's arithmetic rather than inventing its own pacing: the reducer splits the scene into
+ * `count + 1` bands with `floor(progress * (count + 1))`, so dropping the floor and subtracting
+ * the entry band gives a position that passes through exactly 0, 1, 2 … at the same scroll points
+ * the reducer turns each card over. The flip and the travel therefore cannot drift apart, and
+ * this stays presentation math over reducer output — it decides nothing.
+ *
+ * Clamped to `[-1, count - 1]`: -1 is the whole deck held one step below the stage during the
+ * entry band, and `count - 1` is the last card centred and staying there.
+ */
+export function deckPosition(progress: number, count: number): number {
+  if (count <= 0) return 0;
+  const raw = clamp01(progress) * (count + 1) - 1;
+  const settled = Math.floor(raw);
+  const withinBand = raw - settled;
+
+  /*
+   * Travel is NOT linear in the band, and the reason is that this scene is pinned.
+   *
+   * Moving a card a full step per band at a constant rate means that halfway through a band the
+   * outgoing card has half left the frame and the incoming one has not yet half arrived — the
+   * stage is empty. On a page that keeps scrolling (the reference behaves this way) that reading
+   * is fine: the gap is just the page moving. Here the viewport is HELD, so the same gap is a
+   * dead frame with nothing in it, measured on the four-card fixture.
+   *
+   * So a card dwells centred for the first part of its band — which is also when it flips — and
+   * then hands over briskly. Smoothstepped, so it neither starts nor stops with a jolt, and
+   * still a pure function of scroll, so reverse scroll retraces it exactly.
+   */
+  const handover = Math.max(withinBand - CARD_DWELL, 0) / (1 - CARD_DWELL);
+  const eased = handover * handover * (3 - 2 * handover);
+
+  return Math.min(Math.max(settled + eased, -1), count - 1);
 }
 
 /** How far the fan has opened out of the compressed stack: 0 compressed, 1 fanned. */
@@ -260,6 +276,13 @@ export function MenuDeckScene({
   reducedMotion,
 }: MenuDeckSceneProps) {
   const deckRef = useRef<HTMLOListElement | null>(null);
+  /**
+   * The heading is a SIBLING of the deck, not a descendant, so it cannot inherit the deck's
+   * custom properties — the scrub below writes `--deck-position` to both. Wrapping the two in a
+   * shared element would be the other way, but the section's viewport already owns this layout
+   * and a wrapper for one CSS variable is not worth changing it for.
+   */
+  const headingRef = useRef<HTMLHeadingElement | null>(null);
   const cardsRef = useRef<Array<HTMLElement | null>>([]);
   const contextRef = useRef<gsap.Context | null>(null);
   /** Flip state already written to the DOM, so only genuine changes are animated. */
@@ -269,6 +292,7 @@ export function MenuDeckScene({
   const flipped = Math.max(0, Math.min(flippedCards, count));
   const arrival = deckArrival(progress, flipped, count);
   const fan = deckFan(progress, flipped, count);
+  const position = deckPosition(progress, count);
   const open = count > 0 ? flipped / count : 0;
   const phase = deckPhase(arrival, flipped, count);
 
@@ -313,13 +337,31 @@ export function MenuDeckScene({
     const deck = deckRef.current;
     if (!deck) return;
     if (reducedMotion) {
+      delete deck.dataset.deckConveyor;
       deck.style.removeProperty("--deck-arrival");
       deck.style.removeProperty("--deck-fan");
+      deck.style.removeProperty("--deck-position");
+      headingRef.current?.style.removeProperty("--deck-position");
       return;
     }
+    /*
+     * The conveyor is a SCRIPTED enhancement, and the stylesheet is gated on this attribute
+     * rather than on the custom properties below.
+     *
+     * The deck moves its cards sideways, so the resting state of an ungated conveyor would put
+     * every card at its own index along the line — and the scene section clips horizontally, so
+     * with scripting off the entire taste edit would be clipped out of the page rather than
+     * merely sitting still. Writing this from an effect means the browser only ever sees the
+     * moving deck when something is actually there to move it; otherwise the plain grid at the
+     * bottom of the stylesheet applies and every card is on screen, face-up, in order.
+     */
+    deck.dataset.deckConveyor = "on";
     deck.style.setProperty("--deck-arrival", arrival.toFixed(4));
     deck.style.setProperty("--deck-fan", fan.toFixed(4));
-  }, [arrival, fan, reducedMotion]);
+    deck.style.setProperty("--deck-position", position.toFixed(4));
+    // The heading fades against the same number, and cannot inherit it from here.
+    headingRef.current?.style.setProperty("--deck-position", position.toFixed(4));
+  }, [arrival, fan, position, reducedMotion]);
 
   /**
    * The flip, driven by `flippedCards`.
@@ -466,7 +508,7 @@ export function MenuDeckScene({
 
   return (
     <>
-      <h2 className={styles.heading} data-section-heading="menu">
+      <h2 ref={headingRef} className={styles.heading} data-section-heading="menu">
         {heading.fa}
       </h2>
 
@@ -491,12 +533,10 @@ export function MenuDeckScene({
             // 3D flip to wait for. Keeping the two attributes distinct lets the page seam assert
             // "reduced motion shows fronts" from attributes alone, never a computed transform.
             const presentedFace = faceUp || reducedMotion ? "front" : "back";
-            const style: CardStyle = {
-              "--card-index": String(index),
-              "--card-step": fanStep(index, count).toFixed(3),
-              "--card-angle": fanAngle(index, count).toFixed(3),
-              "--card-arc": (fanPosition(index, count) ** 2).toFixed(3),
-            };
+            // The card's place in the deck, and nothing else. Its position on the conveyor is
+            // derived in the stylesheet from this plus the deck's single `--deck-position`, so
+            // the markup React renders on the server is byte-identical to the hydrated markup.
+            const style: CardStyle = { "--card-index": String(index) };
 
             return (
               <li
@@ -619,12 +659,9 @@ type DeckStyle = CSSProperties & {
   "--deck-gaps": string;
 };
 
-/** Per-card fan geometry: count-derived, so identical on the server and in the browser. */
+/** Per-card geometry: the index alone, so the markup is identical on the server and in the browser. */
 type CardStyle = CSSProperties & {
   "--card-index": string;
-  "--card-step": string;
-  "--card-angle": string;
-  "--card-arc": string;
 };
 
 export default MenuDeckScene;

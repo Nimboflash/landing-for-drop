@@ -15,8 +15,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   MESH_CONTROL_COLORS,
+  MESH_CONTROL_COLORS_RGB,
   MESH_GRID_COLUMNS,
   MESH_GRID_ROWS,
+  MESH_OPENING_PEAK_CEILING,
   MESH_PIVOT_RGB,
   MESH_VARIANT_TARGETS,
   MONO_MESH_PRESET,
@@ -99,6 +101,14 @@ const SEED_COUNTS: LensCounts = {
   tracks: 11,
   artPieces: 4,
 };
+
+/** WCAG relative luminance for an sRGB 0..1 triple. */
+function relativeLuminance(rgb: readonly number[]): number {
+  const [r, g, b] = rgb.map((channel) =>
+    channel <= 0.04045 ? channel / 12.92 : Math.pow((channel + 0.055) / 1.055, 2.4),
+  );
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
 
 function transitionState(overrides: Partial<TransitionState> = {}): TransitionState {
   return { ...createInitialSceneState(SEED_COUNTS).transitionState, ...overrides };
@@ -292,14 +302,15 @@ describe("mesh variants", () => {
     );
   });
 
-  it("keeps the field alive while pixel B reveals it, and gone once the footer fade finished", () => {
+  it("keeps the field alive while pixel B reveals it, and gone by the footer", () => {
     // The reducer emits no mesh descriptor during pixel B (the mesh is revealed through the
-    // cells) nor after the footer fade completes (nothing left to draw).
-    expect(meshSettingsForFrame("pixelB", transitionState())).toEqual(MESH_VARIANT_TARGETS.normal);
-    expect(meshSettingsForFrame("monoMesh", transitionState())).toEqual(
-      MESH_VARIANT_TARGETS.normal,
-    );
-    expect(meshSettingsForFrame("footerLight", transitionState())).toEqual(
+    // cells) nor anywhere in the footer, so those frames carry `mesh: null`. Passed explicitly:
+    // the page's resting state now DOES carry a descriptor, because the mesh opens the page.
+    const noDescriptor = transitionState({ mesh: null });
+
+    expect(meshSettingsForFrame("pixelB", noDescriptor)).toEqual(MESH_VARIANT_TARGETS.normal);
+    expect(meshSettingsForFrame("monoMesh", noDescriptor)).toEqual(MESH_VARIANT_TARGETS.normal);
+    expect(meshSettingsForFrame("footerLight", noDescriptor)).toEqual(
       MESH_VARIANT_TARGETS.fadeToBlack,
     );
     expect(
@@ -319,6 +330,51 @@ describe("mesh variants", () => {
       MESH_VARIANT_TARGETS.fadeToBlack,
     );
     expect(meshSettingsForFrame("monoMesh", deepInFooter).brightness).toBe(0);
+  });
+
+  it("keeps the opening field under its text-contrast ceiling, on every frame", () => {
+    // The shader composites `mix(pivot, field, contrast) * brightness`, so the worst case is the
+    // brightest control colour. Brief §14 forbids shader motion that lowers text contrast, and
+    // the field MOVES — so the ceiling has to hold for the brightest cell the mesh can ever show,
+    // not for its average.
+    const brightestControl = MESH_CONTROL_COLORS_RGB.flat().reduce((brightest, colour) =>
+      relativeLuminance(colour) > relativeLuminance(brightest) ? colour : brightest,
+    );
+
+    const { brightness, contrast } = MESH_VARIANT_TARGETS.opening;
+    const peak = Math.max(
+      ...brightestControl.map(
+        (channel, i) => (MESH_PIVOT_RGB[i] + (channel - MESH_PIVOT_RGB[i]) * contrast) * brightness,
+      ),
+    );
+
+    expect(peak).toBeLessThanOrEqual(MESH_OPENING_PEAK_CEILING);
+
+    // And state it as the ratio it exists to protect, so a future tuning pass sees the real
+    // number rather than an opaque scalar: DROP off-white copy over the worst frame.
+    const ratio =
+      (relativeLuminance(parseHexColor("#f2f2f2")) + 0.05) /
+      (relativeLuminance([peak, peak, peak]) + 0.05);
+    expect(ratio).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("holds the opening variant constant, so it is legible on its first frame", () => {
+    // Unlike the other variants it does not ramp in from a predecessor — every amount is the
+    // same settled, ceiling-respecting look.
+    const first = meshVariantUniforms({ variant: "opening", amount: 0 });
+    expect(first).toEqual(MESH_VARIANT_TARGETS.opening);
+    for (const amount of [0.25, 0.5, 0.75, 1]) {
+      expect(meshVariantUniforms({ variant: "opening", amount })).toEqual(first);
+    }
+  });
+
+  it("runs the opening field faster than the preset, and the reading field slower", () => {
+    expect(MESH_VARIANT_TARGETS.opening.speedScale).toBeGreaterThan(
+      MESH_VARIANT_TARGETS.normal.speedScale,
+    );
+    expect(MESH_VARIANT_TARGETS.reading.speedScale).toBeLessThan(
+      MESH_VARIANT_TARGETS.normal.speedScale,
+    );
   });
 
   it("falls back to the alive field rather than throwing on a frame with no state", () => {
@@ -531,11 +587,12 @@ describe("footer light horizon", () => {
 describe("background shader modules", () => {
   const modules: readonly BackgroundShaderModule[] = [monoMeshShader, footerLightShader];
 
-  it("registers the modes the reducer maps to tracks, art pieces, and the footer", () => {
+  it("registers the modes the reducer maps to the opening scenes and the footer", () => {
     expect(monoMeshShader.mode).toBe("monoMesh");
     expect(footerLightShader.mode).toBe("footerLight");
-    expect(monoMeshShader.mode).toBe(SCENE_BACKGROUND_MODE.tracks);
-    expect(monoMeshShader.mode).toBe(SCENE_BACKGROUND_MODE.artPieces);
+    expect(monoMeshShader.mode).toBe(SCENE_BACKGROUND_MODE.loader);
+    expect(monoMeshShader.mode).toBe(SCENE_BACKGROUND_MODE.thesis);
+    expect(monoMeshShader.mode).toBe(SCENE_BACKGROUND_MODE.menu);
     expect(footerLightShader.mode).toBe(SCENE_BACKGROUND_MODE.footer);
   });
 

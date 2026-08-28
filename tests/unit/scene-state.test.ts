@@ -43,25 +43,33 @@ const BRIEF_SCENE_SEQUENCE: SceneId[] = [
   "footer",
 ];
 
-/** Brief Sections 7 + 14: which shared-canvas background each scene runs on. */
+/**
+ * Which shared-canvas background each scene runs on.
+ *
+ * Brief Sections 7 + 14 put the off-white glow behind the opening scenes and the Monochrome Mesh
+ * behind Tracks and Art Pieces. That pairing has since been swapped by an explicit art-direction
+ * decision: the mesh opens the page and Tracks / Art Pieces sit on flat black.
+ */
 const BRIEF_BACKGROUND_MODE: Array<[SceneId, BackgroundMode]> = [
-  ["loader", "offWhiteGlow"],
-  ["thesis", "offWhiteGlow"],
-  ["menu", "offWhiteGlow"],
+  ["loader", "monoMesh"],
+  ["thesis", "monoMesh"],
+  ["menu", "monoMesh"],
   ["gridStatement", "greenGrid"],
   ["pixelA", "pixelA"],
   ["films", "wavyDots"],
   ["pixelB", "pixelB"],
-  ["tracks", "monoMesh"],
-  ["artPieces", "monoMesh"],
+  ["tracks", "black"],
+  ["artPieces", "black"],
   ["footer", "footerLight"],
 ];
 
 /** Brief Section 8: no header during the loader, then contrast follows the scene background. */
 const BRIEF_HEADER_VARIANT: Array<[SceneId, TransitionState["headerVariant"]]> = [
   ["loader", "hidden"],
-  ["thesis", "dark"],
-  ["menu", "dark"],
+  // Dark grounds all the way down now the mesh opens the page, so the mark stays light
+  // everywhere it is shown. `dark` is reachable only from `offWhiteGlow`, which no scene uses.
+  ["thesis", "light"],
+  ["menu", "light"],
   ["gridStatement", "light"],
   ["pixelA", "light"],
   ["films", "light"],
@@ -298,14 +306,16 @@ describe("initial scene state", () => {
 
     expect(state.sceneId).toBe("loader");
     expect(state.sceneProgress).toBe(0);
-    expect(state.backgroundMode).toBe("offWhiteGlow");
+    expect(state.backgroundMode).toBe("monoMesh");
     expect(state.reducedMotion).toBe(false);
     expect(state.transitionState.headerVariant).toBe("hidden");
     expect(state.transitionState.loaderComplete).toBe(false);
     expect(state.transitionState.gridStatementRevealed).toBe(false);
     expect(state.transitionState.pixelA).toBeNull();
     expect(state.transitionState.pixelB).toBeNull();
-    expect(state.transitionState.mesh).toBeNull();
+    // The mesh is the loader's own ground now, so it is live from the very first frame — and at
+    // the `opening` variant, which is legible on that first frame rather than ramping into it.
+    expect(state.transitionState.mesh).toEqual({ variant: "opening", amount: 0 });
     expect(state.transitionState.filmFade).toBe(1);
     expect(state.transitionState.footerReveal).toBe(0);
   });
@@ -481,21 +491,27 @@ describe.each(COUNT_FIXTURES)("scene state driven by %s", (_label, counts) => {
     expect(sweepScene(counts, "tracks").every((s) => !s.transitionState.darkBeat)).toBe(true);
   });
 
-  it("keeps one mesh alive from tracks through art pieces, then fades it to black in the footer", () => {
-    expect(enter(counts, "films").transitionState.mesh).toBeNull();
-    expect(enter(counts, "pixelB").transitionState.mesh).toBeNull();
+  it("keeps one mesh alive from the loader through the menu deck, and nothing after it", () => {
+    // The mesh is the ground for the three opening scenes, at one variant throughout.
+    for (const sceneId of ["loader", "thesis", "menu"] as const) {
+      expect(
+        sweepScene(counts, sceneId).every((s) => s.transitionState.mesh?.variant === "opening"),
+      ).toBe(true);
+    }
 
-    expect(
-      sweepScene(counts, "tracks").every((s) => s.transitionState.mesh?.variant === "normal"),
-    ).toBe(true);
-    expect(
-      sweepScene(counts, "artPieces").every((s) => s.transitionState.mesh?.variant === "reading"),
-    ).toBe(true);
-
-    const footer = sweepScene(counts, "footer");
-    expect(footer[0].transitionState.mesh).toEqual({ variant: "fadeToBlack", amount: 0 });
-    expect(isNonDecreasing(footer.map((s) => s.transitionState.mesh?.amount ?? 1))).toBe(true);
-    expect(footer[footer.length - 1].transitionState.mesh).toBeNull();
+    // And for nothing else: every later scene runs on a ground of its own, so the reducer has
+    // no mesh to hand the canvas there.
+    for (const sceneId of [
+      "gridStatement",
+      "pixelA",
+      "films",
+      "pixelB",
+      "tracks",
+      "artPieces",
+      "footer",
+    ] as const) {
+      expect(sweepScene(counts, sceneId).every((s) => s.transitionState.mesh === null)).toBe(true);
+    }
   });
 
   it("reveals the footer light horizon across the footer scene only", () => {
@@ -710,108 +726,81 @@ describe.each(COUNT_FIXTURES)("cross-scene hand-offs driven by %s", (_label, cou
     expect(backward.map(shape)).toEqual([...forward].reverse().map(shape));
   });
 
-  /* ------------------------------- brief §7.9: tracks -> art pieces, uncut mesh */
+  /* ------------------- one uncut mesh across the three opening scenes */
 
-  it("never drops the mesh across the tracks / art pieces boundary, in either direction", () => {
-    const forward = crossForward(counts, "tracks", "artPieces");
-    const backward = crossBackward(counts, "tracks", "artPieces");
+  it("never drops the mesh across the opening scene boundaries, in either direction", () => {
+    for (const [from, to] of [
+      ["loader", "thesis"],
+      ["thesis", "menu"],
+    ] as const) {
+      const forward = crossForward(counts, from, to);
+      const backward = crossBackward(counts, from, to);
 
-    // "The Monochrome Mesh continues from Tracks without restarting or cutting" — so there is no
-    // frame on either side of the boundary where the reducer has no mesh to hand the canvas.
-    expect(forward.every((s) => s.transitionState.mesh !== null)).toBe(true);
-    expect(backward.every((s) => s.transitionState.mesh !== null)).toBe(true);
+      // There is no frame on either side of the boundary where the reducer has no mesh to hand
+      // the canvas — the field carries straight through.
+      expect(forward.every((s) => s.transitionState.mesh !== null)).toBe(true);
+      expect(backward.every((s) => s.transitionState.mesh !== null)).toBe(true);
 
-    // One variant change, in the direction of travel, and no third state in between.
-    expect(runsOf(meshTrail(forward).map((mesh) => mesh.variant))).toEqual(["normal", "reading"]);
-    expect(runsOf(meshTrail(backward).map((mesh) => mesh.variant))).toEqual(["reading", "normal"]);
+      // One variant the whole way, so there is no seam to cross at all.
+      expect(runsOf(meshTrail(forward).map((mesh) => mesh.variant))).toEqual(["opening"]);
+      expect(runsOf(meshTrail(backward).map((mesh) => mesh.variant))).toEqual(["opening"]);
 
-    // The mode never leaves the mesh either: both scenes run on the same shared-canvas mode.
-    expect(unique(forward.map((s) => (s.backgroundMode === "monoMesh" ? 1 : 0)))).toEqual([1]);
+      // The mode never leaves the mesh either: both scenes run on the same shared-canvas mode.
+      expect(unique(forward.map((s) => (s.backgroundMode === "monoMesh" ? 1 : 0)))).toEqual([1]);
+    }
   });
 
-  it("enters and leaves the reading variant at its neutral end, so nothing shifts at the seam", () => {
-    const forward = crossForward(counts, "tracks", "artPieces");
-    const reading = meshTrail(forward).filter((mesh) => mesh.variant === "reading");
+  it("releases the mesh exactly where the green grid takes the ground", () => {
+    const forward = crossForward(counts, "menu", "gridStatement");
 
-    // `reading` at amount 0 IS the settled `normal` look (asserted in mesh-variants.test.ts), so
-    // handing over at amount 0 is what makes the boundary continuous rather than a cut.
-    expect(reading[0]).toEqual({ variant: "reading", amount: 0 });
-    expect(isNonDecreasing(reading.map((mesh) => mesh.amount))).toBe(true);
+    // The descriptor and the mode change together on the same frame: a mesh descriptor exists
+    // if and only if the mesh is the active mode. No gap, no overlap, one authority.
     expect(
-      intermediateStages(reading.map((mesh) => mesh.amount)).length,
-    ).toBeGreaterThanOrEqual(MIN_INTERMEDIATE_STAGES);
+      forward.every(
+        (s) => (s.backgroundMode === "monoMesh") === (s.transitionState.mesh !== null),
+      ),
+    ).toBe(true);
 
-    // Reverse hands back the same way round: the reading treatment unwinds to nothing first, and
-    // only then does the variant become `normal` again.
-    const backward = crossBackward(counts, "tracks", "artPieces");
-    const backwardReading = meshTrail(backward).filter((mesh) => mesh.variant === "reading");
-    expect(backwardReading[backwardReading.length - 1]).toEqual({
-      variant: "reading",
-      amount: 0,
-    });
-    expect(isNonIncreasing(backwardReading.map((mesh) => mesh.amount))).toBe(true);
+    // The crossing really does happen inside this window, rather than the assertion above
+    // passing vacuously on one side of it.
+    expect(new Set(forward.map((s) => s.backgroundMode)).size).toBe(2);
   });
 
-  it("carries one uncut field from the start of tracks into the footer fade", () => {
+  it("carries one uncut field from the loader into the menu deck", () => {
     const states = trace(
       counts,
       [
-        ...ladder(40).map((progress) => scroll("tracks", progress)),
-        ...ladder(40).map((progress) => scroll("artPieces", progress)),
-        scroll("footer", 0),
+        ...ladder(40).map((progress) => scroll("loader", progress)),
+        ...ladder(40).map((progress) => scroll("thesis", progress)),
+        ...ladder(40).map((progress) => scroll("menu", progress)),
       ],
-      enter(counts, "tracks"),
+      enter(counts, "loader"),
     );
 
     expect(states.every((s) => s.transitionState.mesh !== null)).toBe(true);
-    expect(runsOf(meshTrail(states).map((mesh) => mesh.variant))).toEqual([
-      "normal",
-      "reading",
-      "fadeToBlack",
-    ]);
+    expect(runsOf(meshTrail(states).map((mesh) => mesh.variant))).toEqual(["opening"]);
   });
 
-  /* --------------------------------- brief §7.10: art pieces -> footer, fade to black */
+  /* --------------------------------- art pieces -> footer, black into the light horizon */
 
-  it("engages the footer fade progressively, starting from the pre-fade state", () => {
-    const forward = crossForward(counts, "artPieces", "footer");
-    const fading = meshTrail(forward).filter((mesh) => mesh.variant === "fadeToBlack");
+  it("holds the black ground into the footer before the light horizon takes over", () => {
+    const footer = sweepScene(counts, "footer");
 
-    // Amount 0 is the state art pieces settled into, so entering the footer changes nothing yet:
-    // no discontinuity at the boundary itself (the look side of that is mesh-variants.test.ts).
-    expect(fading[0]).toEqual({ variant: "fadeToBlack", amount: 0 });
-    expect(isNonDecreasing(fading.map((mesh) => mesh.amount))).toBe(true);
-    expect(
-      intermediateStages(fading.map((mesh) => mesh.amount)).length,
-    ).toBeGreaterThanOrEqual(MIN_INTERMEDIATE_STAGES);
+    // Nothing to fade here any more — the ground arrived black and the mesh is long gone.
+    expect(footer.every((s) => s.transitionState.mesh === null)).toBe(true);
 
-    // "…and fades to pure black": the field is finally released, once and for good.
-    const boundary = forward.findIndex((s) => s.sceneId === "footer");
-    const released = forward.findIndex(
-      (s, i) => i >= boundary && s.transitionState.mesh === null,
-    );
-    expect(released).toBeGreaterThan(boundary);
-    expect(forward.slice(boundary, released).every((s) => s.transitionState.mesh !== null)).toBe(
-      true,
-    );
-    expect(forward.slice(released).every((s) => s.transitionState.mesh === null)).toBe(true);
+    // Black first, then the light horizon: one change, in that order, and never back. Delaying
+    // the mode change is what keeps scroll (not a wall clock) in charge of the reveal.
+    expect(runsOf(footer.map((s) => s.backgroundMode))).toEqual(["black", "footerLight"]);
   });
 
-  it("brings the mesh back out of the footer black on reverse scroll", () => {
-    const backward = crossBackward(counts, "artPieces", "footer");
-    const trail = meshTrail(backward);
+  it("mirrors the opening mesh descriptor for descriptor on reverse scroll", () => {
+    const forward = crossForward(counts, "thesis", "menu");
+    const backward = crossBackward(counts, "thesis", "menu");
 
-    // The fade unwinds to its pre-fade state before art pieces takes the field back.
-    expect(runsOf(trail.map((mesh) => mesh.variant))).toEqual(["fadeToBlack", "reading"]);
-    const fading = trail.filter((mesh) => mesh.variant === "fadeToBlack");
-    expect(fading[fading.length - 1]).toEqual({ variant: "fadeToBlack", amount: 0 });
-    expect(isNonIncreasing(fading.map((mesh) => mesh.amount))).toBe(true);
-
-    // And the whole crossing mirrors the forward one, descriptor for descriptor.
-    const forward = crossForward(counts, "artPieces", "footer");
     const shape = (state: SceneState) => ({
       mesh: state.transitionState.mesh,
-      footerReveal: state.transitionState.footerReveal,
+      backgroundMode: state.backgroundMode,
     });
     expect(backward.map(shape)).toEqual([...forward].reverse().map(shape));
   });

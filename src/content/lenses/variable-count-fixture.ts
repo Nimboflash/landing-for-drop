@@ -177,8 +177,28 @@ export const minimumCountsFixtureLens: WeeklyLens = buildFixtureLens({
   counts: { heroMessages: 1, menuItems: 2, tracks: 3, artPieces: 1 },
 });
 
-/** Both fixtures, for tests that assert the same property across every count shape. */
+/**
+ * A four-card menu deck, for looking at the deck's conveyor with more than W04's two items.
+ *
+ * W04 ships two menu items and the mock pack ships exactly two menu images, so a four-card deck
+ * cannot be seen on the real page without inventing DROP menu content — which the content rules
+ * forbid. This fixture recycles the two real images across four items instead, so the deck's
+ * pacing and hand-off can be judged at a realistic count while `publishedLenses` stays honest.
+ *
+ * Every other count is at or near its minimum: the deck is the only thing this fixture is for,
+ * and a short page is a quicker scroll to it.
+ */
+export const menuDeckFixtureLens: WeeklyLens = buildFixtureLens({
+  slug: "four-card-menu-fixture",
+  week: "W97",
+  titleFa: "لنز آزمایشی چهار کارت",
+  titleEn: "FOUR CARD MENU FIXTURE",
+  counts: { heroMessages: 1, menuItems: 4, tracks: 3, artPieces: 1 },
+});
+
+/** Every fixture, for tests that assert the same property across every count shape. */
 export const countFixtureLenses: readonly WeeklyLens[] = [
   variableCountFixtureLens,
   minimumCountsFixtureLens,
+  menuDeckFixtureLens,
 ];

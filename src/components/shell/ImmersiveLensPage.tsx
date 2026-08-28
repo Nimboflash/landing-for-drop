@@ -51,7 +51,7 @@ import { GridStatementScene } from "@/components/scenes/GridStatementScene";
 import { MenuDeckScene } from "@/components/scenes/MenuDeckScene";
 import { ThesisScene } from "@/components/scenes/ThesisScene";
 import { TracksScene } from "@/components/scenes/TracksScene";
-import { SCENE_ORDER, lensCounts, type SceneId } from "@/lib/scene";
+import { SCENE_ORDER, isLightGround, lensCounts, type SceneId } from "@/lib/scene";
 
 import { SceneSection } from "./SceneSection";
 import { SiteHeader } from "./SiteHeader";
@@ -117,12 +117,17 @@ export function ImmersiveLensPage({ lens }: ImmersiveLensPageProps) {
   const { transitionState } = state;
 
   /**
-   * Scene contrast, straight from reducer output: `headerVariant` is the reducer's verdict on how
-   * light or dark the active scene's ground is (brief §8 states it for the logo; the copy on top
-   * of that ground has to follow the same verdict or it stops being readable). The loader's
-   * `"hidden"` sits on the off-white loader ground, so it reads as a light ground too.
+   * Scene contrast, taken from the GROUND rather than from the header.
+   *
+   * Brief §8 states the rule for the logo, and the copy on top of that ground has to follow the
+   * same verdict or it stops being readable. It used to be read off `headerVariant`, which was
+   * wrong in one case and became visible the moment the backgrounds were re-paired: the loader's
+   * variant is `"hidden"` — a statement about the mark, not the ground — and that fell through to
+   * `"dark"`, so the opening lines of the lens painted in `--drop-ink` over the mesh and only
+   * turned off-white once the thesis went active. Asking the mode directly cannot disagree with
+   * itself like that, and it stays correct if a scene is ever re-pointed at a bright ground.
    */
-  const contrast = transitionState.headerVariant === "light" ? "light" : "dark";
+  const contrast = isLightGround(state.backgroundMode) ? "dark" : "light";
 
   const goToPreviousTrack = useCallback(() => dispatch({ type: "carouselPrev" }), [dispatch]);
   const goToNextTrack = useCallback(() => dispatch({ type: "carouselNext" }), [dispatch]);
@@ -172,6 +177,23 @@ export function ImmersiveLensPage({ lens }: ImmersiveLensPageProps) {
     }
   };
 
+  /**
+   * The scene the page carries itself to once the loader releases: the first one after it that
+   * has something to read. Taken from `SCENE_ORDER`, so it follows the sequence rather than
+   * naming a scene — reorder the journey and this follows it.
+   *
+   * Declared below `sceneLabel` on purpose: it calls it during render, and a `const` read before
+   * its own declaration is a ReferenceError, not a hoisted undefined.
+   */
+  const firstReadableSceneSelector = useMemo(() => {
+    const next = SCENE_ORDER.find(
+      (sceneId) => sceneId !== "loader" && sceneLabel(sceneId) !== undefined,
+    );
+    return next ? `#scene-${next}` : null;
+    // `sceneLabel` closes over `lens`, which is the only thing that can change the answer.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lens]);
+
   const sceneContent = (sceneId: SceneId): ReactNode => {
     switch (sceneId) {
       case "loader":
@@ -183,6 +205,9 @@ export function ImmersiveLensPage({ lens }: ImmersiveLensPageProps) {
             messageIndex={transitionState.messageIndex}
             progress={scopedProgress("thesis")}
             reducedMotion={state.reducedMotion}
+            // The opening line enters when the page has actually reached the scene, not when the
+            // scene mounts — which is while it is still below the fold behind the loader.
+            revealed={activeOrdinal >= SCENE_ORDER.indexOf("thesis")}
           />
         );
       case "menu":
@@ -262,7 +287,10 @@ export function ImmersiveLensPage({ lens }: ImmersiveLensPageProps) {
   return (
     // The document stays still until the O portal completes, so the portal always opens on the
     // top of the page rather than on wherever a wheel flick during the loader landed.
-    <SmoothScrollProvider locked={!state.transitionState.loaderComplete}>
+    <SmoothScrollProvider
+      locked={!state.transitionState.loaderComplete}
+      revealTarget={firstReadableSceneSelector}
+    >
       <div
         className={styles.page}
         data-lens={lens.slug}

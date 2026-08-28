@@ -107,6 +107,17 @@ export const ARGUMENT_BAND_WINDOW: Readonly<{ from: number; to: number }> = Obje
   to: 0.8,
 });
 
+/**
+ * The opening line's entrance, played once when the page lands on this scene after the loader.
+ *
+ * Slower than a message swap on purpose: a swap is one line replacing another and wants to be
+ * brisk, whereas this is the first thing the reader is shown after the portal and should settle
+ * rather than snap. Opacity only — the words do not lift, so nothing competes with the page
+ * arriving underneath it.
+ */
+const OPENING_ENTRY_SECONDS = 0.9;
+const OPENING_ENTRY_EASE = "power2.out";
+
 /** The closing beat's progress window for a lens holding `messageCount` hero messages. */
 export function thesisArgumentWindow(messageCount: number): { start: number; end: number } {
   const count = Number.isFinite(messageCount) && messageCount >= 1 ? Math.floor(messageCount) : 1;
@@ -248,9 +259,26 @@ export interface ThesisSceneProps {
   progress: number;
   /** The reducer's reduced-motion flag: messages swap by a plain crossfade, all readable. */
   reducedMotion: boolean;
+  /**
+   * Has the page actually reached this scene?
+   *
+   * The first message used to be ASSERTED visible the moment the scene mounted — which happens
+   * while the thesis is still below the fold, behind the loader. It was therefore already on
+   * screen, fully opaque, before the reader ever arrived, so the opening line did not enter: it
+   * was simply found. Held at zero until this turns true, it fades in as the page lands on it.
+   *
+   * Defaults to `true` so a caller that does not care keeps the old behaviour.
+   */
+  revealed?: boolean;
 }
 
-export function ThesisScene({ lens, messageIndex, progress, reducedMotion }: ThesisSceneProps) {
+export function ThesisScene({
+  lens,
+  messageIndex,
+  progress,
+  reducedMotion,
+  revealed = true,
+}: ThesisSceneProps) {
   const messages = lens.heroMessages;
   const activeIndex = clampIndex(messageIndex, messages.length);
 
@@ -261,6 +289,8 @@ export function ThesisScene({ lens, messageIndex, progress, reducedMotion }: The
   const previousIndexRef = useRef(activeIndex);
   /** Has a message state been written yet? The first write is instant; later ones animate. */
   const appliedRef = useRef(false);
+  /** The opening line enters once. After that a message change is an ordinary crossfade. */
+  const openingEntryPendingRef = useRef(true);
   /**
    * The message the live timeline is retiring. Reverse scroll mid-transition hands the stage
    * straight back to it, and knowing that is what lets the new timeline pick it up where the
@@ -350,9 +380,34 @@ export function ThesisScene({ lens, messageIndex, progress, reducedMotion }: The
       }
 
       if (!outgoing) {
-        // First application, or a re-render that did not move the index: assert the rest state.
-        gsap.set(incoming, { opacity: 1, clearProps: "filter" });
         gsap.set(wordsOf(incoming), { yPercent: 0 });
+
+        // Not arrived yet: hold the opening line at zero rather than leaving it waiting on screen.
+        if (!revealed) {
+          gsap.set(incoming, { opacity: 0, clearProps: "filter" });
+          return;
+        }
+
+        // The page has just landed on the scene: the opening line ENTERS, once.
+        if (openingEntryPendingRef.current) {
+          openingEntryPendingRef.current = false;
+          gsap.set(incoming, { clearProps: "filter" });
+          if (reducedMotion) {
+            gsap.set(incoming, { opacity: 1 });
+            return;
+          }
+          const entry = gsap.timeline();
+          timelineRef.current = entry;
+          entry.fromTo(
+            incoming,
+            { opacity: 0 },
+            { opacity: 1, duration: OPENING_ENTRY_SECONDS, ease: OPENING_ENTRY_EASE },
+          );
+          return;
+        }
+
+        // Any later re-render that did not move the index: assert the rest state.
+        gsap.set(incoming, { opacity: 1, clearProps: "filter" });
         return;
       }
 
@@ -451,7 +506,7 @@ export function ThesisScene({ lens, messageIndex, progress, reducedMotion }: The
         }
       }
     });
-  }, [activeIndex, reducedMotion, staged, messages.length]);
+  }, [activeIndex, reducedMotion, revealed, staged, messages.length]);
 
   /* ------------------------------------------------------------- rendering */
 

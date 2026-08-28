@@ -76,6 +76,20 @@ const MESH_FADE_TO_BLACK_COMPLETE_AT = 0.45;
 /** Background modes bright enough to need a dark logo; everything else gets a light one. */
 const LIGHT_BACKGROUND_MODES: readonly BackgroundMode[] = ["offWhiteGlow"];
 
+/**
+ * Is this ground bright enough that copy and the mark must be drawn dark?
+ *
+ * Exported because the SHELL needs the same verdict for the page's text colour, and deriving that
+ * from the header variant instead was a real defect: the loader's variant is `"hidden"`, which is
+ * a statement about the mark, not about the ground. While the loader sat on off-white paper the
+ * two happened to agree; once the mesh moved under it they did not, and the opening lines of the
+ * lens painted in `--drop-ink` on a dark field until the thesis became active and snapped them to
+ * off-white. One authority — the mode — cannot disagree with itself that way.
+ */
+export function isLightGround(mode: BackgroundMode): boolean {
+  return LIGHT_BACKGROUND_MODES.includes(mode);
+}
+
 /* ------------------------------------------------------------------- utils */
 
 const SCENE_ORDINAL: Readonly<Record<SceneId, number>> = SCENE_ORDER.reduce(
@@ -193,17 +207,27 @@ function nextFilmFade(activeOrdinal: number, progress: number): number {
 }
 
 /**
- * Monochrome Mesh descriptor. Alive through tracks (`normal`) and art pieces (`reading`,
- * slower and darker for reading comfort), then fading as the footer is entered
- * (`fadeToBlack`). Null once the mesh is no longer the active background — including after
- * the footer fade has completed and the page is pure black.
+ * Monochrome Mesh descriptor — alive across the three scenes that open the page.
+ *
+ * The mesh now backs the loader, the thesis and the menu deck, and it runs at `opening` through
+ * all three: one uncut field from the portal to the last card, exactly the property the mesh
+ * module is built around (its clock is integrated once and never reseeded, so holding one
+ * variant across the run is the cheapest way to keep the field continuous).
+ *
+ * `opening` runs faster than the preset and under a contrast ceiling, because these three scenes
+ * carry the page's largest type — see `MESH_OPENING_PEAK_CEILING`.
+ *
+ * Null everywhere else, because the mesh is no longer the active background there: Tracks and
+ * Art Pieces sit on `black`, and the footer's light horizon rises out of that same black.
+ *
+ * `reading` and `fadeToBlack` are consequently unused by the reducer today. They stay in the
+ * module — pure, unit-tested variant helpers — because they describe how the mesh behaves under
+ * a reading surface and how it loses contrast into black, and both are wanted again the moment
+ * the mesh backs a reading scene or has to hand over to a lit one.
  */
 function nextMesh(sceneId: SceneId, progress: number): MeshDescriptor | null {
-  if (sceneId === "tracks") return { variant: "normal", amount: progress };
-  if (sceneId === "artPieces") return { variant: "reading", amount: progress };
-  if (sceneId === "footer") {
-    const amount = ramp(progress, MESH_FADE_TO_BLACK_COMPLETE_AT);
-    return amount >= 1 ? null : { variant: "fadeToBlack", amount };
+  if (sceneId === "loader" || sceneId === "thesis" || sceneId === "menu") {
+    return { variant: "opening", amount: progress };
   }
   return null;
 }
@@ -212,18 +236,18 @@ function nextMesh(sceneId: SceneId, progress: number): MeshDescriptor | null {
  * The active background mode.
  *
  * Every scene but the footer takes its fixed mode straight from `SCENE_BACKGROUND_MODE`. The
- * footer is the exception, and deliberately so: brief §7.10 asks the mesh to "gradually lose
- * contrast and fade to pure black AFTER the last Art Piece", with scroll controlling the reveal.
+ * footer keeps a deliberate exception: it holds the PRECEDING scene's ground for the first
+ * stretch of its budget, and only then lets `footerLight` take over.
  *
- * Handing the canvas `footerLight` the instant the footer becomes active makes that impossible.
- * The canvas would start its own wall-clock mode crossfade and unmount the outgoing mesh once the
- * fade completed, so the contrast loss would play out over ~0.42s of real time no matter what the
- * scroll did — finishing even while the user held still, and re-dissolving on a timer when they
- * scrubbed back. Two authorities were driving one fade.
+ * The reason is unchanged from when the mesh was still fading here — the canvas runs its own
+ * wall-clock crossfade on a mode change, so handing it `footerLight` the instant the footer
+ * becomes active would start a reveal that plays out on a timer rather than on scroll, finishing
+ * while the user holds still and re-dissolving when they scrub back. Two authorities driving one
+ * fade. Delaying the mode change keeps scroll the only authority.
  *
- * So the mesh REMAINS the active mode until its own scroll-linked `fadeToBlack` ramp reaches 1,
- * and only then does `footerLight` take over. By that point the mesh is already black, so the
- * handover the canvas performs is black-to-black and invisible. One authority: scroll.
+ * What changed is that the held ground is now `black` rather than a mesh mid-fade, so the delay
+ * is doing less visible work than it used to: the light horizon simply rises out of black a
+ * little later. The handover stays black-to-black and invisible either way.
  */
 function nextBackgroundMode(sceneId: SceneId, progress: number): BackgroundMode {
   if (sceneId === "footer" && ramp(progress, MESH_FADE_TO_BLACK_COMPLETE_AT) < 1) {
@@ -234,7 +258,7 @@ function nextBackgroundMode(sceneId: SceneId, progress: number): BackgroundMode 
 
 function nextHeaderVariant(sceneId: SceneId, mode: BackgroundMode): TransitionState["headerVariant"] {
   if (sceneId === "loader") return "hidden";
-  return LIGHT_BACKGROUND_MODES.includes(mode) ? "dark" : "light";
+  return isLightGround(mode) ? "dark" : "light";
 }
 
 function pixelDescriptor(active: boolean, progress: number): PixelDescriptor | null {

@@ -43,9 +43,12 @@ import {
 } from "@/components/webgl/shader-registry";
 
 /**
- * The seven modes of brief Section 14 ("Shared canvas state"), transcribed. This list is the spec —
- * it is deliberately NOT derived from the registry, so a mode that quietly disappears from the
- * implementation fails a test instead of passing one.
+ * Every mode the shared canvas can be in. This list is the spec — it is deliberately NOT derived
+ * from the registry, so a mode that quietly disappears from the implementation fails a test
+ * instead of passing one.
+ *
+ * Brief Section 14 ("Shared canvas state") names the first seven. `black` was added when Tracks
+ * and Art Pieces were moved off the Monochrome Mesh onto a flat ground.
  */
 const BRIEF_BACKGROUND_MODES = [
   "offWhiteGlow",
@@ -54,27 +57,38 @@ const BRIEF_BACKGROUND_MODES = [
   "wavyDots",
   "pixelB",
   "monoMesh",
+  "black",
   "footerLight",
 ] as const satisfies readonly BackgroundMode[];
 
 const COUNTS = lensCounts(beautifulImperfectionLens);
 
-/** The first scene the brief maps to a given mode — the state the canvas will actually see. */
-function sceneForMode(mode: BackgroundMode): SceneId {
-  const scene = SCENE_ORDER.find(
-    (candidate) => SCENE_BACKGROUND_MODE[candidate] === mode && candidate !== "loader",
+/**
+ * The first scene mapped to a given mode, or null when no scene reaches it.
+ *
+ * Registration and reachability are separate properties. A module must always be complete —
+ * shader, uniforms, fallback — but it need not currently sit behind a scene: `offWhiteGlow` is
+ * registered and unreachable while the mesh opens the page, and would come straight back if that
+ * pairing were flipped again. `unreachableModes` below pins that down as a recorded fact.
+ */
+function sceneForMode(mode: BackgroundMode): SceneId | null {
+  return (
+    SCENE_ORDER.find(
+      (candidate) => SCENE_BACKGROUND_MODE[candidate] === mode && candidate !== "loader",
+    ) ?? null
   );
-  if (scene === undefined) throw new Error(`no scene maps to background mode "${mode}"`);
-  return scene;
 }
 
-/** Real reducer output for a mode at a given scroll position — no hand-written descriptors. */
+/**
+ * Real reducer output for a mode at a given scroll position — no hand-written descriptors.
+ * For a mode no scene reaches, the page's resting state stands in: still genuine reducer output,
+ * just not one where this module happens to be the active mode.
+ */
 function stateForMode(mode: BackgroundMode, progress: number): SceneState {
-  return sceneStateReducer(
-    createInitialSceneState(COUNTS),
-    { type: "scrollProgress", sceneId: sceneForMode(mode), progress },
-    COUNTS,
-  );
+  const sceneId = sceneForMode(mode);
+  const initial = createInitialSceneState(COUNTS);
+  if (sceneId === null) return initial;
+  return sceneStateReducer(initial, { type: "scrollProgress", sceneId, progress }, COUNTS);
 }
 
 type FrameOptions = {
@@ -232,17 +246,23 @@ describe("offWhiteGlow", () => {
     expect(css).toContain("#f2f2f2");
   });
 
-  it("responds to thesis progress in the fallback as well as the shader", () => {
-    // Brief Section 7.2: "The bottom glow slowly expands and contracts with progress."
+  it("responds to scene progress in the fallback as well as the shader", () => {
+    // Brief Section 7.2: "The bottom glow slowly expands and contracts with progress." The mode
+    // no longer sits behind the thesis, but the glow must still be driven by progress rather
+    // than baked, or restoring it to a scene would restore a static image.
     const shaderModule = backgroundShaderFor("offWhiteGlow");
-    const atRest = shaderModule.fallbackCss({
-      transitionState: stateForMode("offWhiteGlow", 0).transitionState,
-      sceneProgress: 0,
-    });
-    const bloomed = shaderModule.fallbackCss({
-      transitionState: stateForMode("offWhiteGlow", 0.5).transitionState,
-      sceneProgress: 0.5,
-    });
+    const transitionState = stateForMode("offWhiteGlow", 0).transitionState;
+
+    const atRest = shaderModule.fallbackCss({ transitionState, sceneProgress: 0 });
+    const bloomed = shaderModule.fallbackCss({ transitionState, sceneProgress: 0.5 });
     expect(bloomed).not.toBe(atRest);
+  });
+
+  it("is registered but currently unreachable from the scene map", () => {
+    // Recorded on purpose: the module is kept complete so the off-white opening can be restored
+    // by editing SCENE_BACKGROUND_MODE alone. If a scene is pointed back at it, this test should
+    // be deleted rather than adjusted.
+    expect(sceneForMode("offWhiteGlow")).toBeNull();
+    expect(Object.values(SCENE_BACKGROUND_MODE)).not.toContain("offWhiteGlow");
   });
 });

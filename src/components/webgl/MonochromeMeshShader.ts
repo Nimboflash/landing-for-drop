@@ -178,15 +178,36 @@ export type MeshVariantSettings = {
 };
 
 /**
+ * Ceiling on the brightest channel the `opening` field may reach, so off-white copy stays legible
+ * over it. The mesh's counterpart to `OFF_WHITE_GLOW_CEILING`.
+ *
+ * Derived, not eyeballed. Brief §16 wants AA body text, and brief §14 forbids "shader motion that
+ * lowers text contrast" — which for a field that MOVES means the worst frame has to clear the bar,
+ * not the average one. Page copy is `--drop-off-white` (#f2f2f2, relative luminance 0.888), so a
+ * 4.5:1 ratio allows a background luminance of at most 0.158 — a neutral sRGB channel of 0.4346
+ * (111/255). Every value below is solved against that, using the mesh's own brightest control
+ * colour (#E4E4E6) rather than an assumed white.
+ */
+export const MESH_OPENING_PEAK_CEILING = 0.4346;
+
+/**
  * The settled look of each variant — where it arrives at `amount === 1`.
  *
  * Ordering is the part the brief fixes: Art Pieces is slower and darker than Tracks ("Mesh
  * movement may slow and darken slightly for reading comfort"), and the footer entry ends at pure
  * black with no contrast left ("The Mesh gradually loses contrast and fades to pure black").
  * The exact scalars are tuned by feel.
+ *
+ * `opening` is the exception whose scalars are NOT free: with `contrast` at 0.85 the brightest
+ * cell composites to `pivot + (0.902 - pivot) * 0.85 = 0.845` before brightness, so brightness
+ * must stay at or below 0.514 to respect {@link MESH_OPENING_PEAK_CEILING}. It is set to 0.48,
+ * which lands the worst cell at ~0.406 (103/255) and measures ~5.0:1 — the slack is deliberate
+ * headroom for the grain term, which is added AFTER the brightness multiply. Raising brightness
+ * or contrast here is a contrast regression, not a style choice; `speedScale` is the free knob.
  */
 export const MESH_VARIANT_TARGETS: Readonly<Record<MeshVariant, MeshVariantSettings>> =
   Object.freeze({
+    opening: Object.freeze({ speedScale: 2.4, brightness: 0.48, contrast: 0.85 }),
     normal: Object.freeze({ speedScale: 1, brightness: 1, contrast: 1 }),
     reading: Object.freeze({ speedScale: 0.55, brightness: 0.78, contrast: 0.92 }),
     fadeToBlack: Object.freeze({ speedScale: 0, brightness: 0, contrast: 0 }),
@@ -225,6 +246,13 @@ export function meshVariantUniforms(
 ): MeshVariantSettings {
   if (!descriptor) return { ...MESH_VARIANT_TARGETS.normal };
   const t = ease(descriptor.amount);
+  // `opening` is the one variant that does NOT ramp from a predecessor. It is the page's first
+  // ground, so there is no earlier settled state to be continuous with — and blending in from
+  // `normal` would start every opening scene at full brightness, which is precisely where the
+  // display type is least readable. Constant in `amount`, and legible on its very first frame.
+  if (descriptor.variant === "opening") {
+    return { ...MESH_VARIANT_TARGETS.opening };
+  }
   if (descriptor.variant === "reading") {
     return blend(MESH_VARIANT_TARGETS.normal, MESH_VARIANT_TARGETS.reading, t);
   }

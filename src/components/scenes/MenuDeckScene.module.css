@@ -5,16 +5,17 @@
  * surface needs a fraction of one. The numbers that remain are geometry, and they are split
  * deliberately:
  *
- *   - the component sets the per-card fan POSITION (`--card-step`, `--card-angle`, `--card-arc`,
- *     `--card-index`), because that adapts to the item count and must match on server and client;
- *   - this file sets how far one step TRAVELS at this viewport, so brief §15's "narrower fan
- *     angles and vertical offsets" on mobile is one media query rather than a resize listener;
- *   - `--deck-arrival` / `--deck-fan` / `--deck-open` are the scrub, written to the deck by the
- *     component, and every reference to them carries the FINISHED value as its fallback.
+ *   - the component sets each card's `--card-index` and nothing else, because that never changes
+ *     and so belongs in the markup both the server and the browser render;
+ *   - this file sets how far one CONVEYOR STEP travels at this viewport, so a phone is one media
+ *     query rather than a resize listener;
+ *   - `--deck-arrival` / `--deck-fan` / `--deck-position` are the scrub, written to the deck by
+ *     the component, and every reference to them carries a readable value as its fallback.
  *
- * That last point is the no-JavaScript contract: with scripting off nothing sets those
- * properties, the fallbacks apply, and the deck renders arrived, open and face-up — the taste
- * edit as it finally reads, not a wall of card backs.
+ * That last point is the no-JavaScript contract: the conveyor is gated on `[data-deck-conveyor]`,
+ * which an effect writes, so with scripting off the deck never moves at all and falls back to a
+ * plain centred grid — the whole taste edit on screen, face-up, in order, rather than a wall of
+ * card backs. See the last rule in this file.
  *
  * Sharp corners are a hard rule: nothing in this file sets a border-radius, and the only round
  * shape on a card is the O inside the DROP mark, where the brand's own geometry requires one.
@@ -28,6 +29,22 @@
 .heading {
   font-size: var(--title-md);
   font-weight: 800;
+
+  /*
+   * The heading introduces the section, then yields the frame to the deck.
+   *
+   * A card on the conveyor travels a full step — 573px at 1200x773 — so it sweeps the entire
+   * height of the scene, heading band included. Measured mid-travel: the outgoing card spanned
+   * -316 to 131 while the heading sat at 109-139, so the card passed straight over it at 75%
+   * opacity and left the heading stranded in the strip beside the card, which is not a
+   * composition anyone chose. The reference has no such collision because its heading has
+   * scrolled away by the time the cards run; pinned, ours cannot scroll away, so it fades.
+   *
+   * Driven by `--deck-position`: fully lit while the deck is still rising (-1), gone by the time
+   * the first card lands on the stage (0). Pure function of scroll, so it comes back on the way
+   * up. The fallback keeps it visible with no scripting, where nothing travels over it anyway.
+   */
+  opacity: clamp(0, calc(0 - var(--deck-position, -1)), 1);
 }
 
 .stage {
@@ -45,30 +62,53 @@
    * from the component as plain numbers, so the open spread below can be divided by the number
    * of gaps without this file ever knowing how many items a lens has.
    */
-  --card-width: clamp(9rem, 19vw, 14rem);
-  --card-height: calc(var(--card-width) * 4 / 3);
-  --card-depth: 9px;
+  /*
+   * Card size. The deck is the scene's subject, so the card is sized to be READ across the room
+   * rather than to tuck into a corner — a 14rem ceiling left a 2-item deck occupying barely a
+   * quarter of a wide viewport, which reads as a thumbnail row, not as a deck.
+   *
+   * Two ceilings, whichever binds first:
+   *   - `46vw` capped at `34rem`, so the card grows with the page but stops before it becomes a
+   *     poster on an ultra-wide display;
+   *   - `58svh * 5/7`, the same limit expressed as HEIGHT, which is what actually binds on a
+   *     laptop and needs no resize listener.
+   *
+   * The height cap was 70svh and that was too much: measured at 1200x773 the stage ran 163 -> 704
+   * with 69px under it, the heading and its gap taking the rest, so the card filled the scene's
+   * padded band almost exactly and nothing had room to breathe. 58svh gives it air on every side
+   * without making the card stop being the subject.
+   */
+  --card-width: min(clamp(14rem, 46vw, 34rem), calc(58svh * 5 / 7));
+  /*
+   * 5:7 — real playing-card proportion, and the shape the brief's "physical deck of cards" is
+   * describing. The old 3:4 read as a photo tile; this reads as something you could hold.
+   */
+  --card-height: calc(var(--card-width) * 7 / 5);
+  /* Thickness scales with the card, or a card twice the size reads half as solid. */
+  --card-depth: 12px;
   /* Half the card's thickness. Invisible as a scale at this perspective; decisive as a sort. */
   --face-lift: 1.5px;
 
-  /* Width the fan may open into: the page's content column, less a scrollbar's worth. */
-  --deck-usable: calc(100vw - 2 * var(--page-gutter) - 1rem);
-
-  /* The arrival fan: a deck, still overlapping heavily. */
-  --fan-step-base: calc(var(--card-width) * 0.17);
   /*
-   * The reading spread the deck opens into as it reveals: a little under one card apart, so the
-   * cards still overlap and still read as a deck, but never wider than the content column can
-   * hold — a six-card lens stays a deck instead of a row that runs off the page.
+   * One conveyor step — how far a card travels between being the next one up and being the one
+   * on the stage. The deck runs SIDEWAYS: the cards sit in a line and slide across it.
+   *
+   * It ran vertically first, and that was the wrong axis. Measured on the reference at 1440x900,
+   * its four cards are absolutely positioned in a single 302x422 slot and the section holding
+   * them is 422 tall — exactly one card. A section one card tall has no vertical travel room at
+   * all, so nothing there can be moving up and down; the motion has to cross the frame, and the
+   * frame is far wider than it is tall. Vertically the card had a couple of hundred pixels either
+   * side and kept meeting the viewport edge mid-hand-over; horizontally it has most of a 1200px
+   * page, which is why this axis costs nothing and the other one fought the frame.
+   *
+   * Wider than the card, so consecutive cards read as a line with air between them rather than a
+   * pile: the one on the stage is centred and its neighbours sit clear of it on either side.
    */
-  --fan-step-open: min(
-    calc(var(--card-width) * 0.88),
-    calc((var(--deck-usable) - var(--card-width)) / var(--deck-gaps))
-  );
-  /* Outer cards settle a little lower, the way a held fan sags at its edges. */
-  --fan-lift: calc(var(--card-height) * 0.045);
-  --fan-step-y: 0px;
-  --fan-angle-scale: 1;
+  --conveyor-step: calc(var(--card-width) * 1.22);
+  /* How far a card that is not on the stage sits behind it. Negative = away from the reader. */
+  --conveyor-depth: calc(var(--card-width) * -0.3);
+  /* How much a card off the stage shrinks. Small: it is depth, not a size change. */
+  --conveyor-shrink: 0.1;
 
   /* Far enough that the reconstructed stack is genuinely below the viewport, at any height. */
   --deck-rise: calc(60svh + var(--card-height));
@@ -76,19 +116,32 @@
   position: relative;
   inline-size: 100%;
   /*
-   * The cards are absolutely positioned and centred in this box, so the box has to reserve the
-   * whole VERTICAL extent of the fan or the cascade would ride up over the section heading. On
-   * desktop `--fan-step-y` is `0px` and this is exactly one card tall; on mobile, where the fan
-   * becomes a downward cascade, it grows by one step per gap.
+   * Exactly one card tall. The cards are absolutely positioned and centred in it, so this box is
+   * THE STAGE — the single place a card is "on" — and whichever card the conveyor has brought to
+   * offset 0 is centred in the viewport without the box resizing as the count changes.
+   *
+   * Cards off the stage overflow it deliberately: the next one has to be visible below the frame
+   * for the sequence to read as a deck being worked through rather than as cards teleporting in.
    */
-  block-size: calc(var(--card-height) + var(--fan-step-y) * (var(--deck-count) - 1));
+  block-size: var(--card-height);
   margin: 0;
   padding: 0;
   list-style: none;
 
-  /* Brief §7.3: perspective on the deck. Deep enough to read as depth, not as a fisheye. */
-  perspective: 1600px;
-  perspective-origin: 50% 45%;
+  /*
+   * NO perspective on the deck — it belongs on each card, and putting it here was a real bug.
+   *
+   * A container's `perspective` projects every descendant from ONE origin, so an element far from
+   * that origin is keystoned: with the conveyor a card travels a full step (~670px at desktop)
+   * away from the deck's centre, and it arrived on stage visibly skewed, one edge taller than the
+   * other. Measured at 1440x900 before this was moved.
+   *
+   * The reference does not hit this because each of its cards sits in its own parent, so its
+   * perspective is per-card by construction. `--card-perspective` below reproduces that: the
+   * projection is centred on the card itself, so travel cannot skew it and only the card's own
+   * flip is ever projected.
+   */
+  --card-perspective: calc(var(--card-width) * 3.3);
 
   transform: translate3d(0, calc((1 - var(--deck-arrival, 1)) * var(--deck-rise)), 0)
     scale(calc(0.92 + 0.08 * var(--deck-arrival, 1)));
@@ -102,29 +155,26 @@
    * declaration, so no two of them can ever fight over an inline `transform` string: the
    * component drives them through custom properties instead.
    */
-  --fan-x: calc(
-    var(--card-step) *
-      (
-        var(--fan-step-base) * var(--deck-fan, 1) +
-          (var(--fan-step-open) - var(--fan-step-base)) * var(--deck-open, 1)
-      )
-  );
-  --fan-y: calc(
-    (var(--card-arc) * var(--fan-lift) + var(--card-step) * var(--fan-step-y)) *
-      var(--deck-fan, 1)
-  );
   /*
-   * The FIRST card is the nearest and the topmost — the top of a stack, which is also the card
-   * that turns first. Two consequences the composition depends on: the cards fan from index 0
-   * outward with each one tucked behind the last, and the overlap eats the far edge of the card
-   * behind rather than the near edge where the Persian name begins.
+   * This card's place along the line. 0 is on the stage, negative has already crossed off one
+   * side, positive is still queued on the other. The component writes ONE number for the whole
+   * deck (`--deck-position`) and every card derives its own offset from its index here, so no
+   * per-card value has to be rewritten each frame — which is also what keeps the server's markup
+   * and the hydrated markup identical.
+   *
+   * Nothing here is the no-JavaScript state. The conveyor only engages behind
+   * `[data-deck-conveyor="on"]`, which is written from an effect, so with scripting off the deck
+   * never translates at all and falls back to the plain grid at the end of this file.
    */
-  --fan-z: calc((var(--deck-count) - 1 - var(--card-index)) * var(--card-depth));
-  /* The fan opens, then flattens as it reveals, so a face-up card sits nearly upright. */
-  --fan-rotate: calc(
-    var(--card-angle) * 1deg * var(--fan-angle-scale) * var(--deck-fan, 1) *
-      (1 - 0.62 * var(--deck-open, 1))
-  );
+  --offset: calc(var(--card-index) - var(--deck-position, 0));
+  /* max() as abs(): the real abs() is too new to rely on, and the two cases are symmetric. */
+  --distance: max(var(--offset), calc(-1 * var(--offset)));
+  /* Capped at one step, so a six-card deck's far cards are treated the same as its near ones. */
+  --depth-amount: min(var(--distance), 1);
+
+  --travel: calc(var(--offset) * var(--conveyor-step));
+  --recede: calc(var(--depth-amount) * var(--conveyor-depth));
+  --card-scale: calc(1 - var(--depth-amount) * var(--conveyor-shrink));
   /*
    * Which face is turned toward the reader, as a HARD 0/1 step at the half-turn: below 90° the
    * back, above it the front. Multiplying by 1000 saturates the clamp, so this is a switch and
@@ -148,17 +198,36 @@
   position: absolute;
   inset: 0;
   margin: auto;
-  z-index: calc(var(--deck-count) - var(--card-index));
+  /*
+   * The card ON the stage paints above the ones queued behind it. Derived from distance rather
+   * than from index, because which card is in front changes as the conveyor advances.
+   */
+  z-index: calc(100 - var(--distance) * 10);
   inline-size: var(--card-width);
   block-size: var(--card-height);
+  /*
+   * The deck is a LINE, so its neighbours are part of the picture: the card on the stage is at
+   * full strength, the ones either side of it are legible but clearly subordinate, and anything
+   * two steps out is gone. That is what makes it read as a row of cards being worked along
+   * rather than as one card being replaced by another.
+   *
+   * Sideways there is no frame edge to race — the page is far wider than a card — so this is
+   * free to fall off gently. It could not be, while the deck ran vertically.
+   */
+  opacity: clamp(0, calc((2 - var(--distance)) * 0.55), 1);
 
   /* Brief §7.3: transform-style preserve-3d on each card, so the two faces stay in 3D. */
   -webkit-transform-style: preserve-3d;
   transform-style: preserve-3d;
 
-  transform: translate3d(var(--fan-x), var(--fan-y), var(--fan-z))
-    rotateX(calc(var(--deck-tilt-x, 0) * 1deg)) rotateY(calc(var(--deck-tilt-y, 0) * 1deg))
-    rotate(var(--fan-rotate)) rotateY(calc(var(--card-flip, 180) * 1deg));
+  /*
+   * `perspective()` FIRST, so the projection is this card's own and centred on it. Everything
+   * after it — the travel along the conveyor, the recede, the tilt and the flip — is projected
+   * from the card's own centre rather than from a shared origin it has moved away from.
+   */
+  transform: perspective(var(--card-perspective)) translate3d(var(--travel), 0, var(--recede))
+    scale(var(--card-scale)) rotateX(calc(var(--deck-tilt-x, 0) * 1deg))
+    rotateY(calc(var(--deck-tilt-y, 0) * 1deg)) rotateY(calc(var(--card-flip, 180) * 1deg));
 }
 
 /* ------------------------------------------------------------------ faces */
@@ -183,8 +252,25 @@
    */
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
-  /* The deck's weight. Mixed from the brand's own black, not a loose shadow colour. */
-  box-shadow: 0 1.2rem 2.6rem -1.4rem color-mix(in srgb, var(--drop-black) 55%, transparent);
+  /*
+   * The deck's weight, and its silhouette.
+   *
+   * The drop shadow alone was enough while this scene sat on off-white paper: a black card threw
+   * a black shadow onto a bright ground and the edge was obvious. On the Monochrome Mesh the card
+   * is now DARKER than what is behind it, and a black shadow over a dark ground contributes
+   * nothing — the deck flattened into the field and read as small, faint rectangles.
+   *
+   * So the silhouette comes from the card's own lit EDGE instead, which is what actually happens
+   * to a physical card lifted off a dark surface. An inset hairline, not a border: it keeps the
+   * corners hard (radius stays 0, CLAUDE.md), costs no layout, and sits inside `overflow: hidden`
+   * so it draws over the front's photograph as the card's edge rather than around it.
+   *
+   * The contact shadow stays and is deepened — it still does real work under the fronts, where
+   * the photograph is far lighter than the ground.
+   */
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--drop-white) 16%, transparent),
+    0 1.2rem 2.6rem -1.4rem color-mix(in srgb, var(--drop-black) 75%, transparent);
 }
 
 /* Brief §7.3: pure/near black, one centred white DROP primary logo, no additional copy. */
@@ -312,28 +398,14 @@
  */
 @media (max-width: 767px) {
   .deck {
-    --card-width: clamp(10rem, 46vw, 15rem);
-
     /*
-     * A narrow column cannot hold a horizontal fan, so the deck trades it for a cascade: the
-     * horizontal step all but disappears and the offset becomes vertical, running DOWNWARD with
-     * the first card highest and on top. Each card behind is then overlapped across its image
-     * and keeps a full-width band of its own name, maker and category showing below the card in
-     * front of it — nothing is buried, whatever the item count.
+     * A phone gets the same conveyor — presenting one card at a time is exactly what a narrow
+     * column wants, so the old sideways fan and its mobile cascade fallback are both gone. Only
+     * the card's size and its sense of thickness change.
      */
-    --fan-step-base: calc(var(--card-width) * 0.05);
-    --fan-step-open: calc(var(--card-width) * 0.07);
-    /*
-     * How far one card drops below the one in front of it. Measured against the card, so a
-     * SMALL deck — which is what a lens usually has — steps far enough that every card shows a
-     * band of its own PHOTOGRAPH as well as its name, not only its text; capped against the
-     * viewport so a six-card deck still fits a short phone by compressing to text bands.
-     */
-    --fan-step-y: min(calc(var(--card-height) * 0.62), calc(50svh / var(--deck-gaps)));
-    --fan-lift: calc(var(--card-height) * 0.02);
-    --fan-angle-scale: 0.5;
-    --card-depth: 6px;
-    perspective: 1100px;
+    --card-width: min(clamp(11rem, 74vw, 20rem), calc(62svh * 5 / 7));
+    --card-depth: 8px;
+    --conveyor-depth: calc(var(--card-width) * -0.22);
   }
 }
 
@@ -348,5 +420,66 @@
     --deck-open: 1;
     --deck-tilt-x: 0;
     --deck-tilt-y: 0;
+
+    /*
+     * No conveyor at all.
+     *
+     * The conveyor shows one card at a time and relies on scroll to bring the rest — which is
+     * exactly the wrong contract here: the scene is pinned whether or not motion is reduced, so
+     * a reader who has asked for less movement would be held in a viewport showing card one and
+     * never see the others. Brief §16 is explicit that reduced motion may not cost the reader
+     * content.
+     *
+     * So the deck stops being a stage and becomes a plain grid: every card at once, in order,
+     * face-up, sized so the whole taste edit fits the held viewport at any allowed count.
+     */
+    --card-width: min(clamp(7rem, 19vw, 12rem), calc(34svh * 5 / 7));
+
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-content: center;
+    gap: clamp(0.75rem, 2vw, 1.5rem);
+    block-size: auto;
+    transform: none;
   }
+
+  .card {
+    position: static;
+    opacity: 1;
+    z-index: auto;
+    transform: none;
+  }
+}
+
+/*
+ * The no-JavaScript deck.
+ *
+ * The conveyor is a scripted enhancement: it needs `--deck-position` written every frame, and it
+ * moves the cards SIDEWAYS. With scripting off nothing writes that property, every card would sit
+ * at its own index along the line, and the section's `overflow-x: clip` would swallow the lot —
+ * the whole taste edit gone from the page, not merely unanimated. That is exactly the failure the
+ * scene's no-JS contract exists to prevent.
+ *
+ * So the conveyor is gated on an attribute an effect writes, and the resting layout is this: a
+ * plain centred grid with every card face-up, in order, at a size that fits the held viewport at
+ * any allowed count. It is the same shape reduced motion falls back to, for the same reason.
+ */
+.deck:not([data-deck-conveyor="on"]) {
+  --card-width: min(clamp(7rem, 19vw, 12rem), calc(34svh * 5 / 7));
+
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-content: center;
+  gap: clamp(0.75rem, 2vw, 1.5rem);
+  block-size: auto;
+  transform: none;
+}
+
+.deck:not([data-deck-conveyor="on"]) .card {
+  position: static;
+  opacity: 1;
+  z-index: auto;
+  transform: none;
 }

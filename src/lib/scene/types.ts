@@ -44,27 +44,38 @@ export type BackgroundMode =
   | "wavyDots"
   | "pixelB"
   | "monoMesh"
+  | "black"
   | "footerLight";
 
-/** Fixed scene -> background mode mapping. The loader has no background mode (own overlay canvas). */
+/**
+ * Fixed scene -> background mode mapping.
+ *
+ * The Monochrome Mesh opens the page (loader / thesis / menu) and Tracks and Art Pieces sit on a
+ * flat black ground. The loader still paints its own off-white overlay canvas on top; this is the
+ * ground its O portal opens onto.
+ */
 export const SCENE_BACKGROUND_MODE: Readonly<Record<SceneId, BackgroundMode>> = {
-  loader: "offWhiteGlow",
-  thesis: "offWhiteGlow",
-  menu: "offWhiteGlow",
+  loader: "monoMesh",
+  thesis: "monoMesh",
+  menu: "monoMesh",
   gridStatement: "greenGrid",
   pixelA: "pixelA",
   films: "wavyDots",
   pixelB: "pixelB",
-  tracks: "monoMesh",
-  artPieces: "monoMesh",
+  tracks: "black",
+  artPieces: "black",
   footer: "footerLight",
 } as const;
 
 /**
- * Monochrome Mesh variants consumed by tracks / art pieces / footer entry (ticket 10).
- * `amount` is a 0..1 scalar for how far into the variant we are.
+ * Monochrome Mesh variants (ticket 10). `amount` is a 0..1 scalar for how far into the
+ * variant we are.
+ *
+ * `opening` is the field as it runs behind the loader, thesis and menu deck: faster than the
+ * preset and held under a contrast ceiling, because those scenes carry the page's largest type.
+ * `normal` / `reading` / `fadeToBlack` are the original Tracks -> Art Pieces -> footer chain.
  */
-export type MeshVariant = "normal" | "reading" | "fadeToBlack";
+export type MeshVariant = "opening" | "normal" | "reading" | "fadeToBlack";
 export type MeshDescriptor = { variant: MeshVariant; amount: number };
 
 /**

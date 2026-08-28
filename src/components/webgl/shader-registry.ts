@@ -14,6 +14,7 @@
 
 import type { BackgroundMode } from "@/lib/scene";
 
+import { blackShader } from "./BlackShader";
 import { footerLightShader } from "./FooterLightShader";
 import { greenGridShader } from "./GreenGridShader";
 import { monoMeshShader } from "./MonochromeMeshShader";
@@ -26,7 +27,7 @@ import type { BackgroundShaderModule } from "./shader-contract";
  * Every background mode and the module that renders it.
  *
  * Keys are listed in brief Section 6 scene order rather than alphabetically, so the table reads as
- * the journey: thesis paper → grid statement → pixel A → films → pixel B → tracks/art → footer.
+ * the journey: mesh opening → grid statement → pixel A → films → pixel B → tracks/art black → footer.
  */
 export const BACKGROUND_SHADERS = {
   offWhiteGlow: offWhiteGlowShader,
@@ -35,6 +36,7 @@ export const BACKGROUND_SHADERS = {
   wavyDots: wavyDotsShader,
   pixelB: pixelBShader,
   monoMesh: monoMeshShader,
+  black: blackShader,
   footerLight: footerLightShader,
 } as const satisfies Readonly<Record<BackgroundMode, BackgroundShaderModule>>;
 

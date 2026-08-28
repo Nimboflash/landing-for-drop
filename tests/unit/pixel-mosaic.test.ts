@@ -17,6 +17,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   PIXEL_SEED,
+  SCENE_BACKGROUND_MODE,
   createInitialSceneState,
   type LensCounts,
   type TransitionState,
@@ -294,11 +295,14 @@ describe("transitions A and B share one lattice", () => {
     }
   });
 
-  it("dissolves between the pair of backgrounds the brief names", () => {
+  it("dissolves between the pair of backgrounds each scene boundary joins", () => {
     expect(pixelAShader.transition.from).toBe("greenGrid");
     expect(pixelAShader.transition.to).toBe("wavyDots");
     expect(pixelBShader.transition.from).toBe("wavyDots");
-    expect(pixelBShader.transition.to).toBe("monoMesh");
+    // Brief Section 7.7 resolved B into the Monochrome Mesh; Tracks now sits on flat black, and
+    // the mosaic has to resolve into the ground that actually follows it or the handover cuts.
+    expect(pixelBShader.transition.to).toBe("black");
+    expect(pixelBShader.transition.to).toBe(SCENE_BACKGROUND_MODE.tracks);
   });
 
   it("keeps the orange/purple energy pass unique to transition B", () => {

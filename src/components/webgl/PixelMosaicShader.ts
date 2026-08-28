@@ -402,6 +402,19 @@ vec3 dropGreenGridLook(vec2 fragPx, vec2 res, float t, float detail) {
  * `t` and `detail` are ignored deliberately: the mesh runs on its own clock (`uMeshTime`) and its
  * own detail uniforms, so that this program and the mesh program cannot drift apart.
  */
+/**
+ * The flat black ground, as a look the mosaic can dissolve *into*.
+ *
+ * Unlike the green-grid and mesh looks this is not a stand-in for anything: `BlackShader` paints
+ * exactly this constant, so the mosaic's destination and the mode that follows it are the same
+ * colour by construction and the handover cannot drift.
+ */
+export const BLACK_LOOK_GLSL = /* glsl */ `
+  vec3 dropBlackLook(vec2 fragPx, vec2 res, float time, float detail) {
+    return DROP_BLACK;
+  }
+`;
+
 export const MONO_MESH_LOOK_GLSL = /* glsl */ `
 vec3 dropMonoMeshLook(vec2 fragPx, vec2 res, float t, float detail) {
   vec2 p = clamp(fragPx / max(res, vec2(1.0)), 0.0, 1.0);
@@ -422,7 +435,7 @@ vec3 dropWavyDotsLook(vec2 fragPx, vec2 res, float t, float detail) {
 /* -------------------------------------------------------------------------- */
 
 /** The background modes this mosaic knows how to render as an outgoing or incoming look. */
-type MosaicLookMode = Extract<BackgroundMode, "greenGrid" | "wavyDots" | "monoMesh">;
+type MosaicLookMode = Extract<BackgroundMode, "greenGrid" | "wavyDots" | "monoMesh" | "black">;
 
 /**
  * The GLSL look function per mode. Typed against {@link MosaicLookMode} so a new pairing cannot
@@ -432,6 +445,7 @@ const LOOK_FUNCTION: Readonly<Record<MosaicLookMode, string>> = {
   greenGrid: "dropGreenGridLook",
   wavyDots: "dropWavyDotsLook",
   monoMesh: "dropMonoMeshLook",
+  black: "dropBlackLook",
 };
 
 /** Which of the reducer's two pixel descriptors this instance renders. */
@@ -525,6 +539,7 @@ ${MOSAIC_FIELD_GLSL}
 ${WAVY_DOTS_FIELD_GLSL}
 ${WAVY_DOTS_LOOK_ADAPTER_GLSL}
 ${GREEN_GRID_LOOK_GLSL}
+${BLACK_LOOK_GLSL}
 ${usesMesh ? MESH_FIELD_GLSL : ""}
 ${usesMesh ? MONO_MESH_LOOK_GLSL : ""}
 
@@ -719,10 +734,10 @@ export const pixelAShader: PixelMosaicModule = createPixelMosaicShader({
 export const pixelBShader: PixelMosaicModule = createPixelMosaicShader({
   key: "pixelB",
   from: "wavyDots",
-  to: "monoMesh",
+  to: "black",
   spectralMix: 1,
   energyGain: 0.3,
   honorsDarkBeat: true,
   fromCss: "#000000",
-  toCss: "#141414",
+  toCss: "#000000",
 });
