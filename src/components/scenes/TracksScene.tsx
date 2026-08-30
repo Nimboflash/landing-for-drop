@@ -304,6 +304,16 @@ export interface TracksSceneProps {
   onSelect: (index: number) => void;
   /** Progress through the tracks scene, 0..1. Presentation drift only — never visibility. */
   progress: number;
+  /**
+   * Is this scene the active one?
+   *
+   * The carousel's controls were in the tab order for the whole page, so tabbing forward from the
+   * footer walked backwards into a scene the reader had already passed — and the page scrolled
+   * back to it. They stay fully readable and fully present to assistive technology; only the tab
+   * STOP follows the scene, which is the roving-tabindex pattern this component already uses
+   * internally, applied one level up.
+   */
+  sceneActive?: boolean;
   /** The reducer's reduced-motion flag: coverflow kept, travel replaced by a brief crossfade. */
   reducedMotion: boolean;
   /**
@@ -328,6 +338,7 @@ export function TracksScene({
   progress,
   reducedMotion,
   entered,
+  sceneActive = true,
 }: TracksSceneProps) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const headingRef = useRef<HTMLHeadingElement | null>(null);
@@ -658,7 +669,7 @@ export function TracksScene({
                       type="button"
                       className={styles.caseButton}
                       data-track-case
-                      tabIndex={active ? 0 : -1}
+                      tabIndex={sceneActive && active ? 0 : -1}
                       /*
                         `aria-current`, not `aria-pressed`: this button selects one item out of a
                         set, it is not a toggle, and aria-current is already this repo's vocabulary

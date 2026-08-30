@@ -261,11 +261,80 @@ export function assertProductionMedia(
  * `next build` stays green while the mock pack is in place. Call from a module that Next
  * evaluates during the build (a route or the content module's consumer).
  */
+/**
+ * Is this a destination the site may actually send someone to?
+ *
+ * Accepts an absolute https URL, a mailto, or a site-root-relative path. Rejects bare http,
+ * `javascript:`, `data:`, `vbscript:` and anything that does not parse — an unparseable href is
+ * a placeholder someone forgot, and a `javascript:` one is an injection dressed as content.
+ */
+export function isSafeDestination(href: string): boolean {
+  const value = href.trim();
+  if (value === "") return false;
+  if (value.startsWith("/")) return true;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "mailto:";
+  } catch {
+    return false;
+  }
+}
+
+/** The marker the mock footer uses for a slot still waiting on a real destination. */
+const PLACEHOLDER_LABEL = /\bADD\s+(FINAL|MAP)\b|\bNO DESTINATION\b/i;
+
+/**
+ * Footer slots that must not ship: enabled ones pointing somewhere unusable, and ones still
+ * carrying an "ADD FINAL…" label. Pure, and located the way media problems are, so one failure
+ * message can carry both kinds.
+ */
+export function collectFooterLinkProblems(lens: WeeklyLens): string[] {
+  const problems: string[] = [];
+  const check = (
+    slot: { href: string; enabled: boolean; label?: unknown },
+    location: string,
+  ): void => {
+    const label = typeof slot.label === "string" ? slot.label : "";
+    if (slot.enabled && !isSafeDestination(slot.href)) {
+      problems.push(`${location}: enabled but its destination is not usable (${slot.href || "empty"})`);
+    }
+    if (PLACEHOLDER_LABEL.test(label)) {
+      problems.push(`${location}: still carries a placeholder label ("${label}")`);
+    }
+  };
+
+  if (lens.footer.cta) check(lens.footer.cta, "footer/cta");
+  lens.footer.links.forEach((link, index) => check(link, `footer/links[${index}]`));
+  return problems;
+}
+
+/**
+ * The build-time gate, over media AND footer destinations.
+ *
+ * The media guard throws on the very first blocking asset, so a second pass added anywhere after
+ * it would be dead code that could never run while the mock pack is in place. The footer check is
+ * therefore folded in HERE, before the media assertion, and its failure reuses the media guard's
+ * first line verbatim — `scripts/assert-rights-guard-blocks.mjs` greps for that exact string to
+ * decide whether the flagged build was blocked, and a new signature would make it report that the
+ * run proved nothing.
+ */
 export function enforceProductionMediaRights(
   lens: WeeklyLens,
   options: ProductionMediaOptions = {},
 ): void {
   if (!isProductionRightsEnforced()) return;
+
+  const linkProblems = collectFooterLinkProblems(lens);
+  if (linkProblems.length > 0) {
+    throw new Error(
+      [
+        PRODUCTION_MEDIA_GUARD_FAILURE,
+        `${linkProblems.length} footer destination(s) are not ready to ship:`,
+        ...linkProblems.map((problem) => `  - ${problem}`),
+      ].join("\n"),
+    );
+  }
+
   assertProductionMedia(lens, options);
 }
 

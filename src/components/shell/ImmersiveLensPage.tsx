@@ -261,6 +261,9 @@ export function ImmersiveLensPage({ lens }: ImmersiveLensPageProps) {
             onPrevious={goToPreviousTrack}
             onNext={goToNextTrack}
             onSelect={goToTrack}
+            // Tab stops follow the scene: the carousel controls must not be reachable from the
+            // footer, or tabbing forward walks the reader backwards into a scene they passed.
+            sceneActive={state.sceneId === "tracks"}
             progress={scopedProgress("tracks")}
             reducedMotion={state.reducedMotion}
             entered={!transitionState.darkBeat}

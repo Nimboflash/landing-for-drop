@@ -90,6 +90,24 @@ import {
 } from "./shader-contract";
 import { backgroundShaderFor } from "./shader-registry";
 
+/* --------------------------------------------------- document visibility */
+
+/**
+ * Is the document hidden? Subscribed rather than polled, in the same shape as the reduced-motion
+ * binding so it is SSR-safe and answers "visible" during the server render.
+ *
+ * The point of knowing is that a background tab should not be running a shader. R3F cancels its
+ * own rAF when the frameloop goes to "demand", so this needs no loop of its own — and it must NOT
+ * gate the GSAP ticker, which drives Lenis: stopping that would desynchronise ScrollTrigger from
+ * the scroll position, which is a correctness bug rather than a saving.
+ */
+const subscribeVisibility = (onStoreChange: () => void): (() => void) => {
+  document.addEventListener("visibilitychange", onStoreChange);
+  return () => document.removeEventListener("visibilitychange", onStoreChange);
+};
+const getVisibilitySnapshot = (): boolean => document.visibilityState === "hidden";
+const getVisibilityServerSnapshot = (): boolean => false;
+
 /* ------------------------------------------------------------------ tuning */
 
 /**
@@ -501,10 +519,35 @@ export function BackgroundCanvas({
     setContextLost(false);
   }, []);
 
+  /*
+   * Paused while the document is hidden. A background tab kept the shader running at full rate for
+   * no one; "demand" lets R3F cancel its own rAF, and the single `invalidate()` on return paints
+   * one fresh frame so the reader never sees a stale one. The frame-delta clamp already absorbs
+   * the long gap.
+   */
+  const documentHidden = useSyncExternalStore(
+    subscribeVisibility,
+    getVisibilitySnapshot,
+    getVisibilityServerSnapshot,
+  );
+
+  useEffect(() => {
+    if (!documentHidden) invalidate();
+  }, [documentHidden]);
+
   const dpr = useMemo(
     () =>
-      resolveDevicePixelRatio(tier, typeof window === "undefined" ? 1 : window.devicePixelRatio),
-    [tier],
+      /*
+       * Never raise the backing store above what is visibly useful. The tier already resolves a
+       * ratio, but on a 3x display that still asks the GPU for nine times the pixels of a 1x
+       * frame to draw a soft gradient — so it is additionally clamped to the FLOOR of the tier's
+       * own cap band, the same ceiling the loader's material already applies to itself.
+       */
+      Math.min(
+        resolveDevicePixelRatio(tier, typeof window === "undefined" ? 1 : window.devicePixelRatio),
+        settings.dprCapRange[0],
+      ),
+    [tier, settings.dprCapRange],
   );
 
   const crossfadeSeconds =
@@ -536,7 +579,8 @@ export function BackgroundCanvas({
           dpr={dpr}
           flat
           linear
-          frameloop={settings.animateShaders ? "always" : "demand"}
+          frameloop={settings.animateShaders && !documentHidden ? "always" : "demand"}
+          data-frameloop={settings.animateShaders && !documentHidden ? "always" : "demand"}
           gl={{
             alpha: true,
             antialias: false,

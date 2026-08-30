@@ -156,6 +156,11 @@ function Latin({ children, className }: { children: ReactNode; className?: strin
  * AND names somewhere to go — "Do not invent live destinations" (brief §7.10), and an enabled
  * flag with an empty href is a slot still waiting for its final address.
  */
+/** External destinations get `rel`: a new tab must not inherit a handle on this window. */
+function relFor(href: string): string | undefined {
+  return /^https?:/i.test(href.trim()) ? "noopener noreferrer" : undefined;
+}
+
 function isLive(slot: { href: string; enabled: boolean }): boolean {
   return slot.enabled && slot.href.trim() !== "";
 }
@@ -398,7 +403,14 @@ function FooterCta({ cta }: { cta: NonNullable<WeeklyLens["footer"]["cta"]> }) {
 
   if (live) {
     return (
-      <a className={styles.cta} href={cta.href} data-footer-cta data-enabled="true">
+      <a
+        className={styles.cta}
+        href={cta.href}
+        rel={relFor(cta.href)}
+        data-footer-cta
+        data-enabled="true"
+        data-cta-state="live"
+      >
         {label}
       </a>
     );
@@ -423,7 +435,7 @@ function FooterSlot({ link }: { link: FooterLink }) {
   return (
     <li className={styles.link} data-footer-link data-enabled={link.enabled}>
       {live ? (
-        <a href={link.href}>
+        <a href={link.href} rel={relFor(link.href)}>
           <Latin>{link.label}</Latin>
         </a>
       ) : (

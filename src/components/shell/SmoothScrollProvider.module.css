@@ -1,0 +1,42 @@
+/*
+ * The long-page escape.
+ *
+ * Invisible until focused, on purpose: this page is a composition, and a permanent floating pill
+ * over the film scene or the light horizon would be exactly the furniture the brief refuses. A
+ * keyboard reader gets it as a real, visible, reachable control the moment it takes focus; a
+ * pointer reader never sees it and does not need it, having a wheel.
+ *
+ * Sharp corners, brand tokens, and the page's own focus ring — nothing bespoke.
+ */
+.backToTop {
+  position: fixed;
+  z-index: 1000;
+  inset-block-end: 1.25rem;
+  inset-inline-end: 1.25rem;
+  padding: 0.75rem 1.1rem;
+  border: 1px solid color-mix(in srgb, var(--drop-white) 45%, transparent);
+  border-radius: 0;
+  background: color-mix(in srgb, var(--drop-black) 78%, transparent);
+  color: var(--drop-off-white);
+  font-family: var(--font-persian);
+  font-size: var(--label);
+  line-height: 1;
+  cursor: pointer;
+
+  /* Out of sight until it is the thing the reader is on. */
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(0.5rem);
+}
+
+.backToTop:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .backToTop {
+    transform: none;
+  }
+}

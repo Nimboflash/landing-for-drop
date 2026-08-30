@@ -251,7 +251,7 @@
   padding: 0.7rem 1.6rem;
   font-size: var(--label);
   letter-spacing: 0.16em;
-  color: color-mix(in srgb, currentColor 45%, transparent);
+  color: color-mix(in srgb, currentColor 72%, transparent);
   text-shadow: 0 0 0.7rem var(--drop-black);
 }
 

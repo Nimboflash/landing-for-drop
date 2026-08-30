@@ -36,6 +36,8 @@ import { useEffect, useRef, type ReactNode } from "react";
 import Lenis from "lenis";
 
 import { ScrollTrigger, attachRafDriver } from "@/lib/motion/gsap";
+
+import styles from "./SmoothScrollProvider.module.css";
 import { useReducedMotion } from "@/lib/motion/reduced-motion";
 
 /* ------------------------------------------------------------------ the reveal */
@@ -60,6 +62,28 @@ const REVEAL_ABORT_PX = 8;
 
 /** Reader input that cancels a pending reveal outright. */
 const REVEAL_CANCEL_EVENTS = ["wheel", "touchstart", "keydown", "pointerdown"] as const;
+
+/** Keys that scroll a document, which the loader lock must hold along with wheel and touch. */
+const SCROLLING_KEYS = new Set([
+  "PageDown",
+  "PageUp",
+  "ArrowDown",
+  "ArrowUp",
+  "Home",
+  "End",
+  " ",
+]);
+
+/** Where a scrolling key is the user typing, not the user scrolling. */
+const isEditable = (target: EventTarget | null): boolean => {
+  const element = target as HTMLElement | null;
+  if (!element || !element.tagName) return false;
+  if (element.isContentEditable) return true;
+  return ["INPUT", "TEXTAREA", "SELECT"].includes(element.tagName);
+};
+
+/** Persian-first, like every other visible string in this app. */
+const BACK_TO_TOP_LABEL = "بازگشت به بالا";
 
 export type SmoothScrollProviderProps = {
   children: ReactNode;
@@ -180,18 +204,46 @@ export function SmoothScrollProvider({
     if (!lenis || !target) return;
     if (window.scrollY > REVEAL_ABORT_PX) return;
 
-    const cancel = () => {
+    let settled = false;
+    const teardown = () => {
       window.clearTimeout(timer);
       for (const type of REVEAL_CANCEL_EVENTS) window.removeEventListener(type, cancel);
     };
 
+    /*
+     * Yielding, not merely cancelling.
+     *
+     * The listeners used to be torn down the instant the tween started, so a key pressed DURING
+     * the 1.2s carry was ignored: Lenis only adopts a native scroll while it is idle, and mid-tween
+     * it rewrites the scroll position from its own animated value on the next tick. The reader
+     * pressed Page Down and the page pulled itself back. Keeping the listeners live through the
+     * tween and stopping Lenis on the first input hands the document straight back — stop()/start()
+     * reset its animated and target scroll to wherever the key actually left it, so the next native
+     * scroll is adopted normally.
+     */
+    const cancel = () => {
+      if (settled) return;
+      settled = true;
+      teardown();
+      lenis.stop();
+      lenis.start();
+    };
+
     const timer = window.setTimeout(() => {
-      cancel();
-      if (window.scrollY > REVEAL_ABORT_PX) return;
+      if (settled) return;
+      if (window.scrollY > REVEAL_ABORT_PX) {
+        settled = true;
+        teardown();
+        return;
+      }
       lenis.scrollTo(target, {
         duration: REVEAL_DURATION_S,
         immediate: reducedMotion,
         lock: false,
+        onComplete: () => {
+          settled = true;
+          teardown();
+        },
       });
     }, REVEAL_DELAY_MS);
 
@@ -199,7 +251,7 @@ export function SmoothScrollProvider({
       window.addEventListener(type, cancel, { passive: true });
     }
 
-    return cancel;
+    return teardown;
   }, [locked, revealTarget, reducedMotion]);
 
   useEffect(() => {
@@ -219,14 +271,62 @@ export function SmoothScrollProvider({
     const block = (event: Event) => event.preventDefault();
     // Non-passive, or preventDefault() is ignored and the page scrolls anyway.
     const listen: AddEventListenerOptions = { passive: false };
+    /*
+     * The lock blocked the wheel and touch but not the KEYBOARD, so Page Down during the loader
+     * scrolled the document under the overlay and the portal opened on wherever it landed — the
+     * exact defect the lock exists to prevent, reachable by anyone not using a mouse.
+     *
+     * Same rule as the others: block the INPUT, not the scroller. Only the keys that scroll, only
+     * when the target is not something being typed into, and never Tab or Enter — so the skip link
+     * stays reachable and the loader can never trap a keyboard user.
+     */
+    const blockKeys = (event: KeyboardEvent) => {
+      if (!SCROLLING_KEYS.has(event.key)) return;
+      if (isEditable(event.target)) return;
+      event.preventDefault();
+    };
+
     window.addEventListener("wheel", block, listen);
     window.addEventListener("touchmove", block, listen);
+    window.addEventListener("keydown", blockKeys, listen);
 
     return () => {
       window.removeEventListener("wheel", block);
       window.removeEventListener("touchmove", block);
+      window.removeEventListener("keydown", blockKeys);
     };
   }, [locked]);
 
-  return <>{children}</>;
+  /*
+   * The long-page escape.
+   *
+   * A 28-screen scroll needs a way out that is not "scroll all the way back". A real <button>
+   * rather than an <a href="#top">, because the target is a scroll position rather than a
+   * document fragment, and because a button inherits the page's existing focus ring with no new
+   * CSS. It lives here because this component owns the Lenis instance — going through Lenis is
+   * what keeps ScrollTrigger following the move, exactly as the reveal does.
+   *
+   * Rendered only once the loader has let go, so it is never a tab stop over the portal.
+   */
+  const backToTop = () => {
+    const lenis = lenisRef.current;
+    if (lenis) lenis.scrollTo(0, { duration: REVEAL_DURATION_S, lock: false });
+    else window.scrollTo({ top: 0 });
+  };
+
+  return (
+    <>
+      {children}
+      {!locked ? (
+        <button
+          type="button"
+          className={styles.backToTop}
+          data-back-to-top
+          onClick={backToTop}
+        >
+          {BACK_TO_TOP_LABEL}
+        </button>
+      ) : null}
+    </>
+  );
 }
