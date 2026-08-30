@@ -204,13 +204,26 @@
  * `translate` rather than `transform` so it never collides with the transforms GSAP writes on the
  * words inside.
  */
+/*
+ * The closing beat is a HAND-OVER, not a superimposition.
+ *
+ * `.messages` and `.argument` occupy the same grid cell, and their opacities used to be
+ * complementary halves of one ramp — `1 - reveal` against `reveal`. That put both at ~0.5 across
+ * the middle of the beat: two blocks of large type, stacked in the same place, each half solid.
+ * It reads as the hero having gone wrong rather than as one thought giving way to another.
+ *
+ * Splitting the same variable into two non-overlapping halves keeps it a single scrubbed function
+ * of scroll — so reversibility is unchanged by construction — while making the two exclusive:
+ * the messages retire over reveal 0 -> 0.5 and the argument arrives over 0.5 -> 1. `argumentReveal()`
+ * is already smoothstepped, so neither half shows an edge at the seam.
+ */
 .thesis[data-presentation="stage"] .messages {
-  opacity: calc(1 - var(--drop-argument-reveal));
+  opacity: clamp(0, calc(1 - var(--drop-argument-reveal) * 2), 1);
   translate: 0 calc(var(--drop-argument-reveal) * -2.5svh);
 }
 
 .thesis[data-presentation="stage"] .argument {
-  opacity: var(--drop-argument-reveal);
+  opacity: clamp(0, calc(var(--drop-argument-reveal) * 2 - 1), 1);
 }
 
 .thesis[data-presentation="stage"] .statement {

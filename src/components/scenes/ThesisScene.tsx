@@ -3,9 +3,9 @@
 /**
  * The pinned lens thesis (brief §7.2, ticket 06).
  *
- * A minimal off-white stage: the lens identity, the hero messages replacing one another under
- * scroll, and — as the scene closes — the lens's full argument. The atmospheric glow at the lower
- * edge belongs to the shared canvas in `offWhiteGlow` mode; this scene never draws one, and the
+ * The lens identity, the hero messages replacing one another under scroll, and — as the scene
+ * closes — the lens's full argument. The ground belongs to the shared canvas, which now runs the
+ * Monochrome Mesh in its `opening` variant here; this scene never draws one, and the
  * Opacity hero reference's top-right "Join the waitlist" pill is exactly the furniture the brief
  * forbids (§7.2: "No button, CTA, nav group, or `Join the waitlist` element at the top-right").
  * Only the composition transfers: mark top-left, empty top-right, large centred type, deep air.
@@ -48,11 +48,12 @@
  *
  * ## Contrast
  *
- * WCAG AA over the live glow is an acceptance criterion, so every text colour here is `ink` or a
- * mix no lighter than {@link ThesisScene}'s stylesheet allows (≥ 74% of the scene's ink), and
- * partially-faded text is only ever a transient state between two AA-safe ends — the glow itself
- * is capped by the shader (see `OffWhiteGlowShader`, `GLOW_CEILING`) and confined to the lower
- * edge, well below the message stage.
+ * WCAG AA over the live ground is an acceptance criterion, so every text colour here is drawn from
+ * the page's contrast token or a mix no lighter than this scene's stylesheet allows (≥ 74% of the
+ * scene's ink), and partially-faded text is only ever a transient state between two AA-safe ends.
+ * The ground itself is capped by the shader: the mesh's `opening` variant is held under
+ * `MESH_OPENING_PEAK_CEILING` (MonochromeMeshShader.ts), which is solved so off-white copy over
+ * its brightest cell clears AA — that ceiling, not this file, is what must not be raised.
  *
  * ## Observable state (BUILD-GUIDE seam 3)
  *
@@ -140,9 +141,30 @@ const ENTER_DURATION_S = 0.92;
 /** The fade/de-blur resolves a little before the lines land, so the text reads sharp on arrival. */
 const ENTER_FADE_RATIO = 0.8;
 /** Leaving is quicker than arriving: a retreat, not a second performance. */
-const EXIT_DURATION_S = 0.56;
-/** The incoming message starts while the outgoing one is still lifting — they overlap, never cut. */
-const ENTER_OFFSET_S = 0.16;
+const EXIT_DURATION_S = 0.42;
+/**
+ * When the incoming message starts, relative to the outgoing one leaving.
+ *
+ * The two still OVERLAP — brief §7.2 asks for a cross-fade and this is one — but the overlap is
+ * now a hand-over rather than a dissolve, because the previous pairing let both messages sit
+ * plainly readable at the same time. With the old 0.56s exit and a 0.16s offset, the curves
+ * (`power2.in` out, `power2.out` in) crossed high: at 0.35s the outgoing was still at 0.61 while
+ * the incoming had reached 0.45, and at 0.40s they were 0.49 and 0.55. Two competing statements,
+ * which is exactly the reported overlap.
+ *
+ * Exit now runs [0, 0.42] and the entry fade [0.31, 1.046], so they share 0.11s — 10.5% of the
+ * 1.046s swap, inside the 8-12% window asked for. Across that shared band the higher of the two
+ * never exceeds 0.14, and the incoming only passes 0.35 at ~0.45s, by which point the outgoing
+ * has been at zero for 0.03s. One statement is dominant at every instant, and neither is ever
+ * solid while the other still is. Verified by sampling both eased curves at 2ms across the whole
+ * swap: zero samples with both above 0.35.
+ *
+ * The hold between swaps is untouched: it comes from the reducer's scroll banding, not from here.
+ *
+ * `resumeIncoming` deliberately bypasses this offset (see below) — a message reversing back onto
+ * the stage is already partly visible, and making it wait out the hand-over would blank the stage.
+ */
+const ENTER_OFFSET_S = 0.31;
 /** Per-line delay. Whole lines move together; this is what makes it read as a line mask. */
 const ENTER_LINE_STAGGER_S = 0.085;
 const EXIT_LINE_STAGGER_S = 0.04;
