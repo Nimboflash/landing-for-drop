@@ -78,7 +78,17 @@
    * padded band almost exactly and nothing had room to breathe. 58svh gives it air on every side
    * without making the card stop being the subject.
    */
-  --card-width: min(clamp(14rem, 46vw, 34rem), calc(58svh * 5 / 7));
+  /*
+   * 19vw, in the 18-21vw band the design calls for, with a floor so a narrow desktop still has a
+   * card rather than a stamp and a ceiling so an ultra-wide display does not turn four cards into
+   * four posters. The 20rem ceiling is deliberately ABOVE 19vw at every tested width — measured at
+   * 1512 a 15rem ceiling bound first and produced 16.5vw, under the band — so the vw term is what
+   * actually decides the size and the ceiling only catches the extremes.
+   *
+   * The height cap is the second guard: 52svh of card height keeps the deck clear of the heading
+   * above and the frame below at 1024x768, which is the tightest of the four tested viewports.
+   */
+  --card-width: min(clamp(8rem, 19vw, 20rem), calc(52svh * 5 / 7));
   /*
    * 5:7 — real playing-card proportion, and the shape the brief's "physical deck of cards" is
    * describing. The old 3:4 read as a photo tile; this reads as something you could hold.
@@ -90,25 +100,39 @@
   --face-lift: 1.5px;
 
   /*
-   * One conveyor step — how far a card travels between being the next one up and being the one
-   * on the stage. The deck runs SIDEWAYS: the cards sit in a line and slide across it.
+   * THE SPREAD.
    *
-   * It ran vertically first, and that was the wrong axis. Measured on the reference at 1440x900,
-   * its four cards are absolutely positioned in a single 302x422 slot and the section holding
-   * them is 422 tall — exactly one card. A section one card tall has no vertical travel room at
-   * all, so nothing there can be moving up and down; the motion has to cross the frame, and the
-   * frame is far wider than it is tall. Vertically the card had a couple of hundred pixels either
-   * side and kept meeting the viewport edge mid-hand-over; horizontally it has most of a 1200px
-   * page, which is why this axis costs nothing and the other one fought the frame.
+   * How far the outermost card travels from the deck's centre once the fan opens out. Derived,
+   * never authored per card: the stylesheet is handed a count and an index and works the rest out,
+   * so 2, 3, 4 or 6 items all compose without a new rule.
    *
-   * Wider than the card, so consecutive cards read as a line with air between them rather than a
-   * pile: the one on the stage is centred and its neighbours sit clear of it on either side.
+   * Two candidates, whichever is SMALLER:
+   *   - what the page can actually hold — the usable column less one card, so the outermost card's
+   *     far edge lands on the margin and never past it;
+   *   - what the deck wants — a little over one card per gap, which is the spacing that reads as a
+   *     spread hand rather than a row of unrelated tiles.
+   * Taking the minimum is what guarantees the acceptance condition: no card crosses the viewport
+   * boundary at any width or count.
    */
-  --conveyor-step: calc(var(--card-width) * 1.22);
-  /* How far a card that is not on the stage sits behind it. Negative = away from the reader. */
-  --conveyor-depth: calc(var(--card-width) * -0.3);
-  /* How much a card off the stage shrinks. Small: it is depth, not a size change. */
-  --conveyor-shrink: 0.1;
+  --deck-usable: calc(100vw - 2 * var(--page-gutter));
+  --spread-span: min(
+    calc(var(--deck-usable) - var(--card-width)),
+    calc((var(--deck-count) - 1) * var(--card-width) * 1.06)
+  );
+
+  /* The fan's outermost rotation. Small: a held hand, not a splay. */
+  --fan-angle: 7deg;
+  /* How far the stack sits below the stage before it rises into it. */
+  --stack-rise: 46svh;
+  /* Depth of the un-flipped stack, so it reads as several cards rather than one. */
+  --stack-depth: calc(var(--card-width) * -0.04);
+
+  /*
+   * The flip's stagger, as a fraction of the flip window per card index. The window is fixed
+   * (phase 0.52 -> 0.78), so the stagger stretches to fit: card 0 turns as the window opens and
+   * the last card finishes exactly as it closes, whatever the count.
+   */
+  --flip-stagger: 0.34;
 
   /* Far enough that the reconstructed stack is genuinely below the viewport, at any height. */
   --deck-rise: calc(60svh + var(--card-height));
@@ -166,15 +190,57 @@
    * `[data-deck-conveyor="on"]`, which is written from an effect, so with scripting off the deck
    * never translates at all and falls back to the plain grid at the end of this file.
    */
-  --offset: calc(var(--card-index) - var(--deck-position, 0));
-  /* max() as abs(): the real abs() is too new to rely on, and the two cases are symmetric. */
-  --distance: max(var(--offset), calc(-1 * var(--offset)));
-  /* Capped at one step, so a six-card deck's far cards are treated the same as its near ones. */
-  --depth-amount: min(var(--distance), 1);
+  /*
+   * This card's place in the deck, as two pure numbers derived from its index and the count.
+   * The norm runs 0 -> 1 across the deck and the centred value runs -0.5 -> +0.5 about its
+   * middle, which is what every offset below is a multiple of. A one-card deck sits at 0.
+   */
+  --card-norm: calc(var(--card-index) / max(1, var(--deck-count) - 1));
+  --card-centred: calc(var(--card-norm) - 0.5);
 
-  --travel: calc(var(--offset) * var(--conveyor-step));
-  --recede: calc(var(--depth-amount) * var(--conveyor-depth));
-  --card-scale: calc(1 - var(--depth-amount) * var(--conveyor-shrink));
+  /*
+   * THE FLIP, scrubbed rather than tweened.
+   *
+   * Each card's own 0 -> 1 turn is carved out of the shared flip phase by its index, so the deck
+   * turns left to right with a real stagger and — because it is a pure function of scroll —
+   * reverse scrolling un-turns them in exactly the reverse order. There is no timeline to get out
+   * of step with the scroll position.
+   *
+   * The window stretches to the count: total span is 1 + stagger x (count - 1), so card 0 starts
+   * as the phase opens and the last card lands exactly as it closes, for any count.
+   */
+  --flip-span: calc(1 + var(--flip-stagger) * (var(--deck-count) - 1));
+  --flip-t: clamp(
+    0,
+    calc(var(--phase-flip, 1) * var(--flip-span) - var(--card-index) * var(--flip-stagger)),
+    1
+  );
+  /* 0deg is the back, 180deg the front — the step below reads this to decide which face paints. */
+  --card-flip: calc(var(--flip-t) * 180);
+
+  /*
+   * The composed offsets. Each phase contributes its own term and they overlap by design, so the
+   * deck reads as one continuous move: still fanning as the spread starts, still spreading as the
+   * first card turns.
+   */
+  --spread-x: calc(var(--card-centred) * var(--spread-span) * var(--phase-spread, 1));
+  --stack-x: calc(var(--card-centred) * var(--card-width) * 0.05 * (1 - var(--phase-spread, 1)));
+  --travel-x: calc(var(--spread-x) + var(--stack-x));
+
+  --rise-y: calc((1 - var(--phase-stack, 1)) * var(--stack-rise));
+  --arc-y: calc(
+    var(--card-centred) * var(--card-centred) * var(--card-height) * 0.12 * var(--phase-fan, 1)
+  );
+  --exit-y: calc(var(--phase-exit, 0) * -12svh);
+  --travel-y: calc(var(--rise-y) + var(--arc-y) + var(--exit-y));
+
+  /* The fan flattens as the spread opens: a fanned hand laid out reads flatter than one held. */
+  --fan-rotate: calc(
+    var(--card-centred) * var(--fan-angle) * var(--phase-fan, 1) *
+      (1 - 0.55 * var(--phase-spread, 1))
+  );
+  --recede: calc(var(--card-index) * var(--stack-depth) * (1 - var(--phase-spread, 1)));
+  --card-scale: calc(0.94 + 0.06 * var(--phase-stack, 1));
   /*
    * Which face is turned toward the reader, as a HARD 0/1 step at the half-turn: below 90° the
    * back, above it the front. Multiplying by 1000 saturates the clamp, so this is a switch and
@@ -199,22 +265,18 @@
   inset: 0;
   margin: auto;
   /*
-   * The card ON the stage paints above the ones queued behind it. Derived from distance rather
-   * than from index, because which card is in front changes as the conveyor advances.
+   * First card nearest the reader, as in a real held deck — and it is also the one that turns
+   * first, so the order the flip runs in and the order the cards overlap in agree.
    */
-  z-index: calc(100 - var(--distance) * 10);
+  z-index: calc(100 - var(--card-index));
   inline-size: var(--card-width);
   block-size: var(--card-height);
   /*
-   * The deck is a LINE, so its neighbours are part of the picture: the card on the stage is at
-   * full strength, the ones either side of it are legible but clearly subordinate, and anything
-   * two steps out is gone. That is what makes it read as a row of cards being worked along
-   * rather than as one card being replaced by another.
-   *
-   * Sideways there is no frame edge to race — the page is far wider than a card — so this is
-   * free to fall off gently. It could not be, while the deck ran vertically.
+   * Every card is fully present once the stack has risen, and the whole deck leaves together.
+   * There is no per-card fade: the composition the reader is meant to read at the hold is all
+   * four fronts at full strength, and anything dimmer would be a hierarchy nobody asked for.
    */
-  opacity: clamp(0, calc((2 - var(--distance)) * 0.55), 1);
+  opacity: clamp(0, calc(var(--phase-stack, 1) * (1 - var(--phase-exit, 0))), 1);
 
   /* Brief §7.3: transform-style preserve-3d on each card, so the two faces stay in 3D. */
   -webkit-transform-style: preserve-3d;
@@ -225,9 +287,10 @@
    * after it — the travel along the conveyor, the recede, the tilt and the flip — is projected
    * from the card's own centre rather than from a shared origin it has moved away from.
    */
-  transform: perspective(var(--card-perspective)) translate3d(var(--travel), 0, var(--recede))
-    scale(var(--card-scale)) rotateX(calc(var(--deck-tilt-x, 0) * 1deg))
-    rotateY(calc(var(--deck-tilt-y, 0) * 1deg)) rotateY(calc(var(--card-flip, 180) * 1deg));
+  transform: perspective(var(--card-perspective))
+    translate3d(var(--travel-x), var(--travel-y), var(--recede)) scale(var(--card-scale))
+    rotateX(calc(var(--deck-tilt-x, 0) * 1deg)) rotateY(calc(var(--deck-tilt-y, 0) * 1deg))
+    rotate(var(--fan-rotate)) rotateY(calc(var(--card-flip, 180) * 1deg));
 }
 
 /* ------------------------------------------------------------------ faces */
@@ -396,16 +459,57 @@
  * horizontal travel shrinks with the narrower column, and the cards pick up a vertical step so
  * a larger deck cascades down the screen instead of piling into one silhouette.
  */
-@media (max-width: 767px) {
+/*
+ * NARROW: a vertical sequence, not a spread.
+ *
+ * A horizontal fan cannot survive a phone — four cards across 390px would be either unreadable or
+ * off the frame, and measurement said off the frame: before this, three of four cards sat entirely
+ * outside the viewport at 390, 768 AND 1024. So below the tablet breakpoint the same scrub drives
+ * the other axis: one card fills the stage, its neighbours sit above and below it in a column, and
+ * NOTHING is translated horizontally — the x offset is zeroed outright, which is what keeps the
+ * section's "overflow-x: clip" from having anything to hide.
+ *
+ * The 3D is dialled back too. Perspective that reads as depth on a wide stage reads as distortion
+ * on a card occupying most of a phone, so the flip stays but the fan and the recede go.
+ */
+@media (max-width: 899px) {
   .deck {
     /*
-     * A phone gets the same conveyor — presenting one card at a time is exactly what a narrow
-     * column wants, so the old sideways fan and its mobile cascade fallback are both gone. Only
-     * the card's size and its sense of thickness change.
+     * 91vw, so one card genuinely occupies most of the frame — the design's own figure for ~552px.
+     *
+     * The height cap has to be generous enough to let the vw term win, or it silently takes over
+     * and the card shrinks: at 58svh it bound first and produced 55vw at 768, well under the band.
+     * 78svh is the value at which a 91vw card's 5:7 height still fits a typical narrow viewport,
+     * so vw decides on a phone and the cap only catches genuinely short frames (landscape).
      */
-    --card-width: min(clamp(11rem, 74vw, 20rem), calc(62svh * 5 / 7));
+    --card-width: min(91vw, calc(78svh * 5 / 7));
     --card-depth: 8px;
-    --conveyor-depth: calc(var(--card-width) * -0.22);
+    /* One card, plus a gap in the 8-12svh band the design calls for. */
+    --column-step: calc(var(--card-height) + 10svh);
+  }
+
+  .deck .card {
+    --travel-x: 0px;
+    --fan-rotate: 0deg;
+    --recede: 0px;
+    --travel-y: calc(
+      (var(--card-index) - var(--column-position, 0)) * var(--column-step) + var(--rise-y) +
+        var(--exit-y)
+    );
+    /*
+     * The card on the stage and its immediate neighbours are present; anything further than one
+     * step away is not, so a six-item lens does not stack five ghosts behind the active card.
+     */
+    --column-distance: max(
+      calc(var(--card-index) - var(--column-position, 0)),
+      calc(var(--column-position, 0) - var(--card-index))
+    );
+    opacity: clamp(
+      0,
+      calc((1.8 - var(--column-distance)) * var(--phase-stack, 1) * (1 - var(--phase-exit, 0))),
+      1
+    );
+    z-index: calc(100 - var(--column-distance) * 10);
   }
 }
 
