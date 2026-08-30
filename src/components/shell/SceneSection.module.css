@@ -26,6 +26,23 @@
 
 .flowing > .viewport {
   min-height: 100svh;
+  /*
+   * The unpinned scene needs its own header-safe lead-in.
+   *
+   * Every scene's `.viewport` carries `padding: calc(var(--header-height) + 2rem) …` above, but
+   * for the nine PINNED scenes that is not what keeps content clear of the mark — `position:
+   * sticky; inset-block-start: 0` is. Their content is held at y >= 104px for the whole scene.
+   * Art Pieces is the one `pin: false` scene (scene-budgets.ts), so nothing holds it: its content
+   * translates with the document straight through the fixed header band, and the padding is a
+   * one-off offset at exactly one scroll position rather than a reserved band.
+   *
+   * The consequence is that its opening heading performs in the wordmark's lap — roughly 60px of
+   * clearance at every width. The lead-in below gives it 295-350px instead, measured at 1512,
+   * 1024, 768 and 390, so the first row has taken priority long before the heading reaches the
+   * mark. The header term stays rem-based and the lead-in svh-based, so the guarantee holds at
+   * every width without a breakpoint.
+   */
+  padding-block-start: calc(var(--header-height) + 2rem + 30svh);
 }
 
 .viewport {

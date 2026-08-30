@@ -48,6 +48,24 @@ import { ArtPiecesScene } from "@/components/scenes/ArtPiecesScene";
 import { FilmScene } from "@/components/scenes/FilmScene";
 import { FooterScene } from "@/components/scenes/FooterScene";
 import { GridStatementScene } from "@/components/scenes/GridStatementScene";
+/**
+ * The entry loader (ticket 05) is the one sanctioned exception to the shared canvas: it renders
+ * the material DROP logo on its OWN temporary overlay canvas above the DOM, then disposes it once
+ * the O portal completes.
+ *
+ * Imported STATICALLY, and that is the fix for the loader's worst symptom. Behind
+ * `dynamic(…, { ssr: false })` the loader stage prerendered as a bail-out placeholder, so the DROP
+ * mark could not exist until roughly 1.1MB of eager JavaScript had hydrated and a further lazy
+ * chunk had landed — which is exactly the "blank field for three or four seconds, and the logo
+ * never really arrives" that was reported. The mark is procedural SVG geometry; it can and should
+ * be in the very first painted frame.
+ *
+ * The `ssr: false` was never needed: that module imports `three` only as a TYPE, and the WebGL
+ * material it escalates to is already behind its own dynamic import inside the scene. The server
+ * therefore renders the overlay, its sizing variables, the `<noscript>` guard and the static
+ * wordmark, and the browser upgrades that to the material sequence when it can.
+ */
+import { LoaderScene } from "@/components/scenes/LoaderScene";
 import { MenuDeckScene } from "@/components/scenes/MenuDeckScene";
 import { ThesisScene } from "@/components/scenes/ThesisScene";
 import { TracksScene } from "@/components/scenes/TracksScene";
@@ -71,15 +89,6 @@ const BackgroundCanvas = dynamic(
   { ssr: false },
 );
 
-/**
- * The entry loader (ticket 05) is the one sanctioned exception to the shared canvas: it renders
- * the material DROP logo on its OWN temporary overlay canvas above the DOM, then disposes it once
- * the O portal completes. Client-only, and the page stays complete without it.
- */
-const LoaderScene = dynamic(
-  () => import("@/components/scenes/LoaderScene").then((mod) => mod.LoaderScene),
-  { ssr: false },
-);
 
 /**
  * Memoised at the wiring site, not inside the scene modules.
