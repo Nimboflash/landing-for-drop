@@ -203,10 +203,16 @@ const PHASE_WINDOWS = Object.freeze({
   spread: Object.freeze({ from: 0.4, to: 0.58 }),
   /** Backs turn to fronts, left to right, staggered by index. */
   flip: Object.freeze({ from: 0.52, to: 0.78 }),
-  /** The readable composition, held. */
+  /**
+   * The readable composition, held — and held all the way out.
+   *
+   * The deck used to drift up 12svh and fade to nothing across the last tenth of the scene.
+   * That read as the menu being taken away mid-sentence: four fronts are the whole point of
+   * this scene, and they were dimmest exactly when the reader had finally got all four.
+   * Nothing animates past the end of the hold now. The cards stay where they were put, the pin
+   * releases on schedule, and the next scene scrolls up over a composition still fully there.
+   */
   hold: Object.freeze({ from: 0.78, to: 0.9 }),
-  /** Continuous exit into the grid statement — no dead gap at either end. */
-  exit: Object.freeze({ from: 0.9, to: 1.0 }),
 });
 
 /** A phase of the deck's choreography. Distinct from `DeckPhase`, which is the observable
@@ -221,7 +227,6 @@ const SCRUBBED_PROPERTIES = [
   "--phase-fan",
   "--phase-spread",
   "--phase-flip",
-  "--phase-exit",
   "--column-position",
 ] as const;
 
@@ -254,7 +259,7 @@ export function deckPhaseAmount(progress: number, phase: DeckChoreographyPhase):
  */
 export function deckColumnPosition(progress: number, count: number): number {
   if (count <= 1) return 0;
-  const span = PHASE_WINDOWS.exit.from - PHASE_WINDOWS.stack.from;
+  const span = PHASE_WINDOWS.hold.to - PHASE_WINDOWS.stack.from;
   const through = clamp01((clamp01(progress) - PHASE_WINDOWS.stack.from) / span);
   return smoothstep(through) * (count - 1);
 }
@@ -330,14 +335,13 @@ export function MenuDeckScene({
   const phase = deckPhase(arrival, flipped, count);
 
   /*
-   * The five scrubbed numbers the stylesheet composes every card's transform from. Each is a pure
+   * The four scrubbed numbers the stylesheet composes every card's transform from. Each is a pure
    * function of this scene's own progress, so the whole deck is reversible by construction.
    */
   const stackAmount = deckPhaseAmount(progress, "stack");
   const fanAmount = deckPhaseAmount(progress, "fan");
   const spreadAmount = deckPhaseAmount(progress, "spread");
   const flipAmount = deckPhaseAmount(progress, "flip");
-  const exitAmount = deckPhaseAmount(progress, "exit");
   /** Which card is level with the stage in the narrow, vertical layout. */
   const columnPosition = deckColumnPosition(progress, count);
 
@@ -405,11 +409,10 @@ export function MenuDeckScene({
     deck.style.setProperty("--phase-fan", fanAmount.toFixed(4));
     deck.style.setProperty("--phase-spread", spreadAmount.toFixed(4));
     deck.style.setProperty("--phase-flip", flipAmount.toFixed(4));
-    deck.style.setProperty("--phase-exit", exitAmount.toFixed(4));
     deck.style.setProperty("--column-position", columnPosition.toFixed(4));
     // The heading yields as the stack gathers, and is a sibling so it cannot inherit this.
     headingRef.current?.style.setProperty("--phase-stack", stackAmount.toFixed(4));
-  }, [arrival, fan, stackAmount, fanAmount, spreadAmount, flipAmount, exitAmount, columnPosition, reducedMotion]);
+  }, [arrival, fan, stackAmount, fanAmount, spreadAmount, flipAmount, columnPosition, reducedMotion]);
 
   /**
    * The flip, driven by `flippedCards`.

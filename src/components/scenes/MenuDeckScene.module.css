@@ -231,8 +231,7 @@
   --arc-y: calc(
     var(--card-centred) * var(--card-centred) * var(--card-height) * 0.12 * var(--phase-fan, 1)
   );
-  --exit-y: calc(var(--phase-exit, 0) * -12svh);
-  --travel-y: calc(var(--rise-y) + var(--arc-y) + var(--exit-y));
+  --travel-y: calc(var(--rise-y) + var(--arc-y));
 
   /* The fan flattens as the spread opens: a fanned hand laid out reads flatter than one held. */
   --fan-rotate: calc(
@@ -272,11 +271,12 @@
   inline-size: var(--card-width);
   block-size: var(--card-height);
   /*
-   * Every card is fully present once the stack has risen, and the whole deck leaves together.
-   * There is no per-card fade: the composition the reader is meant to read at the hold is all
-   * four fronts at full strength, and anything dimmer would be a hierarchy nobody asked for.
+   * Every card is fully present once the stack has risen, and stays that way to the end of the
+   * scene. There is no per-card fade and no deck-wide one either: the composition the reader is
+   * meant to read at the hold is all four fronts at full strength, and anything dimmer would be
+   * a hierarchy nobody asked for. The scene leaves by being scrolled past, not by dissolving.
    */
-  opacity: clamp(0, calc(var(--phase-stack, 1) * (1 - var(--phase-exit, 0))), 1);
+  opacity: var(--phase-stack, 1);
 
   /* Brief §7.3: transform-style preserve-3d on each card, so the two faces stay in 3D. */
   -webkit-transform-style: preserve-3d;
@@ -493,8 +493,7 @@
     --fan-rotate: 0deg;
     --recede: 0px;
     --travel-y: calc(
-      (var(--card-index) - var(--column-position, 0)) * var(--column-step) + var(--rise-y) +
-        var(--exit-y)
+      (var(--card-index) - var(--column-position, 0)) * var(--column-step) + var(--rise-y)
     );
     /*
      * The card on the stage and its immediate neighbours are present; anything further than one
@@ -504,11 +503,7 @@
       calc(var(--card-index) - var(--column-position, 0)),
       calc(var(--column-position, 0) - var(--card-index))
     );
-    opacity: clamp(
-      0,
-      calc((1.8 - var(--column-distance)) * var(--phase-stack, 1) * (1 - var(--phase-exit, 0))),
-      1
-    );
+    opacity: clamp(0, calc((1.8 - var(--column-distance)) * var(--phase-stack, 1)), 1);
     z-index: calc(100 - var(--column-distance) * 10);
   }
 }
