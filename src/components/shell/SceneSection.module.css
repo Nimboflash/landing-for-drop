@@ -1,0 +1,70 @@
+/*
+ * Scene stage geometry. Tokens only — every value resolves from src/app/globals.css.
+ */
+
+.scene {
+  position: relative;
+  display: block;
+  /*
+   * The budget arrives unitless so it can be scaled per breakpoint. The floor keeps a pinned
+   * scene's sticky travel non-degenerate no matter how far a breakpoint scales the budget down.
+   */
+  min-height: max(120svh, calc(var(--scene-budget, 100) * 1svh * var(--scene-scale, 1)));
+}
+
+/*
+ * A pinned scene holds the viewport for `budget - 100` viewport heights: its child sticks at the
+ * top until the section's bottom edge catches up with it. Sticky rather than a GSAP pin because
+ * it survives resize, reduced motion and a JavaScript-disabled render without any pin-spacer
+ * bookkeeping — and because the trigger stays a dumb progress source rather than a DOM mutator.
+ */
+.pinned > .viewport {
+  position: sticky;
+  inset-block-start: 0;
+  min-height: 100svh;
+}
+
+.flowing > .viewport {
+  min-height: 100svh;
+}
+
+.viewport {
+  display: grid;
+  align-content: center;
+  gap: clamp(1.5rem, 3vh, 3rem);
+  padding: calc(var(--header-height) + 2rem) var(--page-gutter) 4rem;
+
+  /*
+   * Scenes bleed past the viewport edge by design — the film poster enters from off-frame and the
+   * coverflow parks its neighbours outside the frame. That bleed must never widen the DOCUMENT: on
+   * an rtl page a wider document moves the viewport origin, which drags the fixed background canvas
+   * off its own edge and leaves a bare strip down the side.
+   *
+   * Clipped HERE, on the pane itself, rather than on `html`. An element's own overflow does not
+   * change how its own position resolves, so the pinned pane keeps sticking to the real viewport —
+   * whereas clipping on `html` makes it the sticky containing block and every pinned scene silently
+   * stops pinning. `clip` rather than `hidden` so no scroll container is created either way.
+   */
+  overflow-x: clip;
+}
+
+/*
+ * Brief §15: "Avoid long pinned sections that feel trapped on mobile; tune durations separately."
+ * One token, applied to every scene at once, keeps that tuning in one place.
+ */
+@media (max-width: 767px) {
+  .scene {
+    --scene-scale: 0.72;
+  }
+}
+
+/*
+ * Reduced motion shortens the scroll journey too: with the choreography simplified there is
+ * nothing for the extra length to scrub (brief §16 — reduced motion must never remove content,
+ * only motion).
+ */
+@media (prefers-reduced-motion: reduce) {
+  .scene {
+    --scene-scale: 0.5;
+  }
+}

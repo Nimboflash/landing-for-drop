@@ -1,0 +1,730 @@
+/*
+ * Tracks carousel — the jewel-case coverflow (brief §7.8, ticket 12).
+ *
+ * Tokens only: every colour, size, easing and gutter resolves from src/app/globals.css. Corners
+ * are square everywhere; the only circles are the ones the physical form demands — the disc, its
+ * hub and the hole through its centre.
+ *
+ * ## The layer stack, and why it is this deep
+ *
+ * Four transforms have to coexist on one case without ever writing to the same property:
+ *
+ *   .case       coverflow position   translateX / translateZ / rotateY / scale   (transition)
+ *   .caseFloat  ambient float        translate3d                                  (keyframes)
+ *   .caseTilt   pointer tilt         rotateX / rotateY                            (transition)
+ *   .caseBody   the plastic itself   no transform — gradients, borders, filter
+ *
+ * Splitting them is what lets the step animate while the case is still breathing and leaning,
+ * instead of one of the three winning the `transform` slot and cancelling the others.
+ *
+ * ## Where the numbers come from
+ *
+ * `--track-travel`, `--track-depth` and `--track-presence` are written per case by the component
+ * from `trackIndex` and the field's slot count. They are ordinal — a signed step count, a capped
+ * distance, and a 0..1 presence — so this stylesheet only ever multiplies them by a length or an
+ * angle it owns. No divisions, no viewport reasoning in JavaScript, no computed geometry crossing
+ * the boundary in either direction.
+ *
+ * All three are capped just outside the painted field, which is what keeps a long playlist's far
+ * cases from laying themselves out hundreds of pixels beyond the viewport and inflating the
+ * document's width while being invisible. The true signed distance stays readable as
+ * `data-offset`.
+ *
+ * ## The document is RTL; this field is not
+ *
+ * Positions use PHYSICAL properties (`left`, `top`, `translateX`) on purpose, exactly as the film
+ * scene's editorial columns do (brief §16): the coverflow's order is a deliberate composition and
+ * must not flip with the document's direction. Text runs inside carry their own `dir`, so Persian
+ * still reads right-to-left inside a field whose order is fixed.
+ */
+
+/*
+ * Reading ground for text over the live mesh.
+ *
+ * The Monochrome Mesh's control colours run all the way up to #E4E4E6 (brief §7.8), so its light
+ * lobes drift behind the heading and caption and take white text down to ~1.7:1 — measured, not
+ * assumed. Brief §16 requires WCAG AA, and §14 forbids "shader motion that lowers text contrast",
+ * so the mesh is darkened where text sits, exactly as §7.9 already sanctions for reading comfort.
+ *
+ * A soft ellipse rather than a panel: the mesh stays alive and visible through it, and no card
+ * edge appears. 0.68 at the centre puts the worst-case lobe (~rgb(200,201,205)) under the ceiling
+ * every line needs — including the 4.5:1 the small metadata line requires.
+ *
+ * Lighthouse cannot see this: its contrast rule silently skips text over a canvas. The measurement
+ * is the [manual] sampling pass described in docs/qa/.
+ */
+.readingGround::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: -2.75rem -50vw;
+  /*
+   * A horizontal band, not a radial ellipse. An ellipse only darkens the middle, so the ends of a
+   * long title land in its faded zone and still measured under AA — the band feathers on the
+   * vertical axis only, so every line gets the same ground from end to end. It runs wider than the
+   * viewport so nothing falls off its sides.
+   */
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0) 0%,
+    rgba(0, 0, 0, 0.5) 9%,
+    rgba(0, 0, 0, 0.82) 22%,
+    rgba(0, 0, 0, 0.82) 78%,
+    rgba(0, 0, 0, 0.5) 91%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  pointer-events: none;
+}
+
+.heading {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  justify-items: center;
+  gap: 0.35rem;
+  text-align: center;
+  /* Scene progress drifts the heading. It never gates visibility — see the component's note. */
+  transform: translateY(calc((0.5 - var(--drop-tracks-progress, 0)) * 1.6svh));
+}
+
+.headingFa {
+  font-family: var(--font-persian);
+  font-size: var(--title-lg);
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--drop-white);
+}
+
+/*
+ * Brief §7.8 opens the scene with a LARGE `TRACKS` heading, and the reference render makes that
+ * word the hero of the composition — so the Latin label carries the same display size as the
+ * Persian rather than sitting under it as a subtitle. Persian still leads: it comes first and it
+ * is the pure white, with the Latin a step back in off-white.
+ */
+.headingEn {
+  font-family: var(--font-latin);
+  font-size: var(--title-lg);
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  /* The tracking pushes the row off-centre by one trailing space; give it back. */
+  text-indent: 0.2em;
+  line-height: 1.05;
+  color: var(--drop-off-white);
+  /* A longer label from another lens wraps rather than pushing the field sideways. */
+  text-wrap: balance;
+}
+
+/* ------------------------------------------------------------------ carousel */
+
+.carousel {
+  --drop-tracks-crossfade: 1;
+  --drop-tracks-drag: 0px;
+  --drop-tracks-tilt-x: 0;
+  --drop-tracks-tilt-y: 0;
+
+  /*
+   * The field's geometry, declared once here because two different pieces read it: the case
+   * itself, and the caption that has to sit directly beneath the case at every viewport.
+   *
+   * `--case-step` is a little over one case width because the stage's perspective pulls the
+   * neighbours back in again: at the depth step below, one step projects to about 0.98 of a case
+   * width, which is the gap the reference composition holds between its cases. The depth and
+   * scale steps are deliberately steep — a coverflow that only shrinks its neighbours a tenth
+   * reads as a flat row, not as a field with a front. Perspective compounds them, so the painted
+   * neighbours land near 0.74 and 0.51 of the active case, as the reference does.
+   *
+   * The width is capped so five positions still fit inside the page gutters at 1200px, which is
+   * what fixes the ceiling here rather than any wish about how big a case should look.
+   */
+  /*
+   * The case is sized off the width — five positions have to fit inside the page gutters at
+   * 1200px, which is what fixes the ceiling — but capped against the viewport's HEIGHT as well,
+   * because the case is square and the scene is pinned: on a short laptop an unguarded 20vw case
+   * plus its caption is taller than the viewport it is pinned inside.
+   */
+  --case-width: clamp(9rem, min(20vw, 30svh), 21rem);
+  /*
+   * Square, measured off the supplied reference render rather than off a tape measure: the cases
+   * in `handoff/02-motion/tracks-carousel-reference.png` are square-format cases, not the taller
+   * 142x125mm album case. Kept as a variable so a future case format is one number.
+   */
+  --case-aspect: 1;
+  --case-height: calc(var(--case-width) / var(--case-aspect));
+  --case-step: calc(var(--case-width) * 1.06);
+  --case-depth-step: -140px;
+  --case-turn-step: -6deg;
+  --case-scale-step: 0.2;
+  /* Room under the case for title, artist and group label at their largest. */
+  --caption-block: 9.5rem;
+
+  position: relative;
+  width: 100%;
+  max-width: 96rem;
+  margin-inline: auto;
+}
+
+/*
+ * Exactly as tall as the case plus its caption. Sized from the case rather than from the
+ * viewport so the title always sits directly beneath the case the way the reference composition
+ * does, instead of drifting to the floor of an over-tall stage on a big screen.
+ */
+.stage {
+  position: relative;
+  width: 100%;
+  height: calc(var(--case-height) + var(--caption-block));
+  perspective: 1600px;
+  perspective-origin: 50% 42%;
+  /* Vertical gestures stay the page's; horizontal ones become carousel steps. */
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.cases {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  transform-style: preserve-3d;
+}
+
+/*
+ * Every track occupies the whole stage and positions its own two pieces inside it: the case in
+ * the coverflow, the caption directly beneath it. The item itself never transforms, so the
+ * caption holds still while the case travels.
+ */
+.track {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  pointer-events: none;
+}
+
+/* --------------------------------------------------------------------- case */
+
+.case {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: var(--case-width);
+  height: var(--case-height);
+  margin-left: calc(var(--case-width) / -2);
+  transform-style: preserve-3d;
+  perspective: 900px;
+  pointer-events: none;
+
+  transform: translateX(calc(var(--track-travel, 0) * var(--case-step) + var(--drop-tracks-drag)))
+    translateZ(calc(var(--track-depth, 0) * var(--case-depth-step)))
+    rotateY(calc(var(--track-travel, 0) * var(--case-turn-step)))
+    scale(calc(1 - var(--track-depth, 0) * var(--case-scale-step)));
+  opacity: var(--track-presence, 1);
+
+  transition:
+    transform 760ms var(--ease-cinematic),
+    opacity 520ms var(--ease-cinematic);
+}
+
+/* A drag leads the field directly; a transition here would make it feel rubbery and late. */
+.carousel[data-carousel-dragging="true"] .case {
+  transition: none;
+}
+
+.caseButton {
+  position: absolute;
+  inset: 0;
+  display: block;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  pointer-events: auto;
+  transform-style: preserve-3d;
+}
+
+/* Past the painted positions the case is invisible; nothing invisible stays clickable. */
+.track[data-in-field="false"] .caseButton {
+  pointer-events: none;
+}
+
+.caseButton:focus-visible {
+  outline: 2px solid var(--drop-orange);
+  outline-offset: 6px;
+}
+
+.caseFloat,
+.caseTilt {
+  position: absolute;
+  inset: 0;
+  display: block;
+  transform-style: preserve-3d;
+}
+
+/* Ambient life, on the active case only: a slow breath, not a bob (brief §7.8, §9). */
+.track[data-active="true"] .caseFloat {
+  animation: case-float 6.4s var(--ease-material) infinite alternate;
+}
+
+@keyframes case-float {
+  from {
+    transform: translate3d(0, 0.7%, 0);
+  }
+  to {
+    transform: translate3d(0, -1.5%, 0);
+  }
+}
+
+/*
+ * Pointer tilt. Smoothed by this transition rather than by a tween: restarting a 620ms transform
+ * transition on every pointer move gives the same weighted follow with no timeline to clean up,
+ * and nothing depends on it (brief §15 — no feature may depend on hover).
+ */
+.caseTilt {
+  transform: rotateX(calc(var(--drop-tracks-tilt-x) * -3deg))
+    rotateY(calc(var(--drop-tracks-tilt-y) * 4deg));
+  transition: transform 620ms var(--ease-cinematic);
+}
+
+/* ---------------------------------------------------------- the clear plastic */
+
+.caseBody {
+  position: absolute;
+  inset: 0;
+  display: block;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 0; /* sharp corners — hard rule */
+  background:
+    linear-gradient(
+      118deg,
+      rgba(255, 255, 255, 0.17) 0%,
+      rgba(255, 255, 255, 0.03) 26%,
+      rgba(255, 255, 255, 0.12) 47%,
+      rgba(255, 255, 255, 0.02) 71%,
+      rgba(255, 255, 255, 0.14) 100%
+    ),
+    linear-gradient(0deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.045));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.36),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.07),
+    0 34px 70px -28px rgba(0, 0, 0, 0.92);
+  /* Distance reads as dimness, on the flat layer — a filter on a 3D layer would flatten it. */
+  filter: brightness(calc(1 - var(--track-depth, 0) * 0.14));
+  transition: filter 520ms var(--ease-cinematic);
+}
+
+/* The inner tray edge: one thin line, the only detail the moulding really shows at this size. */
+.caseBody::after {
+  content: "";
+  position: absolute;
+  inset: 4.5%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/*
+ * Real refraction is a high-tier luxury (brief §14, quality tiers). Everywhere else the case is
+ * still clearly transparent — it is drawn from the light passing over it, not from the blur.
+ *
+ * Scoped to the painted positions as well as the tier: a long playlist keeps every case mounted
+ * so its text stays server-rendered and its state stays observable, and a backdrop filter on a
+ * dozen invisible cases is a bill for nothing (brief §17).
+ */
+.carousel[data-carousel-quality="high"] .track[data-in-field="true"] .caseBody {
+  -webkit-backdrop-filter: blur(2px) saturate(1.12) brightness(1.05);
+  backdrop-filter: blur(2px) saturate(1.12) brightness(1.05);
+}
+
+/* The hinged spine down the left edge, with its moulded teeth. */
+.spine {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 7%;
+  border-right: 1px solid rgba(255, 255, 255, 0.14);
+  background:
+    linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.24) 0%,
+      rgba(255, 255, 255, 0.05) 58%,
+      rgba(255, 255, 255, 0.15) 100%
+    ),
+    repeating-linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.17) 0 1.6%,
+      rgba(255, 255, 255, 0) 1.6% 4.4%
+    );
+}
+
+/* A single travelling highlight across the plastic. Restrained: one pass, very slow. */
+.gloss {
+  position: absolute;
+  top: -20%;
+  bottom: -20%;
+  left: -46%;
+  width: 40%;
+  background: linear-gradient(
+    100deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.14) 44%,
+    rgba(255, 255, 255, 0.28) 55%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  filter: blur(6px);
+  transform: translateX(0) skewX(-12deg);
+  pointer-events: none;
+}
+
+.track[data-active="true"] .gloss {
+  animation: gloss-travel 9.5s var(--ease-material) infinite alternate;
+}
+
+@keyframes gloss-travel {
+  from {
+    transform: translateX(0) skewX(-12deg);
+  }
+  to {
+    transform: translateX(330%) skewX(-12deg);
+  }
+}
+
+/* ------------------------------------------------------------------ the disc */
+
+/*
+ * The artwork IS the disc's surface: clipped to the circle, turning with it, with the clear hub
+ * over its centre. Never a square card laid on top (brief §7.8; mock-pack rule).
+ */
+.disc {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  /* The disc all but fills the case, as it does in the reference render (~0.88 of the width). */
+  width: 88%;
+  aspect-ratio: 1;
+  display: block;
+  transform: translate(-50%, -50%);
+  border-radius: 50%; /* the one shape the physical form demands */
+  overflow: hidden;
+  isolation: isolate;
+  background: var(--drop-ink);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.12),
+    0 12px 30px -16px rgba(0, 0, 0, 0.9);
+}
+
+.discArtwork {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  transform: rotate(0deg);
+}
+
+/* Only the cases actually on screen pay for the revolution. */
+.track[data-in-field="true"] .discArtwork {
+  animation: disc-spin 96s linear infinite;
+}
+
+@keyframes disc-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* No artwork this environment may paint: a branded DROP disc, never a broken image. */
+.discPlaceholder {
+  display: block;
+  background:
+    repeating-linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.05) 0 6px,
+      rgba(255, 255, 255, 0) 6px 12px
+    ),
+    radial-gradient(circle at 50% 42%, #2b2c32 0%, var(--drop-ink) 72%);
+}
+
+/*
+ * The mark sits in the lower annulus, where a pressed disc prints its own label: the clear hub
+ * covers the middle third of the disc, and a wordmark punched through the middle reads as damage
+ * rather than as identity.
+ */
+.placeholderMark {
+  position: absolute;
+  top: 74%;
+  left: 50%;
+  width: 44%;
+  height: auto;
+  transform: translate(-50%, -50%);
+}
+
+/*
+ * The pressed-data sheen. Monochrome first, with only a trace of DROP orange and purple — brief
+ * §4 keeps the accents as atmospheric energy, never as a fill.
+ */
+.discSheen {
+  position: absolute;
+  inset: 0;
+  display: block;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    rgba(255, 255, 255, 0) 0deg,
+    rgba(255, 255, 255, 0.2) 34deg,
+    rgba(255, 90, 0, 0.09) 78deg,
+    rgba(255, 255, 255, 0) 132deg,
+    rgba(255, 255, 255, 0.13) 196deg,
+    rgba(72, 0, 130, 0.13) 240deg,
+    rgba(255, 255, 255, 0) 320deg
+  );
+  mix-blend-mode: screen;
+  opacity: 0.5;
+}
+
+.track[data-in-field="true"] .discSheen {
+  animation: disc-spin 64s linear infinite reverse;
+}
+
+/* Clear hub, mirror ring, spindle hole — the part of a CD the artwork never covers. */
+.discHub {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 33%;
+  aspect-ratio: 1;
+  display: block;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 50% 50%,
+    rgba(6, 6, 8, 0.94) 0 33%,
+    rgba(255, 255, 255, 0.2) 33% 37%,
+    rgba(196, 200, 209, 0.26) 37% 73%,
+    rgba(255, 255, 255, 0.46) 73% 78%,
+    rgba(255, 255, 255, 0.05) 78% 100%
+  );
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+/* ------------------------------------------------------------------ caption */
+
+/*
+ * Title first, artist second, group label third (brief §7.8). Pinned to the bottom of the stage
+ * rather than carried by the case, so it stays still and legible while the case moves.
+ */
+.caption {
+  position: absolute;
+  isolation: isolate;
+  left: 0;
+  right: 0;
+  /* Directly beneath the case, not at the floor of the stage. */
+  top: calc(var(--case-height) + 1.6rem);
+  display: grid;
+  justify-items: center;
+  gap: 0.3rem;
+  padding-inline: var(--page-gutter);
+  text-align: center;
+  opacity: 0;
+  transform: translateY(0.55rem);
+  pointer-events: none;
+  transition:
+    opacity 420ms var(--ease-cinematic),
+    transform 620ms var(--ease-cinematic);
+}
+
+.track[data-active="true"] .caption {
+  /* 1 under full motion; the reduced-motion crossfade drives it 0 -> 1 on each step. */
+  opacity: var(--drop-tracks-crossfade);
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.title {
+  font-family: var(--font-latin);
+  font-size: var(--title-md);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.015em;
+  color: var(--drop-white);
+}
+
+.sourceLink {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+.sourceLink:hover,
+.sourceLink:focus-visible {
+  border-bottom-color: var(--drop-orange);
+}
+
+.artist {
+  font-family: var(--font-latin);
+  font-size: var(--body-lg);
+  color: var(--drop-off-white);
+}
+
+/*
+ * Brief §4 reserves orange for light, transition and atmospheric energy — not for text. As the
+ * label colour it also measured 1.0:1 against the mesh's light lobes (AA wants 4.5:1 at this
+ * size), so the group reads in off-white and stays subordinate through size and tracking instead
+ * of hue. The reading ground behind it supplies the contrast.
+ */
+.group {
+  font-family: var(--font-persian);
+  font-size: var(--label);
+  letter-spacing: 0.22em;
+  color: var(--drop-off-white);
+  opacity: 0.82;
+}
+
+/* ----------------------------------------------------------------- controls */
+
+/*
+ * Visible on every viewport and never disabled at the ends (brief §7.8, §15). Square, outlined,
+ * and above the field so a neighbouring case can never intercept the press.
+ */
+.control {
+  position: absolute;
+  /* Level with the middle of the case, whatever the case's size at this breakpoint. */
+  top: calc(var(--case-height) / 2);
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  border-radius: 0;
+  background: rgba(0, 0, 0, 0.45);
+  color: var(--drop-white);
+  cursor: pointer;
+  transform: translateY(-50%);
+  transition:
+    background-color 240ms var(--ease-material),
+    border-color 240ms var(--ease-material);
+}
+
+.control:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.7);
+}
+
+.control:focus-visible {
+  outline: 2px solid var(--drop-orange);
+  outline-offset: 3px;
+}
+
+.previous {
+  left: 0;
+}
+
+.next {
+  right: 0;
+}
+
+.controlGlyph {
+  font-family: var(--font-latin);
+  font-size: 1.5rem;
+  line-height: 1;
+  /* The chevrons are direction-neutral glyphs; the field they drive is physically LTR. */
+  direction: ltr;
+}
+
+/* -------------------------------------------------------------- responsive */
+
+/*
+ * Brief §15, tablet: three-position coverflow. Two fewer cases to fit means the case itself can
+ * take more of the width, so the field keeps the same presence it has on a desktop.
+ */
+@media (max-width: 1199px) {
+  .carousel {
+    --case-width: clamp(10rem, min(30vw, 34svh), 17rem);
+    --case-depth-step: -115px;
+  }
+}
+
+/*
+ * Brief §15, mobile: swipe-first. The case takes half the viewport and the single neighbour on
+ * each side runs off the edge — a peek that advertises the gesture without pretending a phone
+ * has room for five positions.
+ */
+@media (max-width: 767px) {
+  .carousel {
+    --case-width: clamp(11rem, min(52vw, 34svh), 17rem);
+    --case-step: calc(var(--case-width) * 0.86);
+    --case-scale-step: 0.24;
+    --caption-block: 7.5rem;
+  }
+
+  .control {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+
+  .headingEn {
+    letter-spacing: 0.14em;
+    text-indent: 0.14em;
+  }
+}
+
+/*
+ * Reduced motion keeps the coverflow, the five positions, every control and every track — only
+ * the travel between them stops (brief §16). `globals.css` already collapses transitions and
+ * keyframes; these rules make the intent explicit at the scene, and the crossfade the brief asks
+ * for is driven from the component because a collapsed transition cannot express it.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .case,
+  .caseBody,
+  .caseTilt,
+  .caption,
+  .control {
+    transition: none;
+  }
+
+  .track[data-active="true"] .caseFloat,
+  .track[data-active="true"] .gloss,
+  .track[data-in-field="true"] .discArtwork,
+  .track[data-in-field="true"] .discSheen {
+    animation: none;
+  }
+
+  .heading {
+    transform: none;
+  }
+}
+
+/* ------------------------------------------------------- dark-beat entrance */
+
+/*
+ * Brief §7.7 steps 6-7: the beat at the end of Pixel B is EMPTY, and the Tracks composition enters
+ * after it. The tracks section is already scrolling into frame while the beat runs, so geometry
+ * alone would show the title and cases during the beat — the gate is reducer state, not position.
+ *
+ * Opacity only, deliberately: `hidden`/`inert`/`display:none` would pull the eleven track titles
+ * out of the server-rendered DOM that brief §17 requires be indexable and readable without
+ * JavaScript. The text stays present and announced; only the paint is withheld for the beat.
+ */
+.entranceGate[data-tracks-entered="false"] {
+  opacity: 0;
+}
+
+.entranceGate {
+  opacity: 1;
+  transition: opacity 360ms var(--ease-cinematic);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .entranceGate {
+    transition-duration: 120ms;
+  }
+}

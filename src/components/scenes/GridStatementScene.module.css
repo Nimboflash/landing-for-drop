@@ -1,0 +1,131 @@
+/*
+ * Grid statement (brief §7.4, ticket 08).
+ *
+ * Tokens only — every colour, size and easing below resolves from src/app/globals.css.
+ *
+ * There is no panel, no card, no rule, no border, no background and no scrim in this file. The
+ * dark forest-green field and its quiet lattice belong to the SHADER (`greenGrid` mode, which
+ * also owns the cell size the next transition aligns to); the brief's list of what may sit on
+ * top of them has exactly one entry — "Only one centered statement." So the only thing styled
+ * here is type, and nothing here has a corner to round.
+ *
+ * Contrast: off-white type over the shader's own two colours. The lattice never mixes past
+ * `--drop-grid-line` (#245236 — measured 10.8:1 against #fffffe, and 15:1 over the #102b19
+ * field), and the canvas renders linear/flat, so the fragment values above are what reaches the
+ * screen. Both text runs clear WCAG AA at every size the clamps produce; contrast against the
+ * live mosaic frames of transition A stays a [manual] check, because the statement is already
+ * fading out across that window.
+ */
+
+/*
+ * The statement block. ONE geometry, two positions:
+ *
+ *   in flow  — a grid item in the scene stage, which is where the server renders it and where a
+ *              JavaScript-disabled reader sees it;
+ *   lifted   — the same block on a viewport-fixed holding layer (below).
+ *
+ * `--drop-statement-opacity` and `--drop-statement-lift` are written by the component from the
+ * replacement-progress prop, so the fade is a pure function of scroll and reverses exactly.
+ */
+.statement {
+  display: grid;
+  gap: clamp(0.9rem, 2.4vh, 1.9rem);
+  margin: 0;
+  color: var(--drop-off-white);
+  text-align: center;
+  opacity: var(--drop-statement-opacity, 1);
+  transform: translateY(var(--drop-statement-lift, 0px));
+}
+
+/*
+ * Lifted: the statement leaves the scene stage for a fixed holding layer that repeats the stage's
+ * own padding, so it stands in exactly the same place — the switch is positionally identical and
+ * cannot jump. It is what keeps the statement on screen while pixel transition A eats the grid
+ * behind it, which is the only way brief §7.5 can be true: "The centered statement fades while
+ * the replacement reaches approximately 20-55% progress."
+ *
+ * `z-index: 1` clears the background canvas (a positioned `z-index: 0` layer) and stays under the
+ * header (20) and the loader overlay (900). `pointer-events: none` because the layer spans the
+ * viewport: it may never intercept a gesture meant for the page underneath.
+ */
+.statement[data-lifted="true"] {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  align-content: center;
+  padding: calc(var(--header-height) + 2rem) var(--page-gutter) 4rem;
+  pointer-events: none;
+  will-change: opacity, transform;
+}
+
+/*
+ * One mask per language run. The overflow IS the mask; the inner run is what moves, and the
+ * component writes its masked/revealed state through GSAP after mount — never from here, so the
+ * server-rendered text is never trapped behind a mask that no script will open.
+ *
+ * The padding/negative-margin pair gives the type room to overflow its own line box inside the
+ * mask without moving the line — Vazirmatn's em box is taller than the 1.1 line-height the
+ * display run uses, so its ascenders and descenders would otherwise be shaved. The masked
+ * translate (`MASKED_Y_PERCENT`) is sized past that padding, so a resting glyph is never clipped
+ * and a masked one never peeks over the edge.
+ */
+.line {
+  display: block;
+  overflow: hidden;
+  padding-block: 0.22em;
+  margin-block: -0.22em;
+}
+
+.persian {
+  display: block;
+  max-width: 16ch;
+  margin-inline: auto;
+  font-family: var(--font-persian);
+  font-size: var(--display-lg);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+
+/*
+ * The Latin run of the same statement, at label scale. Case comes from the data — editorial copy
+ * is never re-cased in CSS. `text-indent` gives back the trailing letter-space so the tracked
+ * line stays optically centred.
+ */
+.latin {
+  display: block;
+  max-width: 34ch;
+  margin-inline: auto;
+  font-family: var(--font-latin);
+  font-size: var(--label);
+  font-weight: 700;
+  line-height: 1.5;
+  letter-spacing: 0.22em;
+  text-indent: 0.22em;
+  color: color-mix(in srgb, var(--drop-off-white) 80%, transparent);
+}
+
+/* Brief §15: fewer line breaks and calmer tracking on a phone; the statement never overflows. */
+@media (max-width: 767px) {
+  .persian {
+    max-width: 12ch;
+  }
+
+  .latin {
+    letter-spacing: 0.16em;
+    text-indent: 0.16em;
+  }
+}
+
+/*
+ * Reduced motion has nothing to switch off here: this scene owns no CSS transition or animation.
+ * The reveal is written by GSAP (which the component skips entirely under reduced motion) and the
+ * fade is a scrubbed custom property the component steps rather than scrubs. Declared so the next
+ * reader does not add one.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .statement {
+    transform: none;
+  }
+}

@@ -1,0 +1,23 @@
+/**
+ * DROP marks.
+ *
+ * Only polarity and layout live here — every dimension comes from geometry.ts, so nothing in
+ * this file may set a width, a radius or a stroke. Tiles paint in `currentColor`, so a scene can
+ * also drive the mark by setting `color` on any ancestor.
+ */
+
+.mark {
+  display: block;
+  /* The knockout is a real hole: whatever the mark sits on shows through the letters. */
+  overflow: visible;
+}
+
+/* Dark tiles for a light scene. */
+.dark {
+  color: var(--drop-black);
+}
+
+/* Light tiles for a dark scene. Off-white, not pure white — the brand's paired neutral. */
+.light {
+  color: var(--drop-off-white);
+}

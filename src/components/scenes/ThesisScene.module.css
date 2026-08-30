@@ -1,0 +1,282 @@
+/*
+ * Pinned lens thesis (brief §7.2). Tokens only — every value resolves from src/app/globals.css.
+ *
+ * Two states live here, and the order matters:
+ *
+ * 1. the DEFAULT rules are the static presentation — the server render, the JavaScript-disabled
+ *    render, and the frame before hydration. Everything is in flow and readable. No rule in this
+ *    file hides text by default;
+ * 2. the `[data-presentation="stage"]` rules are the pinned composition, applied only after the
+ *    scene has mounted: the two layers share one grid cell, the messages overlay one another, and
+ *    the closing beat is scrubbed from the two custom properties the component writes.
+ *
+ * Colour is `currentColor`-relative on purpose: the shell sets the scene's ink from the reducer's
+ * contrast verdict, so this scene follows it instead of pinning a grey that would fail AA if the
+ * ground ever changed. Nothing is lighter than 74% of that ink, which measures ≈6.7:1 on DROP
+ * off-white and stays clear of AA over the capped glow (see OffWhiteGlowShader's GLOW_CEILING).
+ */
+
+.thesis {
+  /* Fallbacks: the component writes both, but the static render must stand without them. */
+  --drop-thesis-progress: 0;
+  --drop-argument-reveal: 0;
+
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: clamp(2rem, 6svh, 4rem);
+  inline-size: 100%;
+  max-inline-size: 74rem;
+  margin-inline: auto;
+  text-align: center;
+}
+
+/* ------------------------------------------------------------------ identity */
+
+.identity {
+  display: grid;
+  justify-items: center;
+  gap: clamp(0.5rem, 1.4svh, 0.9rem);
+}
+
+.label {
+  font-family: var(--font-latin);
+  font-size: var(--label);
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, currentColor 74%, transparent);
+}
+
+.title {
+  font-family: var(--font-persian);
+  font-size: var(--title-md);
+  line-height: 1.24;
+  max-inline-size: 20ch;
+}
+
+/* -------------------------------------------------------------------- stage */
+
+/*
+ * The two layers. In flow they read one after the other; on the stage they occupy the same cell,
+ * so the argument arrives exactly where the messages were and the composition never jumps.
+ */
+.stack {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  inline-size: 100%;
+  gap: clamp(1.5rem, 5svh, 3rem);
+}
+
+.layer {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  inline-size: 100%;
+}
+
+.messages {
+  gap: clamp(1rem, 3svh, 2rem);
+}
+
+/*
+ * Display size belongs to the STAGE, not to the message. In the static presentation the three
+ * messages read as a column, one after another — at hero size that column is a wall of 77px
+ * sentences for a visitor with no JavaScript, so the flowing state takes the title size and the
+ * pinned stage below takes the display size.
+ */
+.message {
+  /* The offset parent the line measurement reads against. */
+  position: relative;
+  font-family: var(--font-persian);
+  font-size: var(--title-lg);
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  max-inline-size: min(100%, 17ch);
+  text-wrap: balance;
+}
+
+/*
+ * One line mask per word: a clip box the word's own line rises out of. The padding keeps Persian
+ * ascenders and descenders inside the box (they overflow the line box); the equal negative margin
+ * takes that padding back out of the layout, so the mask costs no space.
+ */
+.word {
+  display: inline-block;
+  /* `hidden` first for engines without `overflow: clip`; both clip an inline-block identically. */
+  overflow: hidden;
+  overflow: clip;
+  padding-block: 0.2em 0.36em;
+  margin-block: -0.2em -0.36em;
+}
+
+.wordInner {
+  display: inline-block;
+}
+
+/* ----------------------------------------------------------------- argument */
+
+.argument {
+  gap: clamp(0.75rem, 2.2svh, 1.4rem);
+  max-inline-size: 60ch;
+}
+
+/* A thin editorial rule, sharp-ended — the only mark this scene draws. */
+.argument::before {
+  content: "";
+  inline-size: 3.5rem;
+  block-size: 1px;
+  margin-block-end: clamp(0.5rem, 1.5svh, 1rem);
+  background: currentColor;
+  opacity: 0.4;
+}
+
+.statement {
+  font-family: var(--font-persian);
+  font-size: var(--body-lg);
+  line-height: 1.9;
+  max-inline-size: 54ch;
+  text-wrap: pretty;
+  color: color-mix(in srgb, currentColor 78%, transparent);
+}
+
+/* The thesis is the head of the argument; the other three qualify it. */
+.statement[data-lens-thesis] {
+  font-size: var(--title-md);
+  font-weight: 700;
+  line-height: 1.45;
+  color: currentColor;
+}
+
+/* How far each statement waits below its resting place while the beat is still closed. */
+.statement:nth-child(1) {
+  --drop-statement-lift: 1.2svh;
+}
+
+.statement:nth-child(2) {
+  --drop-statement-lift: 1.8svh;
+}
+
+.statement:nth-child(3) {
+  --drop-statement-lift: 2.4svh;
+}
+
+.statement:nth-child(4) {
+  --drop-statement-lift: 3svh;
+}
+
+/* ------------------------------------------------------- staged presentation */
+
+.thesis[data-presentation="stage"] .stack {
+  gap: 0;
+}
+
+/* Both layers, and every message, share one cell. */
+.thesis[data-presentation="stage"] .layer,
+.thesis[data-presentation="stage"] .message {
+  grid-area: 1 / 1;
+}
+
+/*
+ * The overlaid stack's resting state, written here rather than left to the timeline: on the frame
+ * the stage takes over — and in any environment where the tweens never run at all — the stylesheet
+ * already shows exactly the message the reducer calls active, so the pile can never flash as one
+ * unreadable block of stacked sentences. `data-active` is reducer output, the same attribute
+ * Playwright asserts. The inline opacity GSAP writes outranks both rules the moment it exists,
+ * which is why the transition itself is unaffected; `revert()` on unmount hands the stage back.
+ *
+ * Faded here means transparent, never removed: nothing is `display: none`, `hidden` or `inert`,
+ * so assistive technology still reads all of the messages in order (brief §16).
+ */
+.thesis[data-presentation="stage"] .message {
+  font-size: var(--display-lg);
+  opacity: 0;
+}
+
+.thesis[data-presentation="stage"] .message[data-active="true"] {
+  opacity: 1;
+}
+
+/*
+ * The closing beat, scrubbed from scene progress: the messages retire as the argument arrives.
+ * `translate` rather than `transform` so it never collides with the transforms GSAP writes on the
+ * words inside.
+ */
+.thesis[data-presentation="stage"] .messages {
+  opacity: calc(1 - var(--drop-argument-reveal));
+  translate: 0 calc(var(--drop-argument-reveal) * -2.5svh);
+}
+
+.thesis[data-presentation="stage"] .argument {
+  opacity: var(--drop-argument-reveal);
+}
+
+.thesis[data-presentation="stage"] .statement {
+  translate: 0 calc((1 - var(--drop-argument-reveal)) * var(--drop-statement-lift, 2svh));
+}
+
+.thesis[data-presentation="stage"] .identity {
+  translate: 0 calc(var(--drop-thesis-progress) * -1.4svh);
+}
+
+/* A layer that has handed the stage over stops taking the pointer with it. */
+.thesis[data-presentation="stage"] .messages[data-retired="true"],
+.thesis[data-presentation="stage"] .argument:not([data-revealed="true"]) {
+  pointer-events: none;
+}
+
+/* ------------------------------------------------------------------- mobile */
+
+/*
+ * Brief §15: "Hero text uses fewer line breaks and safe viewport units." A wider measure at a
+ * smaller size breaks the sentence into fewer lines than the desktop display setting would, and
+ * every length in this file is `svh`-based, so the iOS URL bar cannot resize the composition.
+ */
+@media (max-width: 767px) {
+  .thesis {
+    gap: clamp(1.5rem, 5svh, 2.5rem);
+  }
+
+  /*
+   * The staged selector outranks a bare `.message`, so mobile has to answer it directly — the
+   * hero size is a desktop measure, and one long sentence at `--display-lg` on a 375px screen is
+   * the many-line-breaks problem §15 asks us to avoid, not a bolder hero.
+   */
+  .message,
+  .thesis[data-presentation="stage"] .message {
+    font-size: var(--title-lg);
+    line-height: 1.2;
+    max-inline-size: min(100%, 24ch);
+  }
+
+  .title {
+    font-size: var(--body-lg);
+    max-inline-size: 26ch;
+  }
+
+  .statement {
+    font-size: var(--body);
+    line-height: 1.8;
+  }
+
+  .statement[data-lens-thesis] {
+    font-size: var(--body-lg);
+    line-height: 1.6;
+  }
+}
+
+/* ----------------------------------------------------------- reduced motion */
+
+/*
+ * Brief §16: reduced motion removes motion, never content. The messages still swap (by the
+ * component's crossfade) and the argument still arrives — they simply do not travel.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .thesis[data-presentation="stage"] .identity,
+  .thesis[data-presentation="stage"] .messages,
+  .thesis[data-presentation="stage"] .statement {
+    translate: none;
+  }
+}

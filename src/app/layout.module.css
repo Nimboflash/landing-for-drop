@@ -1,0 +1,43 @@
+/*
+ * Document-shell styling owned by src/app/layout.tsx.
+ * Tokens only — every value below resolves from src/app/globals.css.
+ */
+
+/*
+ * Skip link: off-canvas until it takes keyboard focus, then it slides into the
+ * top corner (brief §16 — semantic landmarks, clear focus states). Sharp
+ * corners, like every other surface in the system.
+ */
+.skipLink {
+  position: fixed;
+  inset-block-start: -6rem;
+  inset-inline-start: var(--page-gutter);
+  z-index: 1000;
+  padding: 0.75rem 1.25rem;
+  border-radius: 0;
+  background: var(--drop-black);
+  color: var(--drop-white);
+  font-family: var(--font-persian);
+  font-size: var(--label);
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  transition: inset-block-start 180ms var(--ease-cinematic);
+}
+
+.skipLink:focus {
+  inset-block-start: 1rem;
+}
+
+/*
+ * Semantic content sits above the shared WebGL layer, which globals.css pins at
+ * z-index 0. No transform/filter here — a fixed-position header inside the
+ * shell must keep resolving against the viewport.
+ */
+.main {
+  position: relative;
+  z-index: 1;
+}
+
+.main:focus {
+  outline: none;
+}

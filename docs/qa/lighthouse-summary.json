@@ -1,0 +1,563 @@
+{
+  "generatedAt": "2026-08-22T13:52:41.901Z",
+  "targetServer": "http://localhost:3200",
+  "note": "Run against an already-running production server; this script never builds or starts one.",
+  "machine": {
+    "host": "Nimbos-MacBook-Air.local",
+    "platform": "darwin 25.5.0",
+    "arch": "arm64",
+    "cpu": "Apple M4",
+    "logicalCores": 10,
+    "totalMemoryGb": 16,
+    "chrome": "Google Chrome 151.0.7922.170",
+    "node": "v26.3.0"
+  },
+  "thresholds": {
+    "accessibility": {
+      "min": 95,
+      "label": "Accessibility score",
+      "appliesTo": "all"
+    },
+    "best-practices": {
+      "min": 90,
+      "label": "Best Practices score",
+      "appliesTo": "all"
+    },
+    "performance": {
+      "min": 75,
+      "label": "Mobile performance",
+      "appliesTo": "mobile"
+    },
+    "cls": {
+      "max": 0.1,
+      "label": "CLS",
+      "appliesTo": "all"
+    }
+  },
+  "contrastCaveat": "Lighthouse's color-contrast audit SILENTLY SKIPS text drawn over a <canvas>: axe-core cannot sample a WebGL framebuffer, so it reports nothing rather than a failure. Every scene here puts editorial text over a live shader, so a passing accessibility score says NOTHING about AA contrast over the backgrounds. That remains a [manual] acceptance box — sample worst-case shader frames by hand and attach the measurements.",
+  "manualBoxes": [
+    "AA contrast for text over live shaders — sample worst-case shader frames by hand (Lighthouse cannot).",
+    "60fps on capable desktop / >=30fps on mid-range mobile for the heaviest scenes — profile with named hardware.",
+    "Shader look against the references, and scroll rhythm judged by feel."
+  ],
+  "runs": [
+    {
+      "route": "/",
+      "url": "http://localhost:3200/",
+      "preset": "mobile",
+      "scores": {
+        "performance": 78,
+        "accessibility": 96,
+        "best-practices": 100
+      },
+      "cls": 0,
+      "metrics": {
+        "firstContentfulPaintMs": 1056.4151,
+        "largestContentfulPaintMs": 5537.5377499999995,
+        "totalBlockingTimeMs": 154,
+        "speedIndexMs": 1702.6935802925343
+      },
+      "colorContrastAudit": {
+        "present": true,
+        "scoreDisplayMode": "binary",
+        "score": 0,
+        "failingNodes": 10,
+        "failures": [
+          {
+            "selector": "li.FilmScene-module__S2qY4a__film > div.FilmScene-module__S2qY4a__info > div.FilmScene-module__S2qY4a__line > p.FilmScene-module__S2qY4a__credit",
+            "snippet": "<p class=\"FilmScene-module__S2qY4a__credit\" data-film-credit=\"true\" data-film-line=\"true\" lang=\"en\" dir=\"ltr\" style=\"translate: none; rotate: none; scale: none; opacity: 1;\">",
+            "explanation": "Fix any of the following:\n  Element has insufficient color contrast of 2.7 (foreground color: #949494, background color: #f2f2f2, font size: 8.2pt (10.88px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "selector": "section#scene-tracks > div.SceneSection-module__dE23zG__viewport > h2#_R_8tbtb_ > span.TracksScene-module__NaTzAG__headingFa",
+            "snippet": "<span class=\"TracksScene-module__NaTzAG__headingFa\" dir=\"rtl\">",
+            "explanation": "Fix any of the following:\n  Element has insufficient color contrast of 1.11 (foreground color: #fffffe, background color: #f2f2f2, font size: 24.0pt (32px), font weight: bold). Expected contrast ratio of 3:1"
+          },
+          {
+            "selector": "li.TracksScene-module__NaTzAG__track > div.TracksScene-module__NaTzAG__caption > p.TracksScene-module__NaTzAG__title > span",
+            "snippet": "<span data-track-title=\"true\" lang=\"en\" dir=\"ltr\">",
+            "explanation": "Fix any of the following:\n  Element has insufficient color contrast of 1.11 (foreground color: #fffffe, background color: #f2f2f2, font size: 18.0pt (24px), font weight: bold). Expected contrast ratio of 3:1"
+          },
+          {
+            "selector": "div.FooterScene-module__B62DfG__footer > div.FooterScene-module__B62DfG__closing > p.FooterScene-module__B62DfG__statementEn > span",
+            "snippet": "<span lang=\"en\" dir=\"ltr\">",
+            "explanation": "Fix any of the following:\n  Element has insufficient color contrast of 2.92 (foreground color: #8e8e8e, background color: #f2f2f2, font size: 8.2pt (10.88px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "selector": "div.FooterScene-module__B62DfG__footer > div.FooterScene-module__B62DfG__closing > p.FooterScene-module__B62DfG__cta > span.FooterScene-module__B62DfG__ctaEn",
+            "snippet": "<span class=\"FooterScene-module__B62DfG__ctaEn\" lang=\"en\" dir=\"ltr\">",
+            "explanation": "Fix any of the following:\n  Element has insufficient color contrast of 1.52 (foreground color: #adadad, background color: #d5d5d5, font size: 8.2pt (10.88px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "selector": "div.FooterScene-module__B62DfG__footer > ul.FooterScene-module__B62DfG__links > li.FooterScene-module__B62DfG__link > span",
+            "snippet": "<span lang=\"en\" dir=\"ltr\">",
+            "explanation": "Fix any of the following:\n  Element has insufficient color contrast of 2.32 (foreground color: #8b8b8b, background color: #d5d5d5, font size: 8.2pt (10.88px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "selector": "div.FooterScene-module__B62DfG__footer > ul.FooterScene-module__B62DfG__links > li.FooterScene-module__B62DfG__link > span",
+            "snippet": "<span lang=\"en\" dir=\"ltr\">",
+            "explanation": "Fix any of the following:\n  Element has insufficient color contrast of 2.32 (foreground color: #8b8b8b, background color: #d5d5d5, font size: 8.2pt (10.88px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "selector": "div.FooterScene-module__B62DfG__footer > ul.FooterScene-module__B62DfG__links > li.FooterScene-module__B62DfG__link > span",
+            "snippet": "<span lang=\"en\" dir=\"ltr\">",
+            "explanation": "Fix any of the following:\n  Element has insufficient color contrast of 2.32 (foreground color: #8b8b8b, background color: #d5d5d5, font size: 8.2pt (10.88px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "selector": "div.FooterScene-module__B62DfG__footer > ul.FooterScene-module__B62DfG__links > li.FooterScene-module__B62DfG__link > span",
+            "snippet": "<span lang=\"en\" dir=\"ltr\">",
+            "explanation": "Fix any of the following:\n  Element has insufficient color contrast of 2.32 (foreground color: #8b8b8b, background color: #d5d5d5, font size: 8.2pt (10.88px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "selector": "div.FooterScene-module__B62DfG__footer > ul.FooterScene-module__B62DfG__links > li.FooterScene-module__B62DfG__link > span",
+            "snippet": "<span lang=\"en\" dir=\"ltr\">",
+            "explanation": "Fix any of the following:\n  Element has insufficient color contrast of 2.32 (foreground color: #8b8b8b, background color: #d5d5d5, font size: 8.2pt (10.88px), font weight: normal). Expected contrast ratio of 4.5:1"
+          }
+        ]
+      },
+      "failedAudits": [
+        {
+          "category": "accessibility",
+          "id": "color-contrast",
+          "title": "Background and foreground colors do not have a sufficient contrast ratio.",
+          "score": 0,
+          "failingNodes": 10
+        },
+        {
+          "category": "best-practices",
+          "id": "valid-source-maps",
+          "title": "Missing source maps for large first-party JavaScript",
+          "score": 0,
+          "failingNodes": 1
+        }
+      ],
+      "performanceDiagnostics": {
+        "lcpElement": null,
+        "opportunities": [
+          {
+            "id": "unused-javascript",
+            "title": "Reduce unused JavaScript",
+            "savingsMs": 1350
+          }
+        ]
+      },
+      "lighthouseVersion": "13.4.1",
+      "fetchTime": "2026-08-22T13:52:16.773Z",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36",
+      "throttling": "simulate",
+      "formFactor": "mobile",
+      "checks": [
+        {
+          "target": "Accessibility score",
+          "threshold": ">= 95",
+          "measured": 96,
+          "met": true
+        },
+        {
+          "target": "Best Practices score",
+          "threshold": ">= 90",
+          "measured": 100,
+          "met": true
+        },
+        {
+          "target": "Mobile performance",
+          "threshold": ">= 75",
+          "measured": 78,
+          "met": true
+        },
+        {
+          "target": "CLS",
+          "threshold": "< 0.1",
+          "measured": 0,
+          "met": true
+        }
+      ]
+    },
+    {
+      "route": "/lens/beautiful-imperfection",
+      "url": "http://localhost:3200/lens/beautiful-imperfection",
+      "preset": "mobile",
+      "scores": {
+        "performance": 80,
+        "accessibility": 96,
+        "best-practices": 100
+      },
+      "cls": 0,
+      "metrics": {
+        "firstContentfulPaintMs": 1053.8973,
+        "largestContentfulPaintMs": 5344.2432499999995,
+        "totalBlockingTimeMs": 108.5,
+        "speedIndexMs": 1713.2210643509875
+      },
+      "colorContrastAudit": {
+        "present": true,
+        "scoreDisplayMode": "binary",
+        "score": 0,
+        "failingNodes": 10,
+        "failures": [
+          {
+            "selector": "li.FilmScene-module__S2qY4a__film > div.FilmScene-module__S2qY4a__info > div.FilmScene-module__S2qY4a__line > p.FilmScene-module__S2qY4a__credit",
+            "snippet": "<p class=\"FilmScene-module__S2qY4a__credit\" data-film-credit=\"true\" data-film-line=\"true\" lang=\"en\" dir=\"ltr\" style=\"translate: none; rotate: none; scale: none; opacity: 1;\">",
+            "explanation": "Fix any of the following:\n  Element has insufficient color contrast of 2.7 (foreground color: #949494, background color: #f2f2f2, font size: 8.2pt (10.88px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "selector": "section#scene-tracks > div.SceneSection-module__dE23zG__viewport > h2#_R_27av5ubtb_ > span.TracksScene-module__NaTzAG__headingFa",
+            "snippet": "<span class=\"TracksScene-module__NaTzAG__headingFa\" dir=\"rtl\">",
+            "explanation": "Fix any of the following:\n  Element has insufficient color contrast of 1.11 (foreground color: #fffffe, background color: #f2f2f2, font size: 24.0pt (32px), font weight: bold). Expected contrast ratio of 3:1"
+          },
+          {
+            "selector": "li.TracksScene-module__NaTzAG__track > div.TracksScene-module__NaTzAG__caption > p.TracksScene-module__NaTzAG__title > span",
+            "snippet": "<span data-track-title=\"true\" lang=\"en\" dir=\"ltr\">",
+            "explanation": "Fix any of the following:\n  Element has insufficient color contrast of 1.11 (foreground color: #fffffe, background color: #f2f2f2, font size: 18.0pt (24px), font weight: bold). Expected contrast ratio of 3:1"
+          },
+          {
+            "selector": "div.FooterScene-module__B62DfG__footer > div.FooterScene-module__B62DfG__closing > p.FooterScene-module__B62DfG__statementEn > span",
+            "snippet": "<span lang=\"en\" dir=\"ltr\">",
+            "explanation": "Fix any of the following:\n  Element has insufficient color contrast of 2.92 (foreground color: #8e8e8e, background color: #f2f2f2, font size: 8.2pt (10.88px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "selector": "div.FooterScene-module__B62DfG__footer > div.FooterScene-module__B62DfG__closing > p.FooterScene-module__B62DfG__cta > span.FooterScene-module__B62DfG__ctaEn",
+            "snippet": "<span class=\"FooterScene-module__B62DfG__ctaEn\" lang=\"en\" dir=\"ltr\">",
+            "explanation": "Fix any of the following:\n  Element has insufficient color contrast of 1.52 (foreground color: #adadad, background color: #d5d5d5, font size: 8.2pt (10.88px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "selector": "div.FooterScene-module__B62DfG__footer > ul.FooterScene-module__B62DfG__links > li.FooterScene-module__B62DfG__link > span",
+            "snippet": "<span lang=\"en\" dir=\"ltr\">",
+            "explanation": "Fix any of the following:\n  Element has insufficient color contrast of 2.32 (foreground color: #8b8b8b, background color: #d5d5d5, font size: 8.2pt (10.88px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "selector": "div.FooterScene-module__B62DfG__footer > ul.FooterScene-module__B62DfG__links > li.FooterScene-module__B62DfG__link > span",
+            "snippet": "<span lang=\"en\" dir=\"ltr\">",
+            "explanation": "Fix any of the following:\n  Element has insufficient color contrast of 2.32 (foreground color: #8b8b8b, background color: #d5d5d5, font size: 8.2pt (10.88px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "selector": "div.FooterScene-module__B62DfG__footer > ul.FooterScene-module__B62DfG__links > li.FooterScene-module__B62DfG__link > span",
+            "snippet": "<span lang=\"en\" dir=\"ltr\">",
+            "explanation": "Fix any of the following:\n  Element has insufficient color contrast of 2.32 (foreground color: #8b8b8b, background color: #d5d5d5, font size: 8.2pt (10.88px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "selector": "div.FooterScene-module__B62DfG__footer > ul.FooterScene-module__B62DfG__links > li.FooterScene-module__B62DfG__link > span",
+            "snippet": "<span lang=\"en\" dir=\"ltr\">",
+            "explanation": "Fix any of the following:\n  Element has insufficient color contrast of 2.32 (foreground color: #8b8b8b, background color: #d5d5d5, font size: 8.2pt (10.88px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "selector": "div.FooterScene-module__B62DfG__footer > ul.FooterScene-module__B62DfG__links > li.FooterScene-module__B62DfG__link > span",
+            "snippet": "<span lang=\"en\" dir=\"ltr\">",
+            "explanation": "Fix any of the following:\n  Element has insufficient color contrast of 2.32 (foreground color: #8b8b8b, background color: #d5d5d5, font size: 8.2pt (10.88px), font weight: normal). Expected contrast ratio of 4.5:1"
+          }
+        ]
+      },
+      "failedAudits": [
+        {
+          "category": "accessibility",
+          "id": "color-contrast",
+          "title": "Background and foreground colors do not have a sufficient contrast ratio.",
+          "score": 0,
+          "failingNodes": 10
+        },
+        {
+          "category": "best-practices",
+          "id": "valid-source-maps",
+          "title": "Missing source maps for large first-party JavaScript",
+          "score": 0,
+          "failingNodes": 1
+        }
+      ],
+      "performanceDiagnostics": {
+        "lcpElement": null,
+        "opportunities": [
+          {
+            "id": "unused-javascript",
+            "title": "Reduce unused JavaScript",
+            "savingsMs": 1200
+          }
+        ]
+      },
+      "lighthouseVersion": "13.4.1",
+      "fetchTime": "2026-08-22T13:52:23.359Z",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36",
+      "throttling": "simulate",
+      "formFactor": "mobile",
+      "checks": [
+        {
+          "target": "Accessibility score",
+          "threshold": ">= 95",
+          "measured": 96,
+          "met": true
+        },
+        {
+          "target": "Best Practices score",
+          "threshold": ">= 90",
+          "measured": 100,
+          "met": true
+        },
+        {
+          "target": "Mobile performance",
+          "threshold": ">= 75",
+          "measured": 80,
+          "met": true
+        },
+        {
+          "target": "CLS",
+          "threshold": "< 0.1",
+          "measured": 0,
+          "met": true
+        }
+      ]
+    },
+    {
+      "route": "/",
+      "url": "http://localhost:3200/",
+      "preset": "desktop",
+      "scores": {
+        "performance": 98,
+        "accessibility": 96,
+        "best-practices": 100
+      },
+      "cls": 0,
+      "metrics": {
+        "firstContentfulPaintMs": 283.9832,
+        "largestContentfulPaintMs": 1105.9579999999999,
+        "totalBlockingTimeMs": 0,
+        "speedIndexMs": 501.55270552309656
+      },
+      "colorContrastAudit": {
+        "present": true,
+        "scoreDisplayMode": "binary",
+        "score": 0,
+        "failingNodes": 10,
+        "failures": [
+          {
+            "selector": "li.FilmScene-module__S2qY4a__film > div.FilmScene-module__S2qY4a__info > div.FilmScene-module__S2qY4a__line > p.FilmScene-module__S2qY4a__credit",
+            "snippet": "<p class=\"FilmScene-module__S2qY4a__credit\" data-film-credit=\"true\" data-film-line=\"true\" lang=\"en\" dir=\"ltr\" style=\"translate: none; rotate: none; scale: none; opacity: 1;\">",
+            "explanation": "Fix any of the following:\n  Element has insufficient color contrast of 2.7 (foreground color: #949494, background color: #f2f2f2, font size: 8.2pt (10.88px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "selector": "section#scene-tracks > div.SceneSection-module__dE23zG__viewport > h2#_R_8tbtb_ > span.TracksScene-module__NaTzAG__headingFa",
+            "snippet": "<span class=\"TracksScene-module__NaTzAG__headingFa\" dir=\"rtl\">",
+            "explanation": "Fix any of the following:\n  Element has insufficient color contrast of 1.11 (foreground color: #fffffe, background color: #f2f2f2, font size: 38.5pt (51.3px), font weight: bold). Expected contrast ratio of 3:1"
+          },
+          {
+            "selector": "li.TracksScene-module__NaTzAG__track > div.TracksScene-module__NaTzAG__caption > p.TracksScene-module__NaTzAG__title > span",
+            "snippet": "<span data-track-title=\"true\" lang=\"en\" dir=\"ltr\">",
+            "explanation": "Fix any of the following:\n  Element has insufficient color contrast of 1.11 (foreground color: #fffffe, background color: #f2f2f2, font size: 24.3pt (32.4px), font weight: bold). Expected contrast ratio of 3:1"
+          },
+          {
+            "selector": "div.FooterScene-module__B62DfG__footer > div.FooterScene-module__B62DfG__closing > p.FooterScene-module__B62DfG__statementEn > span",
+            "snippet": "<span lang=\"en\" dir=\"ltr\">",
+            "explanation": "Fix any of the following:\n  Element has insufficient color contrast of 2.92 (foreground color: #8e8e8e, background color: #f2f2f2, font size: 8.2pt (10.88px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "selector": "div.FooterScene-module__B62DfG__footer > div.FooterScene-module__B62DfG__closing > p.FooterScene-module__B62DfG__cta > span.FooterScene-module__B62DfG__ctaEn",
+            "snippet": "<span class=\"FooterScene-module__B62DfG__ctaEn\" lang=\"en\" dir=\"ltr\">",
+            "explanation": "Fix any of the following:\n  Element has insufficient color contrast of 1.52 (foreground color: #adadad, background color: #d5d5d5, font size: 8.2pt (10.88px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "selector": "div.FooterScene-module__B62DfG__footer > ul.FooterScene-module__B62DfG__links > li.FooterScene-module__B62DfG__link > span",
+            "snippet": "<span lang=\"en\" dir=\"ltr\">",
+            "explanation": "Fix any of the following:\n  Element has insufficient color contrast of 2.32 (foreground color: #8b8b8b, background color: #d5d5d5, font size: 8.2pt (10.88px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "selector": "div.FooterScene-module__B62DfG__footer > ul.FooterScene-module__B62DfG__links > li.FooterScene-module__B62DfG__link > span",
+            "snippet": "<span lang=\"en\" dir=\"ltr\">",
+            "explanation": "Fix any of the following:\n  Element has insufficient color contrast of 2.32 (foreground color: #8b8b8b, background color: #d5d5d5, font size: 8.2pt (10.88px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "selector": "div.FooterScene-module__B62DfG__footer > ul.FooterScene-module__B62DfG__links > li.FooterScene-module__B62DfG__link > span",
+            "snippet": "<span lang=\"en\" dir=\"ltr\">",
+            "explanation": "Fix any of the following:\n  Element has insufficient color contrast of 2.32 (foreground color: #8b8b8b, background color: #d5d5d5, font size: 8.2pt (10.88px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "selector": "div.FooterScene-module__B62DfG__footer > ul.FooterScene-module__B62DfG__links > li.FooterScene-module__B62DfG__link > span",
+            "snippet": "<span lang=\"en\" dir=\"ltr\">",
+            "explanation": "Fix any of the following:\n  Element has insufficient color contrast of 2.32 (foreground color: #8b8b8b, background color: #d5d5d5, font size: 8.2pt (10.88px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "selector": "div.FooterScene-module__B62DfG__footer > ul.FooterScene-module__B62DfG__links > li.FooterScene-module__B62DfG__link > span",
+            "snippet": "<span lang=\"en\" dir=\"ltr\">",
+            "explanation": "Fix any of the following:\n  Element has insufficient color contrast of 2.32 (foreground color: #8b8b8b, background color: #d5d5d5, font size: 8.2pt (10.88px), font weight: normal). Expected contrast ratio of 4.5:1"
+          }
+        ]
+      },
+      "failedAudits": [
+        {
+          "category": "accessibility",
+          "id": "color-contrast",
+          "title": "Background and foreground colors do not have a sufficient contrast ratio.",
+          "score": 0,
+          "failingNodes": 10
+        },
+        {
+          "category": "best-practices",
+          "id": "valid-source-maps",
+          "title": "Missing source maps for large first-party JavaScript",
+          "score": 0,
+          "failingNodes": 1
+        }
+      ],
+      "performanceDiagnostics": {
+        "lcpElement": null,
+        "opportunities": [
+          {
+            "id": "unused-javascript",
+            "title": "Reduce unused JavaScript",
+            "savingsMs": 240
+          }
+        ]
+      },
+      "lighthouseVersion": "13.4.1",
+      "fetchTime": "2026-08-22T13:52:29.693Z",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36",
+      "throttling": "simulate",
+      "formFactor": "desktop",
+      "checks": [
+        {
+          "target": "Accessibility score",
+          "threshold": ">= 95",
+          "measured": 96,
+          "met": true
+        },
+        {
+          "target": "Best Practices score",
+          "threshold": ">= 90",
+          "measured": 100,
+          "met": true
+        },
+        {
+          "target": "CLS",
+          "threshold": "< 0.1",
+          "measured": 0,
+          "met": true
+        }
+      ]
+    },
+    {
+      "route": "/lens/beautiful-imperfection",
+      "url": "http://localhost:3200/lens/beautiful-imperfection",
+      "preset": "desktop",
+      "scores": {
+        "performance": 98,
+        "accessibility": 96,
+        "best-practices": 100
+      },
+      "cls": 0,
+      "metrics": {
+        "firstContentfulPaintMs": 283.8938,
+        "largestContentfulPaintMs": 1107.2345,
+        "totalBlockingTimeMs": 0,
+        "speedIndexMs": 504.7262243321825
+      },
+      "colorContrastAudit": {
+        "present": true,
+        "scoreDisplayMode": "binary",
+        "score": 0,
+        "failingNodes": 10,
+        "failures": [
+          {
+            "selector": "li.FilmScene-module__S2qY4a__film > div.FilmScene-module__S2qY4a__info > div.FilmScene-module__S2qY4a__line > p.FilmScene-module__S2qY4a__credit",
+            "snippet": "<p class=\"FilmScene-module__S2qY4a__credit\" data-film-credit=\"true\" data-film-line=\"true\" lang=\"en\" dir=\"ltr\" style=\"translate: none; rotate: none; scale: none; opacity: 1;\">",
+            "explanation": "Fix any of the following:\n  Element has insufficient color contrast of 2.7 (foreground color: #949494, background color: #f2f2f2, font size: 8.2pt (10.88px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "selector": "section#scene-tracks > div.SceneSection-module__dE23zG__viewport > h2#_R_27av5ubtb_ > span.TracksScene-module__NaTzAG__headingFa",
+            "snippet": "<span class=\"TracksScene-module__NaTzAG__headingFa\" dir=\"rtl\">",
+            "explanation": "Fix any of the following:\n  Element has insufficient color contrast of 1.11 (foreground color: #fffffe, background color: #f2f2f2, font size: 38.5pt (51.3px), font weight: bold). Expected contrast ratio of 3:1"
+          },
+          {
+            "selector": "li.TracksScene-module__NaTzAG__track > div.TracksScene-module__NaTzAG__caption > p.TracksScene-module__NaTzAG__title > span",
+            "snippet": "<span data-track-title=\"true\" lang=\"en\" dir=\"ltr\">",
+            "explanation": "Fix any of the following:\n  Element has insufficient color contrast of 1.11 (foreground color: #fffffe, background color: #f2f2f2, font size: 24.3pt (32.4px), font weight: bold). Expected contrast ratio of 3:1"
+          },
+          {
+            "selector": "div.FooterScene-module__B62DfG__footer > div.FooterScene-module__B62DfG__closing > p.FooterScene-module__B62DfG__statementEn > span",
+            "snippet": "<span lang=\"en\" dir=\"ltr\">",
+            "explanation": "Fix any of the following:\n  Element has insufficient color contrast of 2.92 (foreground color: #8e8e8e, background color: #f2f2f2, font size: 8.2pt (10.88px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "selector": "div.FooterScene-module__B62DfG__footer > div.FooterScene-module__B62DfG__closing > p.FooterScene-module__B62DfG__cta > span.FooterScene-module__B62DfG__ctaEn",
+            "snippet": "<span class=\"FooterScene-module__B62DfG__ctaEn\" lang=\"en\" dir=\"ltr\">",
+            "explanation": "Fix any of the following:\n  Element has insufficient color contrast of 1.52 (foreground color: #adadad, background color: #d5d5d5, font size: 8.2pt (10.88px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "selector": "div.FooterScene-module__B62DfG__footer > ul.FooterScene-module__B62DfG__links > li.FooterScene-module__B62DfG__link > span",
+            "snippet": "<span lang=\"en\" dir=\"ltr\">",
+            "explanation": "Fix any of the following:\n  Element has insufficient color contrast of 2.32 (foreground color: #8b8b8b, background color: #d5d5d5, font size: 8.2pt (10.88px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "selector": "div.FooterScene-module__B62DfG__footer > ul.FooterScene-module__B62DfG__links > li.FooterScene-module__B62DfG__link > span",
+            "snippet": "<span lang=\"en\" dir=\"ltr\">",
+            "explanation": "Fix any of the following:\n  Element has insufficient color contrast of 2.32 (foreground color: #8b8b8b, background color: #d5d5d5, font size: 8.2pt (10.88px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "selector": "div.FooterScene-module__B62DfG__footer > ul.FooterScene-module__B62DfG__links > li.FooterScene-module__B62DfG__link > span",
+            "snippet": "<span lang=\"en\" dir=\"ltr\">",
+            "explanation": "Fix any of the following:\n  Element has insufficient color contrast of 2.32 (foreground color: #8b8b8b, background color: #d5d5d5, font size: 8.2pt (10.88px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "selector": "div.FooterScene-module__B62DfG__footer > ul.FooterScene-module__B62DfG__links > li.FooterScene-module__B62DfG__link > span",
+            "snippet": "<span lang=\"en\" dir=\"ltr\">",
+            "explanation": "Fix any of the following:\n  Element has insufficient color contrast of 2.32 (foreground color: #8b8b8b, background color: #d5d5d5, font size: 8.2pt (10.88px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "selector": "div.FooterScene-module__B62DfG__footer > ul.FooterScene-module__B62DfG__links > li.FooterScene-module__B62DfG__link > span",
+            "snippet": "<span lang=\"en\" dir=\"ltr\">",
+            "explanation": "Fix any of the following:\n  Element has insufficient color contrast of 2.32 (foreground color: #8b8b8b, background color: #d5d5d5, font size: 8.2pt (10.88px), font weight: normal). Expected contrast ratio of 4.5:1"
+          }
+        ]
+      },
+      "failedAudits": [
+        {
+          "category": "accessibility",
+          "id": "color-contrast",
+          "title": "Background and foreground colors do not have a sufficient contrast ratio.",
+          "score": 0,
+          "failingNodes": 10
+        },
+        {
+          "category": "best-practices",
+          "id": "valid-source-maps",
+          "title": "Missing source maps for large first-party JavaScript",
+          "score": 0,
+          "failingNodes": 1
+        }
+      ],
+      "performanceDiagnostics": {
+        "lcpElement": null,
+        "opportunities": [
+          {
+            "id": "unused-javascript",
+            "title": "Reduce unused JavaScript",
+            "savingsMs": 200
+          }
+        ]
+      },
+      "lighthouseVersion": "13.4.1",
+      "fetchTime": "2026-08-22T13:52:36.321Z",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36",
+      "throttling": "simulate",
+      "formFactor": "desktop",
+      "checks": [
+        {
+          "target": "Accessibility score",
+          "threshold": ">= 95",
+          "measured": 96,
+          "met": true
+        },
+        {
+          "target": "Best Practices score",
+          "threshold": ">= 90",
+          "measured": 100,
+          "met": true
+        },
+        {
+          "target": "CLS",
+          "threshold": "< 0.1",
+          "measured": 0,
+          "met": true
+        }
+      ]
+    }
+  ],
+  "failures": [],
+  "passed": true
+}

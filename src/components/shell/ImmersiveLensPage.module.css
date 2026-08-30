@@ -1,0 +1,30 @@
+/*
+ * Immersive shell layout. Tokens only — every value resolves from src/app/globals.css.
+ *
+ * This file styles the SHELL, not the scenes: every scene owns its own CSS module, so the only
+ * rules left here are the page ground and the scene-contrast token the scenes inherit through
+ * `currentColor`. The placeholder typography that used to live here (hero, cards, films, tracks,
+ * art pieces, footer) went out with the placeholder scenes it styled.
+ */
+
+.page {
+  position: relative;
+  isolation: isolate;
+}
+
+/*
+ * Scene contrast follows the reducer (`transitionState.headerVariant`), so copy is never left
+ * dark-on-dark when the background mode flips. Scenes mix their muted copy from the *current*
+ * text colour rather than a fixed grey, which keeps it legible on both grounds — a fixed
+ * --drop-gray reads at roughly 3.3:1 on the off-white scenes, under the AA floor of brief §16.
+ *
+ * Text contrast measured against the LIVE shader frames stays a [manual] check owned by each
+ * scene ticket (BUILD-GUIDE); this only fixes the ground.
+ */
+.page[data-contrast="dark"] {
+  color: var(--drop-ink);
+}
+
+.page[data-contrast="light"] {
+  color: var(--drop-off-white);
+}

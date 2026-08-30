@@ -1,0 +1,46 @@
+/*
+ * Persistent header. Tokens only.
+ */
+
+.header {
+  position: fixed;
+  inset-block-start: 0;
+  /* Physical left: the mark's corner is fixed by the brand, not by text direction. */
+  left: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  min-height: var(--header-height);
+  padding-inline: var(--page-gutter);
+  /* Never intercepts scroll, wheel or touch — the whole page scrolls through it. */
+  pointer-events: none;
+  transition:
+    opacity 420ms var(--ease-cinematic),
+    visibility 420ms var(--ease-cinematic);
+}
+
+/* Brief §8: no header during the loader; it may also hide for the footer word reveal. */
+.header[data-hidden="true"] {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.mark {
+  display: flex;
+  align-items: center;
+}
+
+/*
+ * The mark keeps its geometry's aspect ratio; only its rendered height is responsive, so it stays
+ * small enough never to cover content on a phone.
+ */
+.wordmark {
+  width: auto;
+  height: clamp(0.85rem, 1.5vw, 1.15rem);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .header {
+    transition: none;
+  }
+}

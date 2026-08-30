@@ -1,0 +1,681 @@
+{
+  "schemaVersion": "1.0",
+  "contentMode": "development-mock",
+  "publicationStatus": "draft",
+  "slug": "beautiful-imperfection",
+  "week": "W04",
+  "title": {
+    "fa": "زیبایی در کامل نبودن",
+    "en": "BEAUTIFUL IMPERFECTION"
+  },
+  "thesis": {
+    "fa": "زیبایی از «نقص» نمی‌آید؛ از مهارتی می‌آید که تفاوت‌های کوچکِ دست، ماده و زمان را پاک نمی‌کند.",
+    "en": "Beauty does not come from flaw. It comes from skill that does not erase the small differences left by hand, material, and time."
+  },
+  "tension": {
+    "fa": "کیفیت باید هر بار قابل‌اعتماد باشد؛ نتیجهٔ دست‌ساز لازم نیست هر بار عیناً تکرار شود.",
+    "en": "Quality must remain dependable; a handmade result does not need to repeat itself exactly every time."
+  },
+  "balance": {
+    "fa": "دقت در کار؛ جا برای ردِ دست و رفتار واقعیِ ماده.",
+    "en": "Precision in the work, with room for the hand and the material to behave truthfully."
+  },
+  "notThis": {
+    "fa": "این یک نسخهٔ آماده از کلیشهٔ وابی‌سابی نیست و بی‌دقتی را زیبا جا نمی‌زند؛ اول مهارت و دوام، بعد تفاوت.",
+    "en": "This is not a ready-made wabi-sabi cliché and it does not rename carelessness as beauty: skill and durability come first, then difference."
+  },
+  "heroMessages": [
+    {
+      "fa": "زیبایی از «نقص» نمی‌آید.",
+      "en": "BEAUTY DOES NOT COME FROM FLAW."
+    },
+    {
+      "fa": "اول مهارت و دوام؛ بعد تفاوت.",
+      "en": "FIRST SKILL AND DURABILITY; THEN DIFFERENCE."
+    },
+    {
+      "fa": "دقت در کار؛ جا برای ردِ دست و رفتار واقعیِ ماده.",
+      "en": "PRECISION IN THE WORK; ROOM FOR THE HAND AND THE MATERIAL."
+    }
+  ],
+  "gridStatement": {
+    "fa": "جایی با یک نگاه مشخص.",
+    "en": "A PLACE WITH A POINT OF VIEW."
+  },
+  "sectionLabels": {
+    "menu": {
+      "fa": "انتخاب مزه",
+      "en": "TASTE EDIT"
+    },
+    "films": {
+      "fa": "سه نگاه",
+      "en": "THREE VIEWS"
+    },
+    "tracks": {
+      "fa": "قطعه‌ها",
+      "en": "TRACKS"
+    },
+    "artPieces": {
+      "fa": "قطعه‌های هنری / یادداشت‌ها",
+      "en": "ART PIECES / FIELD NOTES"
+    }
+  },
+  "menuItems": [
+    {
+      "id": "weekly-fruit-tart",
+      "name": {
+        "fa": "تارت میوهٔ هفتگی",
+        "en": "WEEKLY FRUIT TART"
+      },
+      "maker": "ÉCLAIR",
+      "category": {
+        "fa": "مزه / شیرین",
+        "en": "TASTE / SWEET"
+      },
+      "rationale": {
+        "fa": "پایه و روش ثابت‌اند، اما اندازه و فرم میوه‌ها هر بار کمی فرق می‌کند. مهارت، تفاوت طبیعی را حذف نمی‌کند؛ به آن نظم می‌دهد.",
+        "en": "The base and method stay consistent, while the fruit changes slightly in size and form. Skill does not erase natural difference; it gives it structure."
+      },
+      "image": {
+        "src": "/media/lenses/beautiful-imperfection/menu/weekly-fruit-tart.webp",
+        "alt": {
+          "fa": "تارت میوهٔ دست‌ساز روی سطح تیره",
+          "en": "Handmade seasonal fruit tart on a dark surface"
+        },
+        "width": 1122,
+        "height": 1402,
+        "rightsStatus": "development-mock",
+        "productionAllowed": false,
+        "credit": "Original AI-generated development placeholder for DROP",
+        "replacementNote": "Replace with final approved Éclair product photography before launch."
+      }
+    },
+    {
+      "id": "mochi-bite-box",
+      "name": {
+        "fa": "جعبهٔ موچی بایت",
+        "en": "MOCHI BITE BOX"
+      },
+      "maker": "MOCHIKI",
+      "category": {
+        "fa": "مزه / شیرین",
+        "en": "TASTE / SWEET"
+      },
+      "rationale": {
+        "fa": "قطعه‌ها یک اندازه و یک منطق دارند، اما لازم نیست مثل خروجی قالب کاملاً همسان باشند. این تفاوت کوچک، انتخاب را انسانی نگه می‌دارد.",
+        "en": "The pieces share one scale and one logic without looking mechanically identical. Small differences keep the selection human."
+      },
+      "image": {
+        "src": "/media/lenses/beautiful-imperfection/menu/mochi-bite-box.webp",
+        "alt": {
+          "fa": "شش موچی دست‌ساز در یک جعبهٔ مشکی",
+          "en": "Six handmade mochi pieces in a black box"
+        },
+        "width": 1122,
+        "height": 1402,
+        "rightsStatus": "development-mock",
+        "productionAllowed": false,
+        "credit": "Original AI-generated development placeholder for DROP",
+        "replacementNote": "Replace with final approved Mochiki product photography before launch."
+      }
+    }
+  ],
+  "films": [
+    {
+      "id": "showing-up",
+      "viewLabel": {
+        "fa": "نگاه اول",
+        "en": "FIRST VIEW"
+      },
+      "title": "SHOWING UP",
+      "director": "Kelly Reichardt",
+      "year": "2023",
+      "genres": [
+        "Drama",
+        "Comedy"
+      ],
+      "rationale": {
+        "fa": "ساختن وسط مزاحمت، کمبود وقت و کارهای ناتمام ادامه پیدا می‌کند. زیبایی اینجا نتیجهٔ مهارت و کار است، نه ظاهرِ نقص؛ روشن‌ترین مسیر ورود به لنز.",
+        "en": "Making continues through interruption, limited time, and unfinished work. Beauty comes from practice and labor rather than the appearance of flaw: the clearest entry into this lens."
+      },
+      "poster": {
+        "src": "/media/lenses/beautiful-imperfection/films/showing-up-concept-poster.webp",
+        "alt": {
+          "fa": "مطالعهٔ مفهومی یک مجسمهٔ پرندهٔ گِلی در کارگاه",
+          "en": "Concept study of a clay bird sculpture in a working studio"
+        },
+        "width": 1024,
+        "height": 1536,
+        "rightsStatus": "development-mock",
+        "productionAllowed": false,
+        "credit": "Original DROP development key art; not the official film poster",
+        "replacementNote": "May remain as clearly labeled editorial concept art in development; use a licensed official poster only after rights review."
+      }
+    },
+    {
+      "id": "perfect-days",
+      "viewLabel": {
+        "fa": "نگاه دوم",
+        "en": "SECOND VIEW"
+      },
+      "title": "PERFECT DAYS",
+      "director": "Wim Wenders",
+      "year": "2023",
+      "genres": [
+        "Drama"
+      ],
+      "rationale": {
+        "fa": "روال روزانه دقیق و قابل‌اعتماد است، اما نور، موسیقی و برخوردها هر روز کمی فرق می‌کنند. نگاه دوم نشان می‌دهد تکرارِ خوب لازم نیست زندگی را یکسان کند.",
+        "en": "The daily routine is precise and dependable, yet light, music, and encounters shift each day. The second view shows that good repetition does not have to flatten life."
+      },
+      "poster": {
+        "src": "/media/lenses/beautiful-imperfection/films/perfect-days-concept-poster.webp",
+        "alt": {
+          "fa": "نور صبح و سایهٔ برگ‌ها روی دیوار تیره کنار یک پارچهٔ آبی تاخورده",
+          "en": "Morning light and leaf shadows on a dark wall above a folded blue cloth"
+        },
+        "width": 1024,
+        "height": 1536,
+        "rightsStatus": "development-mock",
+        "productionAllowed": false,
+        "credit": "Original DROP development key art; not the official film poster",
+        "replacementNote": "May remain as clearly labeled editorial concept art in development; use a licensed official poster only after rights review."
+      }
+    },
+    {
+      "id": "paterson",
+      "viewLabel": {
+        "fa": "نگاه تکمیلی",
+        "en": "COMPLETING VIEW"
+      },
+      "title": "PATERSON",
+      "director": "Jim Jarmusch",
+      "year": "2016",
+      "genres": [
+        "Drama",
+        "Poetry"
+      ],
+      "rationale": {
+        "fa": "شعرها یک‌باره کامل نمی‌شوند؛ از مشاهده، یادداشت و بازنویسی ساخته می‌شوند. این نگاه تکمیلی تفاوت میان الهامِ خام و مهارتی را روشن می‌کند که به آن فرم می‌دهد.",
+        "en": "Poems do not arrive complete; they are built through observation, notes, and revision. The completing view clarifies the difference between raw inspiration and the skill that gives it form."
+      },
+      "poster": {
+        "src": "/media/lenses/beautiful-imperfection/films/paterson-concept-poster.webp",
+        "alt": {
+          "fa": "دفترچه و مداد قرمز روی صندلی خالی اتوبوس",
+          "en": "Notebook and red pencil on an empty bus seat"
+        },
+        "width": 1024,
+        "height": 1536,
+        "rightsStatus": "development-mock",
+        "productionAllowed": false,
+        "credit": "Original DROP development key art; not the official film poster",
+        "replacementNote": "May remain as clearly labeled editorial concept art in development; use a licensed official poster only after rights review."
+      }
+    }
+  ],
+  "tracks": [
+    {
+      "id": "julie-byrne-natural-blue",
+      "title": "Natural Blue",
+      "artist": "Julie Byrne",
+      "groupId": "small-light",
+      "groupTitle": {
+        "fa": "نور کم",
+        "en": "SMALL LIGHT"
+      },
+      "period": "morning",
+      "playlistRationale": {
+        "fa": "صبح با نور کم و بافت‌های باز شروع می‌شود؛ قطعه‌ها آرام‌اند اما بی‌اثر نیستند.",
+        "en": "Morning begins with small light and open textures: quiet tracks that still leave a mark."
+      },
+      "artwork": {
+        "src": "/media/lenses/beautiful-imperfection/tracks/natural-blue.webp",
+        "alt": {
+          "fa": "رنگدانهٔ آبی در آب",
+          "en": "Blue pigment suspended in water"
+        },
+        "width": 1254,
+        "height": 1254,
+        "rightsStatus": "development-mock",
+        "productionAllowed": false,
+        "credit": "Original AI-generated development artwork for DROP",
+        "replacementNote": "Temporary disc artwork; clear or replace before production."
+      }
+    },
+    {
+      "id": "jessica-pratt-this-time-around",
+      "title": "This Time Around",
+      "artist": "Jessica Pratt",
+      "groupId": "small-light",
+      "groupTitle": {
+        "fa": "نور کم",
+        "en": "SMALL LIGHT"
+      },
+      "period": "morning",
+      "playlistRationale": {
+        "fa": "صبح با نور کم و بافت‌های باز شروع می‌شود؛ قطعه‌ها آرام‌اند اما بی‌اثر نیستند.",
+        "en": "Morning begins with small light and open textures: quiet tracks that still leave a mark."
+      },
+      "artwork": {
+        "src": "/media/lenses/beautiful-imperfection/tracks/this-time-around.webp",
+        "alt": {
+          "fa": "حلقهٔ کاغذی با لبهٔ دست‌کنده",
+          "en": "Looped paper with a hand-torn edge"
+        },
+        "width": 1254,
+        "height": 1254,
+        "rightsStatus": "development-mock",
+        "productionAllowed": false,
+        "credit": "Original AI-generated development artwork for DROP",
+        "replacementNote": "Temporary disc artwork; clear or replace before production."
+      }
+    },
+    {
+      "id": "ichiko-aoba-porcelain",
+      "title": "Porcelain",
+      "artist": "Ichiko Aoba",
+      "groupId": "small-light",
+      "groupTitle": {
+        "fa": "نور کم",
+        "en": "SMALL LIGHT"
+      },
+      "period": "morning",
+      "playlistRationale": {
+        "fa": "صبح با نور کم و بافت‌های باز شروع می‌شود؛ قطعه‌ها آرام‌اند اما بی‌اثر نیستند.",
+        "en": "Morning begins with small light and open textures: quiet tracks that still leave a mark."
+      },
+      "artwork": {
+        "src": "/media/lenses/beautiful-imperfection/tracks/porcelain.webp",
+        "alt": {
+          "fa": "کاسهٔ چینی دست‌ساز با خط کبالت",
+          "en": "Handmade porcelain bowl with a cobalt line"
+        },
+        "width": 1254,
+        "height": 1254,
+        "rightsStatus": "development-mock",
+        "productionAllowed": false,
+        "credit": "Original AI-generated development artwork for DROP",
+        "replacementNote": "Temporary disc artwork; clear or replace before production."
+      }
+    },
+    {
+      "id": "ryuichi-sakamoto-andata",
+      "title": "andata",
+      "artist": "Ryuichi Sakamoto",
+      "groupId": "small-light",
+      "groupTitle": {
+        "fa": "نور کم",
+        "en": "SMALL LIGHT"
+      },
+      "period": "morning",
+      "playlistRationale": {
+        "fa": "صبح با نور کم و بافت‌های باز شروع می‌شود؛ قطعه‌ها آرام‌اند اما بی‌اثر نیستند.",
+        "en": "Morning begins with small light and open textures: quiet tracks that still leave a mark."
+      },
+      "artwork": {
+        "src": "/media/lenses/beautiful-imperfection/tracks/andata.webp",
+        "alt": {
+          "fa": "حلقه‌های موج روی آب سیاه",
+          "en": "Concentric ripples across black water"
+        },
+        "width": 1254,
+        "height": 1254,
+        "rightsStatus": "development-mock",
+        "productionAllowed": false,
+        "credit": "Original AI-generated development artwork for DROP",
+        "replacementNote": "Temporary disc artwork; clear or replace before production."
+      }
+    },
+    {
+      "id": "adrianne-lenker-anything",
+      "title": "anything",
+      "artist": "Adrianne Lenker",
+      "groupId": "breath-texture",
+      "groupTitle": {
+        "fa": "نفس و بافت",
+        "en": "BREATH & TEXTURE"
+      },
+      "period": "afternoon",
+      "playlistRationale": {
+        "fa": "بعدازظهر به صداهای نزدیک، بافت‌های دست‌ساخته و ریتم‌های کمی ناهمسان تعلق دارد.",
+        "en": "Afternoon belongs to close voices, handmade textures, and rhythms that do not align too perfectly."
+      },
+      "artwork": {
+        "src": "/media/lenses/beautiful-imperfection/tracks/anything.webp",
+        "alt": {
+          "fa": "برگ فرسوده میان ورق‌های نیمه‌شفاف",
+          "en": "Weathered leaf held between translucent sheets"
+        },
+        "width": 1254,
+        "height": 1254,
+        "rightsStatus": "development-mock",
+        "productionAllowed": false,
+        "credit": "Original AI-generated development artwork for DROP",
+        "replacementNote": "Temporary disc artwork; clear or replace before production."
+      }
+    },
+    {
+      "id": "sam-amidon-wild-bill-jones",
+      "title": "Wild Bill Jones",
+      "artist": "Sam Amidon",
+      "groupId": "breath-texture",
+      "groupTitle": {
+        "fa": "نفس و بافت",
+        "en": "BREATH & TEXTURE"
+      },
+      "period": "afternoon",
+      "playlistRationale": {
+        "fa": "بعدازظهر به صداهای نزدیک، بافت‌های دست‌ساخته و ریتم‌های کمی ناهمسان تعلق دارد.",
+        "en": "Afternoon belongs to close voices, handmade textures, and rhythms that do not align too perfectly."
+      },
+      "artwork": {
+        "src": "/media/lenses/beautiful-imperfection/tracks/wild-bill-jones.webp",
+        "alt": {
+          "fa": "بافت شعاعی نخ‌های سیاه و نارنجی",
+          "en": "Radial weave of black and rust-orange thread"
+        },
+        "width": 1254,
+        "height": 1254,
+        "rightsStatus": "development-mock",
+        "productionAllowed": false,
+        "credit": "Original AI-generated development artwork for DROP",
+        "replacementNote": "Temporary disc artwork; clear or replace before production."
+      }
+    },
+    {
+      "id": "nils-frahm-ambre",
+      "title": "Ambre",
+      "artist": "Nils Frahm",
+      "groupId": "breath-texture",
+      "groupTitle": {
+        "fa": "نفس و بافت",
+        "en": "BREATH & TEXTURE"
+      },
+      "period": "afternoon",
+      "playlistRationale": {
+        "fa": "بعدازظهر به صداهای نزدیک، بافت‌های دست‌ساخته و ریتم‌های کمی ناهمسان تعلق دارد.",
+        "en": "Afternoon belongs to close voices, handmade textures, and rhythms that do not align too perfectly."
+      },
+      "artwork": {
+        "src": "/media/lenses/beautiful-imperfection/tracks/ambre.webp",
+        "alt": {
+          "fa": "دیسک رزین کهربایی با حباب‌های هوا",
+          "en": "Amber resin disc with trapped air bubbles"
+        },
+        "width": 1254,
+        "height": 1254,
+        "rightsStatus": "development-mock",
+        "productionAllowed": false,
+        "credit": "Original AI-generated development artwork for DROP",
+        "replacementNote": "Temporary disc artwork; clear or replace before production."
+      }
+    },
+    {
+      "id": "nala-sinephro-space-1",
+      "title": "Space 1",
+      "artist": "Nala Sinephro",
+      "groupId": "useful-silence",
+      "groupTitle": {
+        "fa": "سکوت مفید",
+        "en": "USEFUL SILENCE"
+      },
+      "period": "night",
+      "playlistRationale": {
+        "fa": "شب فضا را خالی‌تر می‌کند؛ سکوت این قطعه‌ها نبودِ صدا نیست، بخشی از ساختار است.",
+        "en": "Night opens more space. Silence in these tracks is not absence; it is part of the structure."
+      },
+      "artwork": {
+        "src": "/media/lenses/beautiful-imperfection/tracks/space-1.webp",
+        "alt": {
+          "fa": "غشای بنفش شفاف دور یک مرکز سیاه",
+          "en": "Translucent violet membrane around a black center"
+        },
+        "width": 1254,
+        "height": 1254,
+        "rightsStatus": "development-mock",
+        "productionAllowed": false,
+        "credit": "Original AI-generated development artwork for DROP",
+        "replacementNote": "Temporary disc artwork; clear or replace before production."
+      }
+    },
+    {
+      "id": "sarah-davachi-magdalena",
+      "title": "Magdalena",
+      "artist": "Sarah Davachi",
+      "groupId": "useful-silence",
+      "groupTitle": {
+        "fa": "سکوت مفید",
+        "en": "USEFUL SILENCE"
+      },
+      "period": "night",
+      "playlistRationale": {
+        "fa": "شب فضا را خالی‌تر می‌کند؛ سکوت این قطعه‌ها نبودِ صدا نیست، بخشی از ساختار است.",
+        "en": "Night opens more space. Silence in these tracks is not absence; it is part of the structure."
+      },
+      "artwork": {
+        "src": "/media/lenses/beautiful-imperfection/tracks/magdalena.webp",
+        "alt": {
+          "fa": "لایه‌های پارچهٔ دودی دور یک نور کم",
+          "en": "Smoke-gray veils around a small pale light"
+        },
+        "width": 1254,
+        "height": 1254,
+        "rightsStatus": "development-mock",
+        "productionAllowed": false,
+        "credit": "Original AI-generated development artwork for DROP",
+        "replacementNote": "Temporary disc artwork; clear or replace before production."
+      }
+    },
+    {
+      "id": "arvo-part-fur-alina",
+      "title": "Für Alina",
+      "artist": "Arvo Pärt",
+      "groupId": "useful-silence",
+      "groupTitle": {
+        "fa": "سکوت مفید",
+        "en": "USEFUL SILENCE"
+      },
+      "period": "night",
+      "playlistRationale": {
+        "fa": "شب فضا را خالی‌تر می‌کند؛ سکوت این قطعه‌ها نبودِ صدا نیست، بخشی از ساختار است.",
+        "en": "Night opens more space. Silence in these tracks is not absence; it is part of the structure."
+      },
+      "artwork": {
+        "src": "/media/lenses/beautiful-imperfection/tracks/fur-alina.webp",
+        "alt": {
+          "fa": "دو نشان روشن کوچک روی کاغذ سیاه",
+          "en": "Two small ivory marks on black handmade paper"
+        },
+        "width": 1254,
+        "height": 1254,
+        "rightsStatus": "development-mock",
+        "productionAllowed": false,
+        "credit": "Original AI-generated development artwork for DROP",
+        "replacementNote": "Temporary disc artwork; clear or replace before production."
+      }
+    },
+    {
+      "id": "midori-takada-mr-henri-rousseaus-dream",
+      "title": "Mr. Henri Rousseau's Dream",
+      "artist": "Midori Takada",
+      "groupId": "useful-silence",
+      "groupTitle": {
+        "fa": "سکوت مفید",
+        "en": "USEFUL SILENCE"
+      },
+      "period": "night",
+      "playlistRationale": {
+        "fa": "شب فضا را خالی‌تر می‌کند؛ سکوت این قطعه‌ها نبودِ صدا نیست، بخشی از ساختار است.",
+        "en": "Night opens more space. Silence in these tracks is not absence; it is part of the structure."
+      },
+      "artwork": {
+        "src": "/media/lenses/beautiful-imperfection/tracks/mr-henri-rousseaus-dream.webp",
+        "alt": {
+          "fa": "برگ‌های استوایی تیره در یک چیدمان حلقه‌ای",
+          "en": "Dark tropical leaves arranged in a circular rhythm"
+        },
+        "width": 1254,
+        "height": 1254,
+        "rightsStatus": "development-mock",
+        "productionAllowed": false,
+        "credit": "Original AI-generated development artwork for DROP",
+        "replacementNote": "Temporary disc artwork; clear or replace before production."
+      }
+    }
+  ],
+  "artPieces": [
+    {
+      "id": "brion-memorial",
+      "category": {
+        "fa": "معماری",
+        "en": "ARCHITECTURE"
+      },
+      "title": "BRION MEMORIAL",
+      "creator": "Carlo Scarpa",
+      "year": "1970-78",
+      "rationale": {
+        "fa": "درزها و لایه‌ها پنهان نشده‌اند؛ دقت ساخت در کنار اثر زمان دیده می‌شود.",
+        "en": "Joints and layers are not hidden; construction precision remains visible beside the work of time."
+      },
+      "media": {
+        "src": "/media/lenses/beautiful-imperfection/art/brion-material-study.webp",
+        "alt": {
+          "fa": "مطالعهٔ مفهومی بتن، آب و یک بازشوی دایره‌ای",
+          "en": "Conceptual material study of concrete, water, and a circular opening"
+        },
+        "width": 1448,
+        "height": 1086,
+        "rightsStatus": "development-mock",
+        "productionAllowed": false,
+        "credit": "Original DROP development concept study; not a photograph of Brion Memorial",
+        "replacementNote": "Replace with an approved licensed image or keep only if clearly presented as a DROP concept study."
+      }
+    },
+    {
+      "id": "ruth-asawa-untitled-s270",
+      "category": {
+        "fa": "هنر",
+        "en": "ART"
+      },
+      "title": "UNTITLED (S.270)",
+      "creator": "Ruth Asawa",
+      "year": "1955 / 1957-58",
+      "rationale": {
+        "fa": "هزاران حلقهٔ دستی یک فرم دقیق می‌سازند؛ تفاوت‌های کوچک مهارت را نشان می‌دهند، نه بی‌دقتی را.",
+        "en": "Thousands of hand-built loops produce a precise form; small differences reveal skill rather than carelessness."
+      },
+      "media": {
+        "src": "/media/lenses/beautiful-imperfection/art/looped-wire-study.webp",
+        "alt": {
+          "fa": "فرم آویزان ساخته‌شده از حلقه‌های فلزی دست‌ساز",
+          "en": "Suspended form built from hand-looped metal wire"
+        },
+        "width": 1448,
+        "height": 1086,
+        "rightsStatus": "development-mock",
+        "productionAllowed": false,
+        "credit": "Original DROP development concept study; not a reproduction of S.270",
+        "replacementNote": "Replace with an approved licensed artwork image or keep only as a clearly labeled concept study."
+      }
+    },
+    {
+      "id": "rinko-kawauchi-illuminance",
+      "category": {
+        "fa": "عکاسی",
+        "en": "PHOTOGRAPHY"
+      },
+      "title": "UNTITLED, FROM ILLUMINANCE",
+      "creator": "Rinko Kawauchi",
+      "year": "2011",
+      "rationale": {
+        "fa": "پاشش آب یک لحظه فرم می‌گیرد و بلافاصله از هم می‌پاشد؛ قاب دقیق است، اما موضوع عیناً تکرارشدنی نیست. مهارت، تفاوت واقعیِ ماده را نگه می‌دارد.",
+        "en": "A splash takes form for a moment and immediately breaks apart. The frame is exact while the subject cannot repeat itself; skill preserves the material's real difference."
+      },
+      "media": {
+        "src": "/media/lenses/beautiful-imperfection/art/water-illuminance-study.webp",
+        "alt": {
+          "fa": "ورقهٔ آب و قطره‌ها در نور روی پس‌زمینهٔ تیره",
+          "en": "A sheet of water and droplets held in light against a dark background"
+        },
+        "width": 1448,
+        "height": 1086,
+        "rightsStatus": "development-mock",
+        "productionAllowed": false,
+        "credit": "Original DROP development concept study; not a reproduction from Illuminance",
+        "replacementNote": "Replace with an approved licensed photograph or keep only as a clearly labeled concept study."
+      }
+    },
+    {
+      "id": "pratfall-effect",
+      "category": {
+        "fa": "روان‌شناسی اجتماعی / یادداشت کوتاه",
+        "en": "SOCIAL PSYCHOLOGY / SHORT NOTE"
+      },
+      "title": "THE PRATFALL EFFECT",
+      "duration": "3 MIN READ",
+      "label": {
+        "fa": "اول شایستگی؛ بعد یک لغزش کوچک",
+        "en": "COMPETENCE, THEN ONE SMALL SLIP"
+      },
+      "rationale": {
+        "fa": "در یک آزمایش کلاسیک، لغزش کوچکی فقط برای فردی که از قبل توانمند دیده شده بود، جذابیت را بیشتر کرد. پس تفاوت انسانی جایگزین کیفیت نیست؛ بعد از کیفیت معنا پیدا می‌کند.",
+        "en": "In a classic experiment, a small mistake increased appeal only when the person was already seen as competent. Human difference does not replace quality; it gains meaning after quality is established."
+      },
+      "media": {
+        "src": "/media/lenses/beautiful-imperfection/art/pratfall-effect.webp",
+        "alt": {
+          "fa": "شبکه‌ای از فنجان‌های مشکی با یک لکهٔ کوچک نارنجی",
+          "en": "A precise grid of black cups with one small orange spill"
+        },
+        "width": 1448,
+        "height": 1086,
+        "rightsStatus": "development-mock",
+        "productionAllowed": false,
+        "credit": "Original AI-generated explanatory placeholder for DROP",
+        "replacementNote": "Review and approve as original DROP explanatory art before production."
+      }
+    }
+  ],
+  "footer": {
+    "statement": {
+      "fa": "جایی با یک نگاه مشخص.",
+      "en": "A PLACE WITH A POINT OF VIEW."
+    },
+    "cta": {
+      "label": {
+        "fa": "به دراپ بیا",
+        "en": "VISIT DROP"
+      },
+      "href": "",
+      "enabled": false
+    },
+    "links": [
+      {
+        "label": "INSTAGRAM — ADD FINAL URL",
+        "href": "",
+        "enabled": false
+      },
+      {
+        "label": "SANAYI / TEHRAN — ADD MAP URL",
+        "href": "",
+        "enabled": false
+      },
+      {
+        "label": "CONTACT — ADD FINAL ADDRESS",
+        "href": "",
+        "enabled": false
+      },
+      {
+        "label": "© DROP — ADD FINAL COPYRIGHT LINE",
+        "href": "",
+        "enabled": false
+      },
+      {
+        "label": "LEGAL — ADD FINAL PAGE",
+        "href": "",
+        "enabled": false
+      }
+    ]
+  }
+}
