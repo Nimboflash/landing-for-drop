@@ -722,7 +722,7 @@ export function TracksScene({
                           href={track.sourceUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          tabIndex={active ? 0 : -1}
+                          tabIndex={sceneActive && active ? 0 : -1}
                           data-track-source
                           data-external="true"
                         >
@@ -759,6 +759,7 @@ export function TracksScene({
             type="button"
             className={`${styles.control} ${styles.previous}`}
             data-carousel-control="prev"
+            tabIndex={sceneActive ? 0 : -1}
             aria-label={CAROUSEL_PREVIOUS_LABEL}
             onClick={onPrevious}
           >
@@ -770,6 +771,7 @@ export function TracksScene({
             type="button"
             className={`${styles.control} ${styles.next}`}
             data-carousel-control="next"
+            tabIndex={sceneActive ? 0 : -1}
             aria-label={CAROUSEL_NEXT_LABEL}
             onClick={onNext}
           >

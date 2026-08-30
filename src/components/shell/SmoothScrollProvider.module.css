@@ -13,6 +13,15 @@
   z-index: 1000;
   inset-block-end: 1.25rem;
   inset-inline-end: 1.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /*
+   * A real target, not just a label. Once focused this button becomes clickable
+   * (pointer-events flips to auto), so it has to satisfy the same 44px floor the
+   * carousel controls do rather than collapsing to its line box.
+   */
+  min-block-size: 2.75rem;
   padding: 0.75rem 1.1rem;
   border: 1px solid color-mix(in srgb, var(--drop-white) 45%, transparent);
   border-radius: 0;
