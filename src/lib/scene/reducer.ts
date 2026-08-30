@@ -66,9 +66,30 @@ import {
 const GRID_STATEMENT_REVEAL_AT = 0.35;
 /** Retreating below this inside gridStatement clears the one-shot (hysteresis band). */
 const GRID_STATEMENT_RESET_BELOW = 0.2;
-/** Fraction of pixel B by which film content has fully faded (1 -> 0, never abrupt). */
-const FILM_FADE_COMPLETE_AT = 0.7;
-/** Final stretch of pixel B held as an empty dark beat before Tracks content enters. */
+/**
+ * How far through pixel B the film has fully cleared.
+ *
+ * Was 0.7, which emptied the frame while a third of the mosaic still had to run — the film was
+ * gone and the destination had not arrived, which is the blank stretch that was reported. The
+ * film now holds almost to the end of the transformation, so the blocks are always advancing
+ * across something rather than across nothing.
+ */
+const FILM_FADE_COMPLETE_AT = 0.88;
+/**
+ * Where the empty beat at the end of pixel B begins — and, just as importantly, where it ENDS.
+ *
+ * Every consecutive scene pair is separated by one full viewport of scroll in which the reducer
+ * is frozen at (previous scene, progress 1). For every other pair one side holds content across
+ * that hand-over. For pixel B neither did: the film had cleared long before, and the beat was
+ * still raised at progress 1, so the frame stayed black for the whole hand-over viewport on top
+ * of the beat itself. That is the "long fully black viewport before music" that was reported —
+ * structural, not a tuning value.
+ *
+ * Releasing the beat AT progress 1 is the whole fix: at the frozen end the beat clears, the
+ * tracks composition is no longer suppressed, and it rides the hand-over into frame the way every
+ * other incoming scene already does. The beat still plays where it was designed to, inside the
+ * scene's own scroll; it simply no longer outlives it.
+ */
 const DARK_BEAT_FROM = 0.92;
 /** Fraction of the footer scene by which the Monochrome Mesh has faded to pure black. */
 const MESH_FADE_TO_BLACK_COMPLETE_AT = 0.45;
@@ -256,8 +277,28 @@ function nextBackgroundMode(sceneId: SceneId, progress: number): BackgroundMode 
   return SCENE_BACKGROUND_MODE[sceneId];
 }
 
+/**
+ * Scenes that carry NO chrome at all.
+ *
+ * The loader has never had a header (brief §8: "Loader: no header"). The grid statement and the
+ * pixel transition out of it were added by an explicit later direction, which supersedes §8's
+ * "from hero onward" for this run: the grid statement is to contain its lattice and one centred
+ * line and nothing else, and a mark parked over it is exactly the furniture that scene is a
+ * refusal of. The header returns as the films are entered.
+ *
+ * `pixelB` is deliberately NOT here. It is the transition OUT of the films and back toward the
+ * music, so hiding the mark there would take it away again immediately after handing it back —
+ * the direction restores the header "during entry into the film scene", and it stays.
+ */
+const CHROMELESS_SCENES: readonly SceneId[] = ["loader", "gridStatement", "pixelA"];
+
 function nextHeaderVariant(sceneId: SceneId, mode: BackgroundMode): TransitionState["headerVariant"] {
-  if (sceneId === "loader") return "hidden";
+  /*
+   * "hidden" is a statement about the MARK, not the ground — the page's text contrast is derived
+   * separately from the background mode (see `isLightGround`), so hiding the header here cannot
+   * drag the copy's colour with it. That separation was a real defect once and is worth keeping.
+   */
+  if (CHROMELESS_SCENES.includes(sceneId)) return "hidden";
   return isLightGround(mode) ? "dark" : "light";
 }
 
@@ -389,7 +430,7 @@ function applyScrollProgress(
       pixelA: pixelDescriptor(sceneId === "pixelA", progress),
       pixelB: pixelDescriptor(sceneId === "pixelB", progress),
       mesh: nextMesh(sceneId, progress),
-      darkBeat: sceneId === "pixelB" && progress >= DARK_BEAT_FROM,
+      darkBeat: sceneId === "pixelB" && progress >= DARK_BEAT_FROM && progress < 1,
       footerReveal: sceneId === "footer" ? progress : 0,
       filmFade: nextFilmFade(activeOrdinal, progress),
       loaderComplete: previous.loaderComplete,

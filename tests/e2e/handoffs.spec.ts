@@ -287,22 +287,26 @@ test("film content fades across pixel B with the last film still on stage, never
 });
 
 /**
- * KNOWN GAP — read before trusting this test's name to mean more than it proves.
+ * What this protects, and why it is the opposite of what it once asserted.
  *
- * What is asserted here is that the reducer holds the beat: pixel B is still the active scene,
- * the film has cleared, the carousel has not started, and the tracks scene has not begun. What
- * CANNOT be asserted at this seam is whether the beat is visually empty — and by hand, on a
- * 1280x800 production build, it is not: from roughly a quarter of the way through the hand-over
- * viewport the TRACKS heading and the jewel-case coverflow are already inside the frame while the
- * page still reports `data-active-scene="pixelB"`. Brief §7.7 puts the Tracks entrance at step 7,
- * AFTER the beat of step 6. Reported as a defect against the shell, which renders the tracks
- * section's content ungated by any reducer output; there is no data attribute for "the tracks
- * composition has entered", so no honest assertion can be written here until one exists.
+ * This test used to demand that the beat ran to the very end of pixel B and that the frame was
+ * empty while it held — and it carried a long note admitting the second half could not be checked
+ * at this seam, because the tracks composition was already in frame while the page still reported
+ * `data-active-scene="pixelB"`.
  *
- * Manual procedure: open `/`, scroll to the pixel B section's bottom edge, then a further quarter
- * of a viewport, and screenshot. Expected: an empty dark frame. Actual: the Tracks title and cases.
+ * That reading was the defect. Every consecutive scene pair is separated by one viewport of scroll
+ * in which the reducer is frozen at (previous scene, progress 1); holding the beat there kept the
+ * frame suppressed for that whole hand-over on top of the beat itself, which is the long dead
+ * black stretch before the music that was reported. The tracks content arriving during the
+ * hand-over is not a defect — it is what every other incoming scene already does, and it is what
+ * keeps the frame alive.
+ *
+ * So what is asserted now is CONTINUOUS VISUAL ACTIVITY: the film is still on screen for nearly
+ * all of the transformation, the beat exists but is a beat rather than a gap, and it has released
+ * by the time the scene hands over. No sample may show the film gone while the transition still
+ * has a meaningful way to run.
  */
-test("the dark beat holds after the film clears and before the tracks scene takes over", async ({
+test("keeps the frame alive across pixel B and releases the beat at the hand-over", async ({
   page,
 }) => {
   const films = await sceneRange(page, "films");
@@ -324,19 +328,36 @@ test("the dark beat holds after the film clears and before the tracks scene take
   const lastBeat = beat.lastIndexOf(true);
   const firstTracks = scenes.indexOf("tracks");
 
-  // Brief §7.7 steps 6-7: the beat exists, is held while pixel B is still the active scene, and
-  // is over before the tracks scene begins.
+  // The beat is a beat: observable, and finished before the tracks scene begins.
   expect(lastBeat, "the dark beat must be observable").toBeGreaterThan(-1);
   expect(firstTracks, "the tracks scene must be reached").toBeGreaterThan(-1);
   expect(lastBeat).toBeLessThan(firstTracks);
 
-  // The film side of "empty": the film scene reports it is no longer holding content, for every
-  // sample of the beat. (The tracks side is the known gap documented above.)
+  /*
+   * Continuous activity, which is the property that actually matters to a reader.
+   *
+   * The film must still be holding content across most of pixel B, so the mosaic is always
+   * advancing across something. A cleared film for most of the transition is precisely the blank
+   * stretch this test exists to prevent, and it is what the previous version demanded.
+   */
+  const withinPixelB = frames.filter((frame) => frame.activeScene === "pixelB");
+  const holdingFilm = withinPixelB.filter((frame) => frame.filmHold === "true").length;
+  expect(
+    holdingFilm / withinPixelB.length,
+    "the film must still be on screen for most of the transformation",
+  ).toBeGreaterThan(0.6);
+
+  // The carousel has not started early: the music arrives after the transformation, not during it.
   for (const frame of frames.filter((_, index) => beat[index])) {
-    expect(frame.filmHold).toBe("false");
-    // …and nothing of the carousel has started — it is still on its first track.
     expect(frame.trackIndex).toBe("0");
   }
+
+  // And the beat has let go by the frozen end of the scene, so the hand-over is not dead.
+  const lastPixelB = withinPixelB[withinPixelB.length - 1];
+  expect(
+    lastPixelB.filmFade === "cleared" && beat[frames.indexOf(lastPixelB)],
+    "the beat must not still be held at the hand-over",
+  ).toBe(false);
 
   expect(runsOf(scenes)).toEqual(["films", "pixelB", "tracks"]);
 });

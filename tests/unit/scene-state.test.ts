@@ -63,15 +63,26 @@ const BRIEF_BACKGROUND_MODE: Array<[SceneId, BackgroundMode]> = [
   ["footer", "footerLight"],
 ];
 
-/** Brief Section 8: no header during the loader, then contrast follows the scene background. */
+/**
+ * Where the mark is shown, and in which contrast.
+ *
+ * Brief §8 puts no header on the loader and a small fixed mark from the hero onward. A later
+ * explicit direction supersedes the second half of that for one run: the grid statement is to
+ * contain its lattice and one centred line and nothing else, so the mark is gone there and
+ * through the pixel transition out of it, returning as the films are entered.
+ *
+ * `pixelB` deliberately keeps the header: it is the transition OUT of the films, and taking the
+ * mark away again immediately after handing it back would read as a flicker rather than a scene.
+ *
+ * Contrast is `light` everywhere the mark IS shown, because every ground is dark now that the
+ * mesh opens the page — `dark` is reachable only from `offWhiteGlow`, which no scene uses.
+ */
 const BRIEF_HEADER_VARIANT: Array<[SceneId, TransitionState["headerVariant"]]> = [
   ["loader", "hidden"],
-  // Dark grounds all the way down now the mesh opens the page, so the mark stays light
-  // everywhere it is shown. `dark` is reachable only from `offWhiteGlow`, which no scene uses.
   ["thesis", "light"],
   ["menu", "light"],
-  ["gridStatement", "light"],
-  ["pixelA", "light"],
+  ["gridStatement", "hidden"],
+  ["pixelA", "hidden"],
   ["films", "light"],
   ["pixelB", "light"],
   ["tracks", "light"],
@@ -357,7 +368,7 @@ describe.each(COUNT_FIXTURES)("scene state driven by %s", (_label, counts) => {
     }
   });
 
-  it("adapts the header logo contrast per scene and hides it on the loader", () => {
+  it("hides the mark on the chromeless scenes and sets its contrast on the rest", () => {
     for (const [sceneId, variant] of BRIEF_HEADER_VARIANT) {
       expect(run(counts, [scroll(sceneId, 0.5)]).transitionState.headerVariant).toBe(variant);
     }
@@ -477,18 +488,35 @@ describe.each(COUNT_FIXTURES)("scene state driven by %s", (_label, counts) => {
     expect(enter(counts, "tracks").transitionState.filmFade).toBe(0);
   });
 
-  it("holds an empty dark beat at the end of pixel B, before any tracks content", () => {
+  it("keeps something on screen across the whole of pixel B, and releases the beat at its end", () => {
+    /*
+     * This test used to demand the OPPOSITE: a beat that ran to the end of the scene and an empty
+     * frame while it held. That is what produced the defect it was meant to protect against.
+     *
+     * Every consecutive scene pair is separated by one viewport of scroll in which the reducer is
+     * frozen at (previous scene, progress 1). Holding the beat AT progress 1 meant the frame stayed
+     * suppressed for that whole hand-over on top of the beat itself — a long dead black stretch
+     * before the music arrived. So what is protected now is continuous visual activity: the film
+     * is still there while the mosaic runs, and the beat lets go exactly at the hand-over so the
+     * tracks composition can ride it in the way every other incoming scene does.
+     */
     const states = sweepScene(counts, "pixelB");
     const beats = states.map((s) => s.transitionState.darkBeat);
 
+    // The transition does not start on a beat, and does not end still holding one.
     expect(beats[0]).toBe(false);
-    expect(beats[beats.length - 1]).toBe(true);
-    // The beat is empty: no film content is still on screen while it holds.
-    expect(states.every((s) => !s.transitionState.darkBeat || s.transitionState.filmFade === 0)).toBe(
-      true,
-    );
-    // Once it starts it runs to the end of the transition — one contiguous final stretch.
-    expect(beats.slice(beats.indexOf(true)).every(Boolean)).toBe(true);
+    expect(states[states.length - 1].transitionState.darkBeat).toBe(false);
+
+    // Something is on screen for effectively the whole transition: the film only clears at the
+    // very end, so the blocks always advance across content rather than across nothing.
+    const withFilm = states.filter((s) => s.transitionState.filmFade > 0).length;
+    expect(withFilm / states.length).toBeGreaterThan(0.8);
+
+    // The beat still exists — it is a beat, not a gap — and it is one contiguous late stretch.
+    const first = beats.indexOf(true);
+    expect(first).toBeGreaterThan(0);
+    expect(beats.slice(first, beats.lastIndexOf(true) + 1).every(Boolean)).toBe(true);
+
     // It belongs to pixel B alone.
     expect(sweepScene(counts, "films").every((s) => !s.transitionState.darkBeat)).toBe(true);
     expect(sweepScene(counts, "tracks").every((s) => !s.transitionState.darkBeat)).toBe(true);
