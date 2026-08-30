@@ -257,6 +257,29 @@ export function caseDepth(distance: number, slots: number): number {
  * exactly one step, because the step from the parking position to the outermost painted slot is
  * exactly one step.
  */
+/**
+ * A track's place in the field relative to the active one, measured AROUND the playlist.
+ *
+ * The plain difference `index - activeIndex` leaves the ends of the playlist bare: on track 1
+ * there is nothing to the left and on the last track nothing to the right, so the coverflow paints
+ * two or three cases instead of five and the field visibly collapses at both ends. Measuring the
+ * shortest signed way round instead means every track always has neighbours, whatever the count.
+ *
+ * The map from raw distance to signed offset is injective, so no two tracks can ever land on the
+ * same slot: at 3 tracks the offsets are {0, +1, -1}, at 4 they are {0, +1, +2, -1}, and at 11 the
+ * item before track 1 is track 11.
+ *
+ * This is PRESENTATION ONLY. The reducer still clamps the index at the ends — first and last stay
+ * first and last, prev on track 1 does nothing — because that is documented, tested behaviour and
+ * a wrapping index would break the non-decreasing contract the scroll mapping depends on. What
+ * wraps is the picture, not the position.
+ */
+export function ringOffset(index: number, activeIndex: number, count: number): number {
+  if (count <= 0) return 0;
+  const raw = (((index - activeIndex) % count) + count) % count;
+  return raw > Math.floor(count / 2) ? raw - count : raw;
+}
+
 export function caseTravel(distance: number, slots: number): number {
   const limit = Math.max(1, slots) + 1;
   if (distance > limit) return limit;
@@ -599,7 +622,7 @@ export function TracksScene({
           {/* `role="list"` because `list-style: none` costs the list its semantics in Safari. */}
           <ol className={styles.cases} role="list" data-tracks>
             {tracks.map((track, index) => {
-              const offset = index - activeIndex;
+              const offset = ringOffset(index, activeIndex, tracks.length);
               const distance = Math.abs(offset);
               const active = index === activeIndex;
               const inField = distance <= slots;
@@ -636,6 +659,12 @@ export function TracksScene({
                       className={styles.caseButton}
                       data-track-case
                       tabIndex={active ? 0 : -1}
+                      /*
+                        `aria-current`, not `aria-pressed`: this button selects one item out of a
+                        set, it is not a toggle, and aria-current is already this repo's vocabulary
+                        for "the current one of a set".
+                      */
+                      aria-current={active ? "true" : undefined}
                       aria-label={`${SELECT_TRACK_LABEL}: ${track.title} — ${track.artist}`}
                       onClick={() => handleSelect(index)}
                     >
