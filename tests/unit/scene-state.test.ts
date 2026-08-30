@@ -289,10 +289,13 @@ function project(state: SceneState) {
 
 describe("lensCounts", () => {
   it("derives every count from the validated lens arrays", () => {
-    // Counts from the brief's W04 seed: 3 hero messages, 2 menu items, 3 films, 11 tracks, 4 art pieces.
+    // W04 as it now ships: 3 hero messages, 4 menu items, 3 films, 11 tracks, 4 art pieces.
+    // The deck was widened past the brief's two seed items for the four-card presentation; the
+    // extra entries are stand-ins reusing an existing image, and lensCounts must follow the DATA
+    // rather than the brief's original count.
     expect(lensCounts(beautifulImperfectionLens)).toEqual({
       heroMessages: 3,
-      menuItems: 2,
+      menuItems: 4,
       films: 3,
       tracks: 11,
       artPieces: 4,

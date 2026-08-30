@@ -155,19 +155,34 @@ describe("W04 Beautiful Imperfection lens", () => {
   });
 
   it("has the counts the media manifest and the brief prescribe", () => {
-    expect(beautifulImperfectionLens.menuItems).toHaveLength(manifestRowsFor("menu").length);
+    /*
+     * Films, tracks and art pieces stay one-to-one with the manifest: every item owns its own file.
+     *
+     * The menu deliberately does NOT. The deck's presentation was widened to four cards while the
+     * mock pack still ships two menu images, so the two extra entries are STAND-INS that reuse
+     * another item's file — declared as such in their `credit` and `replacementNote`, and carrying
+     * placeholder alt text rather than a description of a dish they do not show. The manifest
+     * counts files on disk, so it stays at two here; what must hold is that the menu never invents
+     * a path the manifest does not have.
+     */
+    expect(beautifulImperfectionLens.menuItems.length).toBeGreaterThanOrEqual(
+      manifestRowsFor("menu").length,
+    );
     expect(beautifulImperfectionLens.films).toHaveLength(manifestRowsFor("films").length);
     expect(beautifulImperfectionLens.tracks).toHaveLength(manifestRowsFor("tracks").length);
     expect(beautifulImperfectionLens.artPieces).toHaveLength(manifestRowsFor("art").length);
     expect(beautifulImperfectionLens.heroMessages).toHaveLength(HERO_MESSAGE_COUNT);
   });
 
-  it("uses exactly the local media paths listed in the manifest", () => {
-    const lensPaths = collectMediaAssets(beautifulImperfectionLens)
-      .map((located) => located.asset.src)
-      .sort();
+  it("uses exactly the local media files listed in the manifest", () => {
+    // Unique FILES, not references: a stand-in shares a file with the item it borrows from, so the
+    // reference count and the file count are no longer the same number. Every file the lens names
+    // must be in the manifest, and every manifest file must still be used by the lens.
+    const lensFiles = [
+      ...new Set(collectMediaAssets(beautifulImperfectionLens).map((located) => located.asset.src)),
+    ].sort();
     const manifestPaths = manifest.map((row) => row.target_public_path).sort();
-    expect(lensPaths).toEqual(manifestPaths);
+    expect(lensFiles).toEqual(manifestPaths);
   });
 
   it("serves every media file locally from public/", () => {
@@ -200,14 +215,19 @@ describe("W04 Beautiful Imperfection lens", () => {
     ]);
   });
 
-  it("presents the two seed menu items with their makers (brief §7.3)", () => {
+  it("presents the seed menu items with their makers (brief §7.3)", () => {
+    // The first two are the brief's own seed items; the rest are the widened deck's stand-ins.
     expect(beautifulImperfectionLens.menuItems.map((item) => item.name.en)).toEqual([
       "WEEKLY FRUIT TART",
       "MOCHI BITE BOX",
+      "SLOW FILTER BREW",
+      "DAILY SOURDOUGH",
     ]);
     expect(beautifulImperfectionLens.menuItems.map((item) => item.maker)).toEqual([
       "ÉCLAIR",
       "MOCHIKI",
+      "DROP KITCHEN",
+      "DROP BAKERY",
     ]);
   });
 
@@ -328,15 +348,33 @@ describe("malformed lens data fails loudly", () => {
   });
 });
 
+/**
+ * How many media assets the lens REFERENCES — which is no longer the number of files on disk.
+ *
+ * The menu deck was widened to four cards while the mock pack still ships two menu images, so two
+ * entries are stand-ins that reuse another item’s file. `collectMediaAssets` and the guard both
+ * walk REFERENCES (every item carries its own rights metadata and must be judged on it), so these
+ * assertions count references, while the manifest above keeps counting files.
+ *
+ * Derived from the lens, never a literal, so widening the deck again cannot silently pass.
+ */
+const LENS_MEDIA_REFERENCES =
+  beautifulImperfectionLens.menuItems.length +
+  beautifulImperfectionLens.films.length +
+  beautifulImperfectionLens.tracks.length +
+  beautifulImperfectionLens.artPieces.length;
+
 // --- production-media guard ------------------------------------------------------------------
 
 describe("production-media guard", () => {
   it("collects every media asset tagged with the scene and item it came from", () => {
     const collected = collectMediaAssets(beautifulImperfectionLens);
-    expect(collected).toHaveLength(manifest.length);
+    expect(collected).toHaveLength(LENS_MEDIA_REFERENCES);
 
     const perScene = (scene: string) => collected.filter((located) => located.scene === scene);
-    expect(perScene("menu")).toHaveLength(manifestRowsFor("menu").length);
+    // References, not files: the widened deck has stand-ins that share another item's image,
+    // and the guard judges every reference on its own rights metadata.
+    expect(perScene("menu")).toHaveLength(beautifulImperfectionLens.menuItems.length);
     expect(perScene("films")).toHaveLength(manifestRowsFor("films").length);
     expect(perScene("tracks")).toHaveLength(manifestRowsFor("tracks").length);
     expect(perScene("artPieces")).toHaveLength(manifestRowsFor("art").length);
@@ -355,7 +393,7 @@ describe("production-media guard", () => {
     expect(thrown, "the guard must block while mock assets remain").toBeDefined();
     const message = thrown!.message;
     // The message states the blocking count (all 20 manifest assets) and names offenders.
-    expect(message).toMatch(new RegExp(`\\b${manifest.length}\\b`));
+    expect(message).toMatch(new RegExp(`\\b${LENS_MEDIA_REFERENCES}\\b`));
     expect(message).toContain("menu/weekly-fruit-tart");
     expect(message).toContain("artPieces/pratfall-effect");
     expect(message).toContain("development-mock");
@@ -394,7 +432,7 @@ describe("production-media guard", () => {
     expect(warn).toHaveBeenCalledTimes(1);
     const message = warn.mock.calls[0][0] as string;
     expect(message).toContain("WARNING");
-    expect(message).toMatch(new RegExp(`\\b${manifest.length}\\b`));
+    expect(message).toMatch(new RegExp(`\\b${LENS_MEDIA_REFERENCES}\\b`));
     expect(message).toContain("replace-with-final");
   });
 
@@ -405,15 +443,15 @@ describe("production-media guard", () => {
 
   it("reviews a lens into blocking / awaiting-final / cleared groups", () => {
     const mockReview = reviewMediaRights(beautifulImperfectionLens);
-    expect(mockReview.blocking).toHaveLength(manifest.length);
+    expect(mockReview.blocking).toHaveLength(LENS_MEDIA_REFERENCES);
     expect(mockReview.cleared).toHaveLength(0);
 
     const clearedReview = reviewMediaRights(lensWithMediaRights("original-drop", true));
-    expect(clearedReview.cleared).toHaveLength(manifest.length);
+    expect(clearedReview.cleared).toHaveLength(LENS_MEDIA_REFERENCES);
     expect(clearedReview.blocking).toHaveLength(0);
 
     const awaitingReview = reviewMediaRights(lensWithMediaRights("replace-with-final", true));
-    expect(awaitingReview.awaitingFinal).toHaveLength(manifest.length);
+    expect(awaitingReview.awaitingFinal).toHaveLength(LENS_MEDIA_REFERENCES);
   });
 });
 

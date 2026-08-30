@@ -118,6 +118,64 @@
         "credit": "Original AI-generated development placeholder for DROP",
         "replacementNote": "Replace with final approved Mochiki product photography before launch."
       }
+    },
+    {
+      "id": "slow-filter-brew",
+      "name": {
+        "fa": "دم‌آهستهٔ فیلتر",
+        "en": "SLOW FILTER BREW"
+      },
+      "maker": "DROP KITCHEN",
+      "category": {
+        "fa": "مزه / نوشیدنی",
+        "en": "TASTE / DRINK"
+      },
+      "rationale": {
+        "fa": "نسبت و دما هر روز یکی است، اما دانه هر برداشت کمی فرق می‌کند و فنجان با آن حرکت می‌کند. ثبات در روش است، نه در نتیجهٔ عیناً تکراری.",
+        "en": "The ratio and the temperature are the same every day; the bean shifts a little with each harvest and the cup moves with it. The consistency lives in the method, not in an identical result."
+      },
+      "image": {
+        "src": "/media/lenses/beautiful-imperfection/menu/weekly-fruit-tart.webp",
+        "alt": {
+          "fa": "تصویر جای‌گزین توسعه؛ عکس نهایی این آیتم هنوز اضافه نشده است",
+          "en": "Development placeholder image; final photography for this item is pending"
+        },
+        "width": 1122,
+        "height": 1402,
+        "rightsStatus": "development-mock",
+        "productionAllowed": false,
+        "credit": "Original AI-generated development placeholder for DROP, reused as a stand-in",
+        "replacementNote": "Stand-in only: this image belongs to another menu item. Replace with this item’s own approved photography before launch."
+      }
+    },
+    {
+      "id": "daily-sourdough",
+      "name": {
+        "fa": "نان خمیرترش روزانه",
+        "en": "DAILY SOURDOUGH"
+      },
+      "maker": "DROP BAKERY",
+      "category": {
+        "fa": "مزه / نان",
+        "en": "TASTE / BREAD"
+      },
+      "rationale": {
+        "fa": "خمیر به دمای اتاق و زمان پاسخ می‌دهد، پس هیچ دو قرصی یک اندازه بالا نمی‌آیند. مهارت، این پاسخ را مهار نمی‌کند؛ آن را قابل‌اعتماد می‌کند.",
+        "en": "The dough answers to room temperature and time, so no two loaves rise alike. Skill does not suppress that answer; it makes it dependable."
+      },
+      "image": {
+        "src": "/media/lenses/beautiful-imperfection/menu/mochi-bite-box.webp",
+        "alt": {
+          "fa": "تصویر جای‌گزین توسعه؛ عکس نهایی این آیتم هنوز اضافه نشده است",
+          "en": "Development placeholder image; final photography for this item is pending"
+        },
+        "width": 1122,
+        "height": 1402,
+        "rightsStatus": "development-mock",
+        "productionAllowed": false,
+        "credit": "Original AI-generated development placeholder for DROP, reused as a stand-in",
+        "replacementNote": "Stand-in only: this image belongs to another menu item. Replace with this item’s own approved photography before launch."
+      }
     }
   ],
   "films": [
