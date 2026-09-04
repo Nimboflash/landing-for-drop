@@ -246,9 +246,39 @@ function nextFilmFade(activeOrdinal: number, progress: number): number {
  * a reading surface and how it loses contrast into black, and both are wanted again the moment
  * the mesh backs a reading scene or has to hand over to a lit one.
  */
+/**
+ * Where the lattice starts drawing itself over the menu deck, in that scene's own progress.
+ *
+ * After the cards are done, not during them: the deck's flip window closes at 0.78 and its hold
+ * runs to 0.9, so the lattice begins as the last card lands and the reader is looking at four
+ * settled fronts rather than at something still turning.
+ */
+const LATTICE_DRAWS_FROM = 0.78;
+
+/**
+ * The mesh descriptor, and the lattice drawn over it.
+ *
+ * The field now covers four scenes rather than three: the grid statement joins the loader, the
+ * thesis and the menu deck, so there is no ground change anywhere between the portal and the
+ * pixel transition. What distinguishes the grid statement is the lattice, not the ground.
+ *
+ * The lattice must reach 1 exactly AT menu progress 1, not after it. Every consecutive scene
+ * pair is separated by a full viewport of scroll in which the reducer is frozen at (previous
+ * scene, 1) — a ramp that had further to travel would stall there in a half-drawn state for a
+ * whole screen of scrolling. Same constraint the dark beat documents, and the same fix.
+ */
 function nextMesh(sceneId: SceneId, progress: number): MeshDescriptor | null {
-  if (sceneId === "loader" || sceneId === "thesis" || sceneId === "menu") {
-    return { variant: "opening", amount: progress };
+  if (sceneId === "loader" || sceneId === "thesis") {
+    return { variant: "opening", amount: progress, lattice: 0 };
+  }
+  if (sceneId === "menu") {
+    const lattice = clamp01((clamp01(progress) - LATTICE_DRAWS_FROM) / (1 - LATTICE_DRAWS_FROM));
+    return { variant: "opening", amount: progress, lattice };
+  }
+  if (sceneId === "gridStatement") {
+    // Already fully drawn when the scene opens: it was drawn during the deck's hold, which is
+    // the point. Holding it at 1 here is what makes the boundary invisible.
+    return { variant: "opening", amount: progress, lattice: 1 };
   }
   return null;
 }
@@ -318,7 +348,7 @@ function samePixel(a: PixelDescriptor | null, b: PixelDescriptor | null): boolea
 function sameMesh(a: MeshDescriptor | null, b: MeshDescriptor | null): boolean {
   if (a === b) return true;
   if (a === null || b === null) return false;
-  return a.variant === b.variant && a.amount === b.amount;
+  return a.variant === b.variant && a.amount === b.amount && a.lattice === b.lattice;
 }
 
 function sameSceneState(a: SceneState, b: SceneState): boolean {

@@ -296,7 +296,10 @@ describe("transitions A and B share one lattice", () => {
   });
 
   it("dissolves between the pair of backgrounds each scene boundary joins", () => {
-    expect(pixelAShader.transition.from).toBe("greenGrid");
+    // The mesh, not the green grid: the grid statement draws a lattice over the same ground the
+    // menu deck runs on rather than replacing it, so this is the background transition A is
+    // actually eating away.
+    expect(pixelAShader.transition.from).toBe("monoMesh");
     expect(pixelAShader.transition.to).toBe("wavyDots");
     expect(pixelBShader.transition.from).toBe("wavyDots");
     // Brief Section 7.7 resolved B into the Monochrome Mesh; Tracks now sits on flat black, and
@@ -383,7 +386,7 @@ describe("background shader module contract", () => {
 
   it("degrades to a real static background when WebGL is unavailable", () => {
     // Brief Section 15 / ticket 04: never a blank or broken page.
-    expect(pixelAShader.fallbackCss()).toContain("#102b19"); // --drop-grid-green, the outgoing side
+    expect(pixelAShader.fallbackCss()).toContain("#050505"); // the mesh ground, the outgoing side
     expect(pixelBShader.fallbackCss()).toContain("#000000"); // the film scene's black
     expect(wavyDotsShader.fallbackCss()).toContain("#000000");
 

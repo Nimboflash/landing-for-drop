@@ -58,7 +58,21 @@ export const SCENE_BACKGROUND_MODE: Readonly<Record<SceneId, BackgroundMode>> = 
   loader: "monoMesh",
   thesis: "monoMesh",
   menu: "monoMesh",
-  gridStatement: "greenGrid",
+  /*
+   * The mesh, not the green grid.
+   *
+   * Brief 7.4 asks for a full-screen dark forest-green ground here, and this departs from it by
+   * explicit art-direction decision — the same call, and the same reason, as the one that moved
+   * the mesh to the opening scenes and put Tracks and Art Pieces on flat black. The grid keeps
+   * its lattice and its one centred line; what it loses is the colour and the ground change, so
+   * the field now runs uncut from the loader to the pixel transition and the lattice draws
+   * itself over that field instead of replacing it.
+   *
+   * `greenGrid` stays registered and reachable as a mode — the registry is exhaustive over
+   * BackgroundMode and its module is still correct — it simply has no scene pointing at it,
+   * exactly as `offWhiteGlow` already does.
+   */
+  gridStatement: "monoMesh",
   pixelA: "pixelA",
   films: "wavyDots",
   pixelB: "pixelB",
@@ -76,7 +90,16 @@ export const SCENE_BACKGROUND_MODE: Readonly<Record<SceneId, BackgroundMode>> = 
  * `normal` / `reading` / `fadeToBlack` are the original Tracks -> Art Pieces -> footer chain.
  */
 export type MeshVariant = "opening" | "normal" | "reading" | "fadeToBlack";
-export type MeshDescriptor = { variant: MeshVariant; amount: number };
+/**
+ * The mesh's own state.
+ *
+ * `lattice` is how far the grid statement's lattice has been DRAWN over the field, 0..1. It
+ * lives here rather than on the grid scene because the lattice is background, and the shared
+ * canvas takes its whole ground from one mode: there is no second layer to put it on, and the
+ * one-canvas rule forbids inventing one. Drawing it into the mesh is what lets the field run
+ * uncut from the loader through the grid statement while the lattice arrives over the top.
+ */
+export type MeshDescriptor = { variant: MeshVariant; amount: number; lattice: number };
 
 /**
  * Declarative pixel-transition descriptor. Determinism at this seam means: the same

@@ -316,7 +316,7 @@ describe("mesh variants", () => {
     expect(
       meshSettingsForFrame(
         "footerLight",
-        transitionState({ mesh: { variant: "fadeToBlack", amount: 0 } }),
+        transitionState({ mesh: { variant: "fadeToBlack", amount: 0, lattice: 0 } }),
       ),
     ).toEqual(meshVariantUniforms({ variant: "reading", amount: 1 }));
   });
@@ -358,6 +358,46 @@ describe("mesh variants", () => {
     expect(ratio).toBeGreaterThanOrEqual(4.5);
   });
 
+  it("draws the lattice by removing light, so it can never lower text contrast", () => {
+    /*
+     * The grid statement now shares the mesh ground and is marked out by a lattice drawn over
+     * it, so the lattice sits directly behind that scene's one centred line of copy.
+     *
+     * The opening field is already solved to the last fraction against MESH_OPENING_PEAK_CEILING:
+     * its brightest cell lands at ~0.406 with ~0.028 to spare, reserved for the grain term. A
+     * lattice that ADDED light would spend that many times over — a 0.16 lift measures about
+     * 2.8:1 under off-white copy. The shader multiplies the field down instead.
+     *
+     * This pins the DIRECTION rather than the amount: however the depth is tuned, a line must
+     * never be brighter than the field it is drawn on.
+     */
+    const source = monoMeshShader.fragmentShader;
+
+    // The lattice composites by scaling the field, never by adding to it.
+    expect(source).toContain("return field * (1.0 - intensity");
+    expect(source).not.toContain("return field + ");
+
+    // And the worst case the ceiling protects survives it, because scaling by (1 - x) for x in
+    // [0,1] is a contraction toward black: the peak can only come down, never up.
+    const { brightness, contrast } = MESH_VARIANT_TARGETS.opening;
+    const brightestControl = MESH_CONTROL_COLORS_RGB.flat().reduce((brightest, colour) =>
+      relativeLuminance(colour) > relativeLuminance(brightest) ? colour : brightest,
+    );
+    const peak = Math.max(
+      ...brightestControl.map(
+        (channel, i) => (MESH_PIVOT_RGB[i] + (channel - MESH_PIVOT_RGB[i]) * contrast) * brightness,
+      ),
+    );
+
+    for (const intensity of [0, 0.25, 0.5, 0.75, 1]) {
+      const withLattice = peak * (1 - intensity * 0.5);
+      expect(withLattice).toBeLessThanOrEqual(MESH_OPENING_PEAK_CEILING);
+      const ratio =
+        (relativeLuminance(parseHexColor("#f2f2f2")) + 0.05) /
+        (relativeLuminance([withLattice, withLattice, withLattice]) + 0.05);
+      expect(ratio).toBeGreaterThanOrEqual(4.5);
+    }
+  });
   it("holds the opening variant constant, so it is legible on its first frame", () => {
     // Unlike the other variants it does not ramp in from a predecessor — every amount is the
     // same settled, ceiling-respecting look.
@@ -638,7 +678,7 @@ describe("background shader modules", () => {
                     quality,
                     timeSeconds: seconds,
                     transitionState: transitionState({
-                      mesh: { variant, amount: progress },
+                      mesh: { variant, amount: progress, lattice: 0 },
                       footerReveal: progress,
                     }),
                   }),
@@ -687,7 +727,7 @@ describe("background shader modules", () => {
   it("fades the fallback mesh to black alongside the shader", () => {
     const faded = monoMeshShader.fallbackCss({
       sceneProgress: 1,
-      transitionState: transitionState({ mesh: { variant: "fadeToBlack", amount: 1 } }),
+      transitionState: transitionState({ mesh: { variant: "fadeToBlack", amount: 1, lattice: 0 } }),
     });
     expect(faded).toContain("rgba(0, 0, 0, 1)");
   });

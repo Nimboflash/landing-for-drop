@@ -54,7 +54,11 @@ const BRIEF_BACKGROUND_MODE: Array<[SceneId, BackgroundMode]> = [
   ["loader", "monoMesh"],
   ["thesis", "monoMesh"],
   ["menu", "monoMesh"],
-  ["gridStatement", "greenGrid"],
+  // The grid statement keeps the mesh. Brief 7.4 asks for a dark forest-green ground and this
+  // departs from it by explicit art-direction decision, the same call that moved the mesh to the
+  // opening scenes and put Tracks and Art Pieces on flat black. The lattice is now drawn OVER the
+  // field instead of arriving with a ground of its own.
+  ["gridStatement", "monoMesh"],
   ["pixelA", "pixelA"],
   ["films", "wavyDots"],
   ["pixelB", "pixelB"],
@@ -329,7 +333,7 @@ describe("initial scene state", () => {
     expect(state.transitionState.pixelB).toBeNull();
     // The mesh is the loader's own ground now, so it is live from the very first frame — and at
     // the `opening` variant, which is legible on that first frame rather than ramping into it.
-    expect(state.transitionState.mesh).toEqual({ variant: "opening", amount: 0 });
+    expect(state.transitionState.mesh).toEqual({ variant: "opening", amount: 0, lattice: 0 });
     expect(state.transitionState.filmFade).toBe(1);
     expect(state.transitionState.footerReveal).toBe(0);
   });
@@ -522,9 +526,11 @@ describe.each(COUNT_FIXTURES)("scene state driven by %s", (_label, counts) => {
     expect(sweepScene(counts, "tracks").every((s) => !s.transitionState.darkBeat)).toBe(true);
   });
 
-  it("keeps one mesh alive from the loader through the menu deck, and nothing after it", () => {
-    // The mesh is the ground for the three opening scenes, at one variant throughout.
-    for (const sceneId of ["loader", "thesis", "menu"] as const) {
+  it("keeps one mesh alive from the loader through the grid statement, and nothing after it", () => {
+    // The mesh is the ground for FOUR scenes now, at one variant throughout. The grid statement
+    // joined them when it stopped bringing a ground of its own: what marks it out is the lattice
+    // drawn over the field, not a change of field.
+    for (const sceneId of ["loader", "thesis", "menu", "gridStatement"] as const) {
       expect(
         sweepScene(counts, sceneId).every((s) => s.transitionState.mesh?.variant === "opening"),
       ).toBe(true);
@@ -533,7 +539,6 @@ describe.each(COUNT_FIXTURES)("scene state driven by %s", (_label, counts) => {
     // And for nothing else: every later scene runs on a ground of its own, so the reducer has
     // no mesh to hand the canvas there.
     for (const sceneId of [
-      "gridStatement",
       "pixelA",
       "films",
       "pixelB",
@@ -781,20 +786,29 @@ describe.each(COUNT_FIXTURES)("cross-scene hand-offs driven by %s", (_label, cou
     }
   });
 
-  it("releases the mesh exactly where the green grid takes the ground", () => {
+  it("carries the field straight through the grid statement, with the lattice already drawn", () => {
     const forward = crossForward(counts, "menu", "gridStatement");
 
-    // The descriptor and the mode change together on the same frame: a mesh descriptor exists
-    // if and only if the mesh is the active mode. No gap, no overlap, one authority.
+    // The descriptor and the mode still agree frame by frame: a mesh descriptor exists if and
+    // only if the mesh is the active mode. One authority, as before.
     expect(
       forward.every(
         (s) => (s.backgroundMode === "monoMesh") === (s.transitionState.mesh !== null),
       ),
     ).toBe(true);
 
-    // The crossing really does happen inside this window, rather than the assertion above
-    // passing vacuously on one side of it.
-    expect(new Set(forward.map((s) => s.backgroundMode)).size).toBe(2);
+    // What changed: there is no ground change to cross any more. This boundary used to be where
+    // the mesh was released and the green grid took over; the grid now draws its lattice over the
+    // same field, so the mode is the mesh on BOTH sides and the set has exactly one member.
+    expect(new Set(forward.map((s) => s.backgroundMode))).toEqual(new Set(["monoMesh"]));
+
+    // And the lattice is fully drawn before the boundary rather than across it. The reducer is
+    // frozen at (menu, 1) for a full viewport of scroll here, so a lattice still ramping would
+    // stall half-drawn for a whole screen — it has to arrive AT menu progress 1.
+    const lattices = forward.map((s) => s.transitionState.mesh?.lattice ?? -1);
+    expect(lattices.every((l) => l >= 0)).toBe(true);
+    expect(Math.max(...lattices)).toBe(1);
+    expect(lattices[lattices.length - 1]).toBe(1);
   });
 
   it("carries one uncut field from the loader into the menu deck", () => {

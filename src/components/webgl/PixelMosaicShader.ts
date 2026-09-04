@@ -715,14 +715,23 @@ export function createPixelMosaicShader(spec: PixelTransitionSpec): PixelMosaicM
  * Pixel transition A — grid statement to films (brief Section 7.5). No chroma: the grid gives way
  * to the dot floor with an achromatic frontier, keeping the colour pass unique to transition B.
  */
+/*
+ * `from` is the MESH, not the green grid.
+ *
+ * The grid statement no longer changes the ground -- it draws a lattice over the same mesh the
+ * menu deck runs on -- so the mosaic has to dissolve out of that, or it would spend transition A
+ * eating away a green field the reader never saw. The mesh look below carries the lattice at full
+ * strength for exactly this reason: at the moment transition A opens, the lattice is always fully
+ * drawn, so a constant is the honest value rather than a uniform nobody varies.
+ */
 export const pixelAShader: PixelMosaicModule = createPixelMosaicShader({
   key: "pixelA",
-  from: "greenGrid",
+  from: "monoMesh",
   to: "wavyDots",
   spectralMix: 0,
   energyGain: 0.12,
   honorsDarkBeat: false,
-  fromCss: "#102b19",
+  fromCss: "#050505",
   toCss: "#000000",
 });
 

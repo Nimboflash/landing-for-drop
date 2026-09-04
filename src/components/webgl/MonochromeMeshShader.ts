@@ -242,7 +242,11 @@ function blend(from: MeshVariantSettings, to: MeshVariantSettings, t: number): M
  * Tracks -> Art Pieces -> Footer are continuous by construction.
  */
 export function meshVariantUniforms(
-  descriptor: MeshDescriptor | null | undefined,
+  // Only the two fields it actually reads. The mesh also carries a `lattice` amount now, but
+  // that is drawn by the fragment shader over the finished field rather than being one of the
+  // field settings, so widening this to the whole descriptor would only invite callers to think
+  // it mattered here.
+  descriptor: Pick<MeshDescriptor, "variant" | "amount"> | null | undefined,
 ): MeshVariantSettings {
   if (!descriptor) return { ...MESH_VARIANT_TARGETS.normal };
   const t = ease(descriptor.amount);
@@ -481,6 +485,77 @@ export const MESH_FIELD_GLSL = /* glsl */ `
   }
 `;
 
+/* ------------------------------------------------------------ lattice tuning */
+
+/** Cell size in CSS pixels. The green grid module's own figure, so the two lattices agree. */
+export const MESH_LATTICE_CELL_PX = 64;
+/** Line thickness in CSS pixels. One hairline; anything heavier stops being quiet. */
+export const MESH_LATTICE_LINE_WIDTH_PX = 1;
+/**
+ * How much light a line REMOVES at full strength.
+ *
+ * It darkens rather than brightens, and that is a contrast decision rather than a taste one.
+ * The opening field is already solved against {@link MESH_OPENING_PEAK_CEILING}: its brightest
+ * cell lands at ~0.406 against a ceiling of 0.4346, and the ~0.028 that remains is deliberate
+ * headroom for the grain term. A lattice that ADDED light would spend that headroom many times
+ * over — a 0.16 lift puts the worst cell at ~0.566, which is about 2.8:1 under off-white copy,
+ * below the 4.5:1 the brief requires and on the one scene whose text sits over the lattice.
+ *
+ * Subtracting light cannot fail that way: every line makes its own background darker, so the
+ * ratio under DROP off-white can only improve. The green grid drew its lines lighter than its
+ * ground, but it could afford to — #102b19 sits near luminance 0.02, with the whole range
+ * above it free. This field does not have that room.
+ */
+const LATTICE_DEPTH = 0.5;
+/** How far the lattice dims toward the corners, matching the green grid's own vignette. */
+const LATTICE_VIGNETTE_DEPTH = 0.28;
+/**
+ * The grid statement's lattice, drawn OVER the mesh rather than replacing it.
+ *
+ * The shared canvas takes its whole ground from one mode, so there is no second layer to put a
+ * lattice on and the one-canvas rule forbids inventing one. Drawing it here is what lets the
+ * field run uncut from the loader through the grid statement while the lattice arrives on top.
+ *
+ * The cell maths is the green grid module's, unchanged, so the two lattices are the same object
+ * measured the same way: vUv x resolution recovers CSS pixels without touching gl_FragCoord, so
+ * a cell stays exactly uLatticeCellPx wide at every device pixel ratio.
+ *
+ * It DARKENS the field rather than tinting it. A mix toward a line colour would have to pick one,
+ * and every colour that reads against this ground is a colour the brief spends elsewhere;
+ * scaling the field down keeps each line the same hue as the field beneath it at every point of
+ * the drift, and keeps the text contrast monotonic (see LATTICE_DEPTH).
+ */
+export const MESH_LATTICE_GLSL = /* glsl */ `
+  uniform float uLattice;
+  uniform float uLatticeCellPx;
+  uniform float uLatticeLineWidthPx;
+
+  vec3 dropMeshLattice(vec3 field, vec2 uv, vec2 resolution, float amount) {
+    if (amount <= 0.0) return field;
+
+    vec2 px = uv * resolution;
+    float cell = max(uLatticeCellPx, 1.0);
+    vec2 inCell = fract(px / cell) * cell;
+    vec2 edgeDistance = min(inCell, cell - inCell);
+    float distanceToLine = min(edgeDistance.x, edgeDistance.y);
+
+    float halfWidth = max(uLatticeLineWidthPx, 0.5) * 0.5;
+    float line = 1.0 - smoothstep(halfWidth, halfWidth + 1.0, distanceToLine);
+
+    // Drawn, not faded up. The lattice is revealed outward from the centre of the frame as the
+    // amount climbs, so it reads as being ruled onto the field rather than dissolving into it.
+    float aspect = max(resolution.x, 1.0) / max(resolution.y, 1.0);
+    vec2 centred = (uv - 0.5) * vec2(aspect, 1.0);
+    float reach = length(centred) / 0.75;
+    float drawn = 1.0 - smoothstep(amount * 1.35 - 0.35, amount * 1.35, reach);
+
+    float vignette = 1.0 - ${LATTICE_VIGNETTE_DEPTH.toFixed(3)} * smoothstep(0.18, 0.92, length(centred));
+    float intensity = clamp(line * drawn * vignette, 0.0, 1.0) * clamp(amount, 0.0, 1.0);
+
+    return field * (1.0 - intensity * ${LATTICE_DEPTH.toFixed(3)});
+  }
+`;
+
 const MONO_MESH_FRAGMENT_SHADER = /* glsl */ `
   varying vec2 vUv;
 
@@ -493,11 +568,13 @@ const MONO_MESH_FRAGMENT_SHADER = /* glsl */ `
 
 ${MESH_FIELD_UNIFORMS_GLSL}
 ${MESH_FIELD_GLSL}
+${MESH_LATTICE_GLSL}
 
   void main() {
     vec2 p = clamp(vUv, 0.0, 1.0);
     float aspect = uResolution.x / max(uResolution.y, 1.0);
-    gl_FragColor = vec4(dropMeshFieldColor(p, aspect, uTime), uOpacity);
+    vec3 field = dropMeshFieldColor(p, aspect, uTime);
+    gl_FragColor = vec4(dropMeshLattice(field, p, uResolution, uLattice), uOpacity);
   }
 `;
 
@@ -523,8 +600,31 @@ function percent(value: number): string {
  * radial gradients on the preset's black, dimmed and flattened by the same variant settings the
  * shader uses. Returns a value for the CSS `background` shorthand.
  */
-export function monoMeshFallbackCss(settings: MeshVariantSettings): string {
+export function monoMeshFallbackCss(settings: MeshVariantSettings, lattice = 0): string {
   const layers: string[] = [];
+
+  /*
+   * The lattice, first in the stack so it sits ON the field the way the shader draws it.
+   *
+   * Mandatory rather than a nicety: the no-WebGL path has to carry the same content as the
+   * shader, and with the grid statement now sharing the mesh's ground the lattice is the ONLY
+   * thing that distinguishes that scene. Dropping it here would leave a reader without WebGL
+   * looking at the menu deck's background and one line of type, with no grid at all.
+   *
+   * Two repeating gradients rather than one: CSS has no cross-hatch, so the verticals and the
+   * horizontals are separate layers ruled at the same pitch the shader uses.
+   */
+  const drawn = clamp01(lattice);
+  if (drawn > 0) {
+    // Dark lines, for the same reason the shader's are — see LATTICE_DEPTH.
+    const line = rgbaCss([0, 0, 0], 0.4 * drawn);
+    const cell = `${MESH_LATTICE_CELL_PX}px`;
+    const width = `${MESH_LATTICE_LINE_WIDTH_PX}px`;
+    layers.push(
+      `repeating-linear-gradient(to right, ${line} 0 ${width}, transparent ${width} ${cell})`,
+      `repeating-linear-gradient(to bottom, ${line} 0 ${width}, transparent ${width} ${cell})`,
+    );
+  }
 
   const dim = 1 - clamp01(settings.brightness);
   if (dim > 0) {
@@ -640,6 +740,9 @@ export const monoMeshShader: BackgroundShaderModule = {
       uResolution: { value: [1, 1] },
       uTime: { value: MESH_CLOCK_ORIGIN },
       ...createMeshFieldUniforms(),
+      uLattice: { value: 0 },
+      uLatticeCellPx: { value: MESH_LATTICE_CELL_PX },
+      uLatticeLineWidthPx: { value: MESH_LATTICE_LINE_WIDTH_PX },
       uOpacity: { value: 1 },
       [MESH_CLOCK_KEY]: { value: createMeshClock() },
     };
@@ -662,9 +765,17 @@ export const monoMeshShader: BackgroundShaderModule = {
     setNumber(uniforms, "uTime", meshTime);
     writeMeshFieldUniforms(uniforms, settings, detail);
     setVec2(uniforms, "uResolution", frame.resolution[0], frame.resolution[1]);
+
+    // Straight from the reducer, never from the scene: how far the lattice is drawn is scene
+    // state, and this module is a renderer of that state. Absent descriptor means no lattice,
+    // which is what every scene before the menu deck's hold reports.
+    setNumber(uniforms, "uLattice", frame.transitionState?.mesh?.lattice ?? 0);
+    setNumber(uniforms, "uLatticeCellPx", MESH_LATTICE_CELL_PX);
+    setNumber(uniforms, "uLatticeLineWidthPx", MESH_LATTICE_LINE_WIDTH_PX);
   },
 
   fallbackCss(frame?: Pick<BackgroundFrame, "transitionState" | "sceneProgress">): string {
-    return monoMeshFallbackCss(meshVariantUniforms(frame?.transitionState?.mesh ?? null));
+    const mesh = frame?.transitionState?.mesh ?? null;
+    return monoMeshFallbackCss(meshVariantUniforms(mesh), mesh?.lattice ?? 0);
   },
 };
