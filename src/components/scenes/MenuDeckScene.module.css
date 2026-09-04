@@ -40,11 +40,18 @@
    * composition anyone chose. The reference has no such collision because its heading has
    * scrolled away by the time the cards run; pinned, ours cannot scroll away, so it fades.
    *
-   * Driven by `--deck-position`: fully lit while the deck is still rising (-1), gone by the time
-   * the first card lands on the stage (0). Pure function of scroll, so it comes back on the way
-   * up. The fallback keeps it visible with no scripting, where nothing travels over it anyway.
+   * Driven by `--phase-stack`: fully lit before the stack gathers (0), gone once it has (1).
+   * Pure function of scroll, so it comes back on the way up. The fallback keeps it visible with
+   * no scripting, where nothing travels over it anyway.
+   *
+   * It used to read `--deck-position`, and nothing has written that since the deck was rebuilt
+   * around phase windows — so the clamp fell through to its own fallback of -1 and resolved to a
+   * flat 1 on every frame. The heading has not actually faded since; it sat lit in the middle of
+   * the composition for the whole scene while the cards travelled over it. `--phase-stack` is
+   * the value that replaced it, and the scrub already writes it to this element as well as to
+   * the deck, which is what the sibling ref beside it exists for.
    */
-  opacity: clamp(0, calc(0 - var(--deck-position, -1)), 1);
+  opacity: clamp(0, calc(1 - var(--phase-stack, 0)), 1);
 }
 
 .stage {
@@ -580,6 +587,28 @@
  * on a card occupying most of a phone, so the flip stays but the fan and the recede go.
  */
 @media (max-width: 899px) {
+  /*
+   * On a phone the heading leads, then leaves — it does not hang in the middle of the frame.
+   *
+   * The pane is a centred grid, so on a narrow viewport the heading was laid out 169px down from
+   * the top of a 844px pane with the card starting 25px under it: a title floating in the middle
+   * of the composition rather than introducing it. And the pane is sticky, so it could not scroll
+   * away either — it sat there and dimmed in place, which is what reads as the title being stuck.
+   *
+   * Lifted out of the grid and parked under the mark, so it opens the section where a title
+   * belongs and hands the whole pane to the card. It then RIDES UP as the deck arrives, on the
+   * same --phase-stack the fade above uses: 0 while the deck is still below (heading at rest,
+   * fully lit), 1 once the stack has gathered (heading a line higher, and gone).
+   * Scrolling away under the header, rather than dissolving where it stands.
+   */
+  .heading {
+    position: absolute;
+    inset-block-start: calc(var(--header-height) + 0.75rem);
+    inset-inline: var(--page-gutter);
+    margin: 0;
+    transform: translateY(calc(var(--phase-stack, 0) * -2.5rem));
+  }
+
   .deck {
     /*
      * 91vw, so one card genuinely occupies most of the frame — the design's own figure for ~552px.
