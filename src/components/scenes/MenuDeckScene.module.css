@@ -215,8 +215,32 @@
     calc(var(--phase-flip, 1) * var(--flip-span) - var(--card-index) * var(--flip-stagger)),
     1
   );
+  /*
+   * Eased, not linear — because the angle is what decides how long the card is INVISIBLE.
+   *
+   * A card turning on rotateY has zero projected width at the half-turn, so it genuinely
+   * vanishes there, and it approaches that point as a black back against a dark ground. Spread
+   * linearly, the deck spends as long in that dead zone as it does on either readable face, and
+   * the turn reads as the card fading out rather than turning over.
+   *
+   * Smootherstep (6t^5 - 15t^4 + 10t^3) has a mid-slope of 1.875 against linear's 1, so the card
+   * crosses the half-turn nearly twice as fast and dwells on the back and the front instead. It
+   * is still a pure function of t, so reverse scroll un-turns it along exactly the same curve,
+   * and it still passes 90deg at t = 0.5, which is what the face switch below keys off.
+   */
+  --flip-eased: calc(
+    var(--flip-t) * var(--flip-t) * var(--flip-t) *
+      (var(--flip-t) * (var(--flip-t) * 6 - 15) + 10)
+  );
   /* 0deg is the back, 180deg the front — the step below reads this to decide which face paints. */
-  --card-flip: calc(var(--flip-t) * 180);
+  --card-flip: calc(var(--flip-eased) * 180);
+
+  /*
+   * How edge-on the card is: 0 lying flat either way, 1 exactly at the half-turn. A parabola
+   * rather than sin(), so it needs nothing but calc. The spine and the specular veil below both
+   * read it, which is what keeps them tied to the turn instead of to the scroll.
+   */
+  --turn-edge: calc(4 * var(--flip-eased) * (1 - var(--flip-eased)));
 
   /*
    * The composed offsets. Each phase contributes its own term and they overlap by design, so the
@@ -291,6 +315,28 @@
     translate3d(var(--travel-x), var(--travel-y), var(--recede)) scale(var(--card-scale))
     rotateX(calc(var(--deck-tilt-x, 0) * 1deg)) rotateY(calc(var(--deck-tilt-y, 0) * 1deg))
     rotate(var(--fan-rotate)) rotateY(calc(var(--card-flip, 180) * 1deg));
+}
+
+/*
+ * The card's edge, and the reason it never disappears completely.
+ *
+ * The two faces are already held apart along Z by --face-lift, which the comment on .back calls
+ * a real edge rather than a decal — but nothing ever DREW that edge, so at the half-turn there
+ * was nothing on screen at all. This is that edge: a strip as wide as the faces are apart,
+ * standing perpendicular to them, so it turns toward the reader exactly as the faces turn away.
+ * Lit rather than black, because an edge catching the light is what makes the moment read as a
+ * card turning over instead of a card dissolving.
+ */
+.card::after {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  /* Centred on the turn axis: a strip of the real card thickness, not a percentage of width. */
+  left: calc(50% - var(--face-lift));
+  inline-size: calc(var(--face-lift) * 2);
+  transform: rotateY(90deg);
+  background: color-mix(in srgb, var(--drop-white) 72%, var(--drop-ink));
+  pointer-events: none;
 }
 
 /* ------------------------------------------------------------------ faces */
@@ -369,6 +415,23 @@
    * in the server-rendered HTML while the card is still face-down.
    */
   opacity: var(--front-shown);
+}
+
+/*
+ * The light the card catches as it turns.
+ *
+ * Peaks at the half-turn and is gone by the time either face is square to the reader, so the
+ * black back brightens into the turn instead of sinking into a dark ground, and the photograph
+ * comes out of it. A veil rather than a filter: filter would give the face its own containing
+ * block and flatten the 3D the card depends on.
+ */
+.face::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--drop-white);
+  opacity: calc(var(--turn-edge, 0) * 0.22);
+  pointer-events: none;
 }
 
 /* ------------------------------------------------------------------ media */
