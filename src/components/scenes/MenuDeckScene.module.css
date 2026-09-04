@@ -232,8 +232,69 @@
     var(--flip-t) * var(--flip-t) * var(--flip-t) *
       (var(--flip-t) * (var(--flip-t) * 6 - 15) + 10)
   );
-  /* 0deg is the back, 180deg the front — the step below reads this to decide which face paints. */
-  --card-flip: calc(var(--flip-eased) * 180);
+
+  /*
+   * THE CARD NEVER TURNS EDGE-ON.
+   *
+   * A plane on rotateY has zero projected width at 90deg, so a literal 0 -> 180 turn has a frame
+   * where the card is not there at all. Easing only shortens that frame, and this deck is
+   * SCRUBBED: the reader owns the playhead, so anyone scrolling slowly can park exactly on it and
+   * watch the card become a line. A faster pass cannot fix a frame the reader can stop on.
+   *
+   * So the turn is capped. The card leans out to --flip-cap, the face changes, and it leans back
+   * to flat from the mirror of that angle — it is never beyond the cap, and its narrowest frame
+   * is cos(cap) of full width rather than nothing. The swap is a mirror at EQUAL width, so the
+   * silhouette does not jump; only the lean reverses, under the specular peak below, which is
+   * exactly what a card catching the light looks like as it comes over.
+   *
+   * The two ends of the skip are equidistant from the card's own vanishing point, so they project
+   * to the SAME width and the silhouette does not jump across the swap — only the lean reverses,
+   * under the specular peak below.
+   */
+  /*
+   * WHERE THIS CARD ACTUALLY GOES EDGE-ON — which is not 90deg, and is not the same for every card.
+   *
+   * perspective() is the first function in the transform, so the projection is centred on the
+   * card's ORIGIN; translate3d then carries the card away from it. A spread card is therefore
+   * seen obliquely, and a plane is edge-on to an oblique eye at 90deg PLUS that obliquity. Card 0
+   * at full spread sits about 28deg off axis, so it vanishes at ~118deg, not 90deg. Measured on
+   * the deck: sweeping the angle, its narrowest frame is at 115deg, and 90deg is still 153px wide.
+   *
+   * That is the whole bug. The face switch fired at 90deg while the card kept turning to its real
+   * vanishing point, so the FRONT collapsed to a line just after the swap — the break, on the far
+   * side of the turn from where anyone would look for it.
+   *
+   * The obliquity is atan(travel-x / perspective), and dividing one length by another is not
+   * reliable in calc yet, so it is rebuilt from the unitless factors those two lengths are made
+   * of: travel-x is card-centred x spread-span, perspective is card-width x 3.3, and spread-span
+   * is (count - 1) x card-width x 1.06 whenever that is the narrower of its two terms — the card
+   * width cancels, leaving (count - 1) x 1.06 / 3.3 = 0.3212 per unit of card-centred. Small-angle
+   * (57.3 deg per radian) because the cap below is far larger than the few degrees this drifts.
+   */
+  --view-shift: calc(
+    57.3 * var(--card-centred) * (var(--deck-count) - 1) * 0.3212 * var(--phase-spread, 1)
+  );
+  --edge-on: calc(90 - var(--view-shift));
+  /* How far the card must stay clear of its own vanishing point, in degrees. */
+  --flip-cap: 30;
+  --turn-out: calc(var(--edge-on) - var(--flip-cap));
+  --turn-in: calc(var(--edge-on) + var(--flip-cap));
+  /*
+   * 0 before the swap, 1 after. Steps on the eased progress, since the angle no longer reaches 90.
+   *
+   * The multiplier has to be enormous, and 1000 is not. The switch below the faces multiplies an
+   * ANGLE, where 1000 leaves a ramp 0.001deg wide and nothing can land on it. This one multiplies
+   * a 0..1 progress, so the same 1000 leaves a ramp a thousand times wider in real terms -- a
+   * window covering 0.1% of the turn in which the two branches BLEND, putting the card at exactly
+   * 90deg with both faces at half opacity. That is the line, rebuilt by the fix meant to remove
+   * it, and on a scrubbed deck the reader can stop inside it. At 1e6 the window is sub-pixel.
+   */
+  --face-turned: clamp(0, calc((var(--flip-eased) - 0.5) * 1000000), 1);
+  --card-flip: calc(
+    (1 - var(--face-turned)) * (2 * var(--flip-eased) * var(--turn-out)) +
+      var(--face-turned) *
+      (var(--turn-in) + (2 * var(--flip-eased) - 1) * (180 - var(--turn-in)))
+  );
 
   /*
    * How edge-on the card is: 0 lying flat either way, 1 exactly at the half-turn. A parabola
@@ -282,7 +343,12 @@
    * front above it (the same probe, same frames). `backface-visibility` stays declared below for
    * the engines that honour it; this step is what guarantees one face per card in every engine.
    */
-  --front-shown: clamp(0, (var(--card-flip, 180) - 90) * 1000, 1);
+  /*
+   * Which face paints. It used to derive its own step from the angle crossing 90deg; the angle
+   * does not go there any more, so it reads the one switch --card-flip is already built on and
+   * the two can no longer disagree about when the card comes over.
+   */
+  --front-shown: var(--face-turned);
 
   position: absolute;
   inset: 0;
@@ -315,28 +381,6 @@
     translate3d(var(--travel-x), var(--travel-y), var(--recede)) scale(var(--card-scale))
     rotateX(calc(var(--deck-tilt-x, 0) * 1deg)) rotateY(calc(var(--deck-tilt-y, 0) * 1deg))
     rotate(var(--fan-rotate)) rotateY(calc(var(--card-flip, 180) * 1deg));
-}
-
-/*
- * The card's edge, and the reason it never disappears completely.
- *
- * The two faces are already held apart along Z by --face-lift, which the comment on .back calls
- * a real edge rather than a decal — but nothing ever DREW that edge, so at the half-turn there
- * was nothing on screen at all. This is that edge: a strip as wide as the faces are apart,
- * standing perpendicular to them, so it turns toward the reader exactly as the faces turn away.
- * Lit rather than black, because an edge catching the light is what makes the moment read as a
- * card turning over instead of a card dissolving.
- */
-.card::after {
-  content: "";
-  position: absolute;
-  inset-block: 0;
-  /* Centred on the turn axis: a strip of the real card thickness, not a percentage of width. */
-  left: calc(50% - var(--face-lift));
-  inline-size: calc(var(--face-lift) * 2);
-  transform: rotateY(90deg);
-  background: color-mix(in srgb, var(--drop-white) 72%, var(--drop-ink));
-  pointer-events: none;
 }
 
 /* ------------------------------------------------------------------ faces */
@@ -430,7 +474,7 @@
   position: absolute;
   inset: 0;
   background: var(--drop-white);
-  opacity: calc(var(--turn-edge, 0) * 0.22);
+  opacity: calc(var(--turn-edge, 0) * 0.3);
   pointer-events: none;
 }
 
@@ -553,6 +597,15 @@
 
   .deck .card {
     --travel-x: 0px;
+    /*
+     * Head-on again, so the card goes edge-on at a plain 90deg.
+     *
+     * --view-shift corrects for a card being carried sideways out of its own projection. This
+     * column carries them vertically instead and travel-x is zero, so there is no obliquity to
+     * correct -- and applying the wide layout is worse than doing nothing, because it would aim
+     * the turn AT 90deg, which is exactly where these cards do vanish.
+     */
+    --view-shift: 0;
     --fan-rotate: 0deg;
     --recede: 0px;
     --travel-y: calc(
