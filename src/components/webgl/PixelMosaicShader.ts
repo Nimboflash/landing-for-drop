@@ -62,6 +62,9 @@ import {
 import {
   MESH_FIELD_GLSL,
   MESH_FIELD_UNIFORMS_GLSL,
+  MESH_LATTICE_CELL_PX,
+  MESH_LATTICE_GLSL,
+  MESH_LATTICE_LINE_WIDTH_PX,
   MESH_VARIANT_TARGETS,
   MONO_MESH_PRESET,
   createMeshFieldUniforms,
@@ -419,7 +422,21 @@ export const MONO_MESH_LOOK_GLSL = /* glsl */ `
 vec3 dropMonoMeshLook(vec2 fragPx, vec2 res, float t, float detail) {
   vec2 p = clamp(fragPx / max(res, vec2(1.0)), 0.0, 1.0);
   float aspect = res.x / max(res.y, 1.0);
-  return dropMeshFieldColor(p, aspect, uMeshTime);
+  vec3 field = dropMeshFieldColor(p, aspect, uMeshTime);
+  // WITH the lattice, and at full strength.
+  //
+  // Transition A eats away the grid statement, and by the time it runs the lattice is always
+  // fully drawn -- it completes back at menu progress 1, two scenes earlier. Painting the bare
+  // field here made the lattice vanish on the frame the mosaic took over, which is a step in
+  // the background at the exact boundary this stand-in exists to make invisible.
+  return dropMeshLattice(
+    field,
+    p,
+    res,
+    1.0,
+    ${MESH_LATTICE_CELL_PX}.0,
+    ${MESH_LATTICE_LINE_WIDTH_PX}.0
+  );
 }
 `;
 
@@ -541,6 +558,7 @@ ${WAVY_DOTS_LOOK_ADAPTER_GLSL}
 ${GREEN_GRID_LOOK_GLSL}
 ${BLACK_LOOK_GLSL}
 ${usesMesh ? MESH_FIELD_GLSL : ""}
+${usesMesh ? MESH_LATTICE_GLSL : ""}
 ${usesMesh ? MONO_MESH_LOOK_GLSL : ""}
 
 void main() {
@@ -687,13 +705,20 @@ export function createPixelMosaicShader(spec: PixelTransitionSpec): PixelMosaicM
         : 0;
 
       if (paintsMesh) {
-        // The state the mesh module will be in when it takes over on the next frame: its resting
-        // `normal` variant, on the SHARED clock. Reading anything else here would reintroduce the
-        // step this look exists to remove.
-        const rate = frame.reducedMotion ? 0 : MESH_VARIANT_TARGETS.normal.speedScale * MONO_MESH_PRESET.speed;
+        /*
+         * The state the mesh is in on the OTHER side of this boundary, on the SHARED clock.
+         *
+         * `opening`, not `normal`. This said `normal` from when transition B resolved into the
+         * mesh for Tracks, which ran that variant; transition A now dissolves out of the grid
+         * statement, and the loader, thesis, menu deck and grid statement all run `opening` --
+         * which is deliberately dimmer, solved against MESH_OPENING_PEAK_CEILING. Painting the
+         * resting variant here lit the field up on the frame the mosaic took over: a step up in
+         * background brightness at the exact boundary this look exists to make invisible.
+         */
+        const rate = frame.reducedMotion ? 0 : MESH_VARIANT_TARGETS.opening.speedScale * MONO_MESH_PRESET.speed;
         const meshTimeEntry = uniforms.uMeshTime;
         if (meshTimeEntry) meshTimeEntry.value = sharedMeshTime(frame.timeSeconds, rate);
-        writeMeshFieldUniforms(uniforms, MESH_VARIANT_TARGETS.normal, meshDetailUniforms(frame.quality));
+        writeMeshFieldUniforms(uniforms, MESH_VARIANT_TARGETS.opening, meshDetailUniforms(frame.quality));
       }
     },
 

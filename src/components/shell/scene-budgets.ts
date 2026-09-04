@@ -77,8 +77,15 @@ export function artPiecesBudgetVh(artPieceCount: number): number {
 const FIXED_BUDGET_VH = {
   loader: 120, // time-based; see LOADER_TARGET_MS
   thesis: 320, // brief: 320
-  menu: 300, // brief: 260-320
-  gridStatement: 180, // brief: 160-200
+  // Both at the floor of their brief ranges, deliberately.
+  //
+  // Measured end to end at 771px of viewport: from the last card settling to the end of the grid
+  // statement was 1542px -- two full screens -- of which one whole screen is the menu section
+  // leaving, where the reducer is frozen at (menu, 1) and nothing responds to scroll at all. The
+  // deck spends everything it has to say by 0.9 and the grid statement is one centred line, so
+  // the length past those points was not buying either scene anything.
+  menu: 260, // brief: 260-320
+  gridStatement: 160, // brief: 160-200
   pixelA: 160, // brief: 140-180
   films: 460, // brief: 420-500
   pixelB: 170, // brief: 150-190

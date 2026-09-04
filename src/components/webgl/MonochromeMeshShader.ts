@@ -525,21 +525,31 @@ const LATTICE_VIGNETTE_DEPTH = 0.28;
  * scaling the field down keeps each line the same hue as the field beneath it at every point of
  * the drift, and keeps the text contrast monotonic (see LATTICE_DEPTH).
  */
-export const MESH_LATTICE_GLSL = /* glsl */ `
+/** The mesh program's own handles on the lattice. The mosaic passes literals instead. */
+export const MESH_LATTICE_UNIFORMS_GLSL = /* glsl */ `
   uniform float uLattice;
   uniform float uLatticeCellPx;
   uniform float uLatticeLineWidthPx;
+`;
 
-  vec3 dropMeshLattice(vec3 field, vec2 uv, vec2 resolution, float amount) {
+export const MESH_LATTICE_GLSL = /* glsl */ `
+  vec3 dropMeshLattice(
+    vec3 field,
+    vec2 uv,
+    vec2 resolution,
+    float amount,
+    float cellPx,
+    float lineWidthPx
+  ) {
     if (amount <= 0.0) return field;
 
     vec2 px = uv * resolution;
-    float cell = max(uLatticeCellPx, 1.0);
+    float cell = max(cellPx, 1.0);
     vec2 inCell = fract(px / cell) * cell;
     vec2 edgeDistance = min(inCell, cell - inCell);
     float distanceToLine = min(edgeDistance.x, edgeDistance.y);
 
-    float halfWidth = max(uLatticeLineWidthPx, 0.5) * 0.5;
+    float halfWidth = max(lineWidthPx, 0.5) * 0.5;
     float line = 1.0 - smoothstep(halfWidth, halfWidth + 1.0, distanceToLine);
 
     // Drawn, not faded up. The lattice is revealed outward from the centre of the frame as the
@@ -568,13 +578,17 @@ const MONO_MESH_FRAGMENT_SHADER = /* glsl */ `
 
 ${MESH_FIELD_UNIFORMS_GLSL}
 ${MESH_FIELD_GLSL}
+${MESH_LATTICE_UNIFORMS_GLSL}
 ${MESH_LATTICE_GLSL}
 
   void main() {
     vec2 p = clamp(vUv, 0.0, 1.0);
     float aspect = uResolution.x / max(uResolution.y, 1.0);
     vec3 field = dropMeshFieldColor(p, aspect, uTime);
-    gl_FragColor = vec4(dropMeshLattice(field, p, uResolution, uLattice), uOpacity);
+    gl_FragColor = vec4(
+      dropMeshLattice(field, p, uResolution, uLattice, uLatticeCellPx, uLatticeLineWidthPx),
+      uOpacity
+    );
   }
 `;
 
