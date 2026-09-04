@@ -249,11 +249,19 @@ function nextFilmFade(activeOrdinal: number, progress: number): number {
 /**
  * Where the lattice starts drawing itself over the menu deck, in that scene's own progress.
  *
- * After the cards are done, not during them: the deck's flip window closes at 0.78 and its hold
- * runs to 0.9, so the lattice begins as the last card lands and the reader is looking at four
- * settled fronts rather than at something still turning.
+ * After the deck is FINISHED WITH, not merely after it stops moving. 0.78 is where the flip
+ * window closes, and starting there put the lattice on screen at the exact moment the last card
+ * landed — arriving over four fronts the reader had only just been given, and competing with
+ * them for the frame. The deck then holds those fronts, unmoving and readable, from 0.78 to 0.9.
+ *
+ * 0.9 is the end of that hold: the point where the composition has been read and the section
+ * starts leaving. The lattice draws itself in across the last tenth, as the cards go.
+ *
+ * It still has to REACH 1 at progress 1, not after it. Every consecutive scene pair is separated
+ * by a full viewport of scroll in which the reducer is frozen at (previous scene, 1), so a ramp
+ * with further to travel would stall half-drawn there for a whole screen.
  */
-const LATTICE_DRAWS_FROM = 0.78;
+const LATTICE_DRAWS_FROM = 0.9;
 
 /**
  * The mesh descriptor, and the lattice drawn over it.
