@@ -35,6 +35,27 @@
   text-align: center;
   opacity: var(--drop-statement-opacity, 1);
   transform: translateY(var(--drop-statement-lift, 0px));
+
+  /*
+   * THE SAME BOX AS THE HOLDING LAYER, so moving between them cannot move anything.
+   *
+   * The comment above says both states put the statement in the very same place. They did not.
+   * In flow the statement was a grid item of the scene's viewport and travelled with the
+   * section; lifted, it is centred on the viewport itself. Those agree only while the section
+   * happens to be exactly under the viewport, and at the frame `data-lifted` actually flips they
+   * were 314px apart — measured, one layout shift of 0.1047, which was essentially the whole
+   * page's CLS of 0.107 on its own, and is the jump you can see.
+   *
+   * Absolute against the scene's viewport, which is the sticky element and therefore a
+   * containing block, resolves to the identical rectangle as `fixed` for as long as that
+   * viewport is stuck to the top of the screen — which is exactly the span in which the flip
+   * happens. Once it unsticks and the scene leaves, absolute travels with the section again,
+   * which is what the cleared state wanted from being in flow in the first place.
+   */
+  position: absolute;
+  inset: 0;
+  align-content: center;
+  padding: calc(var(--header-height) + 2rem) var(--page-gutter) 4rem;
 }
 
 /*
@@ -48,12 +69,13 @@
  * header (20) and the loader overlay (900). `pointer-events: none` because the layer spans the
  * viewport: it may never intercept a gesture meant for the page underneath.
  */
+/*
+ * Lifted differs from the rule above in ONE property. Everything else — the inset, the
+ * centring, the padding — is deliberately shared, so the flip cannot be a layout change.
+ */
 .statement[data-lifted="true"] {
   position: fixed;
-  inset: 0;
   z-index: 1;
-  align-content: center;
-  padding: calc(var(--header-height) + 2rem) var(--page-gutter) 4rem;
   pointer-events: none;
   will-change: opacity, transform;
 }
