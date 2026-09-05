@@ -49,10 +49,19 @@ import { useReducedMotion } from "@/lib/motion/reduced-motion";
  * short enough that the reader is never left looking at an empty stage wondering whether the site
  * is finished loading.
  */
-const REVEAL_DELAY_MS = 900;
+/*
+ * Short enough that the page does not read as stalled.
+ *
+ * This is a beat before the page carries the reader off the loader, so the handover is not
+ * instant. 900ms was that beat measured against nothing else; stacked on the loader and the
+ * carry and the opening line's fade it was a third of a second-and-a-half of dead time, on a
+ * screen with nothing on it yet. A quarter second still reads as a beat rather than a cut.
+ */
+const REVEAL_DELAY_MS = 250;
 
 /** How long that carry takes. Paced as a scene transition, not as a jump-to-anchor. */
-const REVEAL_DURATION_S = 1.2;
+/* The carry itself. Long enough to read as travel, short enough not to be a wait. */
+const REVEAL_DURATION_S = 0.8;
 
 /**
  * If the reader has already moved this far, the reveal is abandoned: they started reading on

@@ -62,7 +62,16 @@ const DropLogoMaterial3D = dynamic(
 );
 
 /** Brief §7.1: total target for the full sequence, once critical assets are ready. */
-export const LOADER_TARGET_SECONDS = 3.2;
+/*
+ * The floor of the brief's own range, not the middle of it.
+ *
+ * Section 6 gives the loader 2.8-4.0 seconds and 7.1 names 3.2 as the target. 3.2 was the
+ * target when the loader was the only thing between arriving and reading; it is not any more.
+ * Everything after it -- the reveal delay, the carry to the thesis, the opening line's fade --
+ * is ours, and it added three more seconds on top, so first words landed somewhere past six.
+ * Taking the mandated part to the low end of its mandated range buys back the easiest 0.4s.
+ */
+export const LOADER_TARGET_SECONDS = 2.8;
 
 /** Brief §7.1: hard cap. The loader must never hold the page longer than this. */
 export const LOADER_CAP_SECONDS = 4;

@@ -116,7 +116,8 @@ export const ARGUMENT_BAND_WINDOW: Readonly<{ from: number; to: number }> = Obje
  * rather than snap. Opacity only — the words do not lift, so nothing competes with the page
  * arriving underneath it.
  */
-const OPENING_ENTRY_SECONDS = 0.9;
+/* The last thing between arriving and reading, so it is the last place to spend time. */
+const OPENING_ENTRY_SECONDS = 0.6;
 const OPENING_ENTRY_EASE = "power2.out";
 
 /** The closing beat's progress window for a lens holding `messageCount` hero messages. */
