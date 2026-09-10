@@ -106,7 +106,8 @@
   font-size: var(--display-lg);
   font-weight: 800;
   line-height: 1.1;
-  letter-spacing: -0.01em;
+  /* Persian, declared two lines up. Cursive script takes no tracking — see globals h1–h4. */
+  letter-spacing: normal;
   text-wrap: balance;
 }
 

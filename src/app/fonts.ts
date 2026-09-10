@@ -97,11 +97,26 @@ export const kalameh = localFont({
   src: [
     { path: "./fonts/KalamehWeb-Regular.ttf", weight: "400", style: "normal" },
     { path: "./fonts/KalamehWeb-Bold.ttf", weight: "700", style: "normal" },
-    { path: "./fonts/KalamehWeb-Black.ttf", weight: "900", style: "normal" },
   ],
   display: "swap",
   preload: true,
   variable: "--font-kalameh",
+  /*
+   * Optical size, not a preference.
+   *
+   * Kalameh draws far smaller per em than Vazirmatn: measured in the browser at 100px,
+   * the same Persian string is 639.9px wide against 812.6px, with an ink ascent of 53.7
+   * against 68.5. Both ratios land on the same number -- 1.2699 and 1.2756 -- so it is a
+   * uniform scale difference rather than a shape difference.
+   *
+   * Every font-size, line-height and measured layout in this repo was tuned against
+   * Vazirmatn's optical size. Dropping in a face that renders a fifth smaller leaves all
+   * of those numbers describing type that is no longer there: small glyphs adrift in line
+   * boxes sized for bigger ones. Correcting it here fixes every one of those rules at
+   * once, where correcting it rule by rule would be thirty edits and a permanent trap for
+   * the next person who changes a font-size.
+   */
+  declarations: [{ prop: "size-adjust", value: "127.3%" }],
 });
 
 /** Every font CSS variable, ready to hang on `<html>`. */

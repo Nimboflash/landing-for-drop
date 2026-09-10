@@ -85,6 +85,33 @@ h4 {
   margin: 0;
   font-weight: 800;
   line-height: 1.02;
+  /*
+   * No tracking by default, because the default heading here is PERSIAN.
+   *
+   * This was -0.015em: the tight setting a large Latin headline wants. Persian is cursive,
+   * so negative tracking does not tighten a line, it crowds glyphs that are already joined
+   * to each other — and nothing anywhere overrode this, so every Persian heading on the
+   * page inherited it. The page is lang="fa": the unmarked case is Persian, and the
+   * unmarked default should be the one that is right for Persian.
+   *
+   * Latin display type keeps its tracking without needing this: the classes that set Latin
+   * headlines already declare their own (-0.015em in FooterScene and TracksScene, -0.01em
+   * in GridStatementScene and ThesisScene) rather than leaning on this rule.
+   */
+  letter-spacing: normal;
+}
+
+/*
+ * Latin headings take the tracking back.
+ *
+ * The rule above is the Persian-first default; this is the exception, and the document already
+ * says which headings are the exception. Every Latin heading on the page is marked `lang="en"`
+ * (the film title, the art title, and the brand-preview header) and no Persian one is, so the
+ * language attribute selects them exactly — no class list to keep in sync, and a new Latin
+ * heading inherits the right setting from marking its language, which it has to do anyway for
+ * screen readers and hyphenation.
+ */
+:is(h1, h2, h3, h4):lang(en) {
   letter-spacing: -0.015em;
 }
 

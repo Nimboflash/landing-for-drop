@@ -581,7 +581,6 @@
 .group {
   font-family: var(--font-persian);
   font-size: var(--label);
-  letter-spacing: 0.22em;
   color: var(--drop-off-white);
   opacity: 0.82;
 }

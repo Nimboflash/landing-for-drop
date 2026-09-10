@@ -93,7 +93,13 @@
   font-size: var(--title-lg);
   font-weight: 800;
   line-height: 1.15;
-  letter-spacing: -0.01em;
+  /*
+   * No tracking: this is the page's largest Persian type, and Persian is cursive. A negative
+   * value does not tighten the line, it pushes joined letterforms into each other — the effect
+   * is loudest exactly here, at display size, which is why it read as letters colliding inside
+   * words. The rule above declares --font-persian, so this run is Persian by construction.
+   */
+  letter-spacing: normal;
   max-inline-size: min(100%, 17ch);
   text-wrap: balance;
 }

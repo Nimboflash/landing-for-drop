@@ -178,6 +178,8 @@
   align-items: baseline;
   gap: 0.5em;
   font-size: var(--body);
+  /* An all-Latin run: director, year and genres. It belongs on the Latin stack. */
+  font-family: var(--font-latin);
   color: color-mix(in srgb, currentColor 82%, transparent);
 }
 

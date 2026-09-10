@@ -19,7 +19,6 @@
   color: var(--drop-white);
   font-family: var(--font-persian);
   font-size: var(--label);
-  letter-spacing: 0.04em;
   text-decoration: none;
   transition: inset-block-start 180ms var(--ease-cinematic);
 }
