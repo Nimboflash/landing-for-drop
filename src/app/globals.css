@@ -106,9 +106,11 @@ h4 {
    * page inherited it. The page is lang="fa": the unmarked case is Persian, and the
    * unmarked default should be the one that is right for Persian.
    *
-   * Latin display type keeps its tracking without needing this: the classes that set Latin
-   * headlines already declare their own (-0.015em in FooterScene and TracksScene, -0.01em
-   * in GridStatementScene and ThesisScene) rather than leaning on this rule.
+   * Latin headings do NOT keep their tracking without help — FilmScene .title and
+   * ArtPiecesScene .title declare none of their own — which is what the :lang(en) rule below
+   * is for. (The -0.015em and -0.01em declarations in FooterScene, TracksScene,
+   * GridStatementScene and ThesisScene are on Latin LABELS, not headings, and are unaffected
+   * either way.)
    */
   letter-spacing: normal;
 }
