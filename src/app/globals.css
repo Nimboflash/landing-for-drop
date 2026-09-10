@@ -84,7 +84,19 @@ h3,
 h4 {
   margin: 0;
   font-weight: 800;
-  line-height: 1.02;
+  /*
+   * Tall enough to hold Kalameh, which 1.02 was not.
+   *
+   * Measured at the rendered size, after size-adjust: Kalameh's ink runs 1.0647em from the
+   * top of ا/ل/ک to the dots under ی/ج, against Vazirmatn's 0.9644em. So 1.02 cleared
+   * Vazirmatn with ~6% to spare and CLIPS Kalameh by 4%. Where the line box is also a reveal
+   * mask — ArtPiecesScene .line is overflow: hidden — that is not a near miss, it shaves the
+   * tops off the section labels.
+   *
+   * 1.14 restores roughly the headroom the design had over Vazirmatn's ink. Latin keeps the
+   * tight display setting below; Montserrat's own ink fits it and always did.
+   */
+  line-height: 1.14;
   /*
    * No tracking by default, because the default heading here is PERSIAN.
    *
@@ -112,6 +124,7 @@ h4 {
  * screen readers and hyphenation.
  */
 :is(h1, h2, h3, h4):lang(en) {
+  line-height: 1.02;
   letter-spacing: -0.015em;
 }
 

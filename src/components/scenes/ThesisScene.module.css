@@ -52,7 +52,7 @@
   font-family: var(--font-persian);
   font-size: var(--title-md);
   line-height: 1.24;
-  max-inline-size: 20ch;
+  max-inline-size: 17ch;
 }
 
 /* -------------------------------------------------------------------- stage */
@@ -100,7 +100,7 @@
    * words. The rule above declares --font-persian, so this run is Persian by construction.
    */
   letter-spacing: normal;
-  max-inline-size: min(100%, 17ch);
+  max-inline-size: min(100%, 14ch);
   text-wrap: balance;
 }
 
@@ -126,7 +126,7 @@
 
 .argument {
   gap: clamp(0.75rem, 2.2svh, 1.4rem);
-  max-inline-size: 60ch;
+  max-inline-size: 50ch;
 }
 
 /* A thin editorial rule, sharp-ended — the only mark this scene draws. */
@@ -143,7 +143,7 @@
   font-family: var(--font-persian);
   font-size: var(--body-lg);
   line-height: 1.9;
-  max-inline-size: 54ch;
+  max-inline-size: 45ch;
   text-wrap: pretty;
   color: color-mix(in srgb, currentColor 78%, transparent);
 }
@@ -267,12 +267,12 @@
   .thesis[data-presentation="stage"] .message {
     font-size: var(--title-lg);
     line-height: 1.2;
-    max-inline-size: min(100%, 24ch);
+    max-inline-size: min(100%, 20ch);
   }
 
   .title {
     font-size: var(--body-lg);
-    max-inline-size: 26ch;
+    max-inline-size: 22ch;
   }
 
   .statement {

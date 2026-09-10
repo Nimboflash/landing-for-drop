@@ -100,7 +100,7 @@
 
 .persian {
   display: block;
-  max-width: 16ch;
+  max-width: 13ch;
   margin-inline: auto;
   font-family: var(--font-persian);
   font-size: var(--display-lg);
@@ -132,7 +132,7 @@
 /* Brief §15: fewer line breaks and calmer tracking on a phone; the statement never overflows. */
 @media (max-width: 767px) {
   .persian {
-    max-width: 12ch;
+    max-width: 10ch;
   }
 
   .latin {
