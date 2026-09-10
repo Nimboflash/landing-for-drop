@@ -26,7 +26,14 @@
 
   /* Families — bound to next/font CSS variables in src/app/layout.tsx */
   --font-latin: var(--font-montserrat), "Helvetica Neue", Arial, sans-serif;
-  --font-persian: var(--font-vazirmatn), var(--font-montserrat), Tahoma, sans-serif;
+  /*
+   * Kalameh first — the approved Persian brand face (brief §4). Vazirmatn stays
+   * behind it as the glyph safety net and is only fetched if Kalameh fails to
+   * match; Montserrat then covers the Latin fragments that run inline in Persian
+   * text, and Tahoma is the last resort with no download at all.
+   */
+  --font-persian: var(--font-kalameh), var(--font-vazirmatn), var(--font-montserrat), Tahoma,
+    sans-serif;
 
   /* Layout */
   --page-gutter: clamp(1.25rem, 4vw, 4.5rem);
