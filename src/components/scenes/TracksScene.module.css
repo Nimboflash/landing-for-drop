@@ -279,14 +279,20 @@
 }
 
 /*
- * Pointer tilt. Smoothed by this transition rather than by a tween: restarting a 620ms transform
- * transition on every pointer move gives the same weighted follow with no timeline to clean up,
+ * Pointer tilt. Smoothed by this transition rather than by a tween: no timeline to clean up,
  * and nothing depends on it (brief §15 — no feature may depend on hover).
+ *
+ * 220ms, not the 620ms this used to carry. The transition is RESTARTED on every pointer move,
+ * and pointermove fires every frame or two while the cursor is travelling — so the duration is
+ * not a settling time, it is a follow constant. At 620ms the rendered transform advanced only
+ * one or two percent of the remaining distance per frame and never arrived: the field trailed
+ * the cursor by most of a second, which reads as the tilt being broken rather than weighted.
+ * 220ms still damps the jitter of individual moves while actually following the pointer.
  */
 .caseTilt {
   transform: rotateX(calc(var(--drop-tracks-tilt-x) * -3deg))
     rotateY(calc(var(--drop-tracks-tilt-y) * 4deg));
-  transition: transform 620ms var(--ease-cinematic);
+  transition: transform 220ms var(--ease-cinematic);
 }
 
 /* ---------------------------------------------------------- the clear plastic */
