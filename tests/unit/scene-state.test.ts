@@ -479,16 +479,29 @@ describe.each(COUNT_FIXTURES)("scene state driven by %s", (_label, counts) => {
     expect(reverse.every((descriptor) => descriptor?.seed === PIXEL_SEED)).toBe(true);
   });
 
-  it("fades film content across pixel B instead of cutting it", () => {
-    expect(
-      sweepScene(counts, "films").every((s) => s.transitionState.filmFade === 1),
-    ).toBe(true);
+  it("clears the film card before pixel B rather than across it", () => {
+    /*
+     * Brief §7.7 gives the sequence in order: '1. Film 03 remains visible. 2. With continued
+     * scroll, the poster and left description begin fading. 3. A colored pixel mosaic starts
+     * replacing the Wavy Dots background.' Fading is step 2 and the mosaic is step 3.
+     *
+     * Those two used to be the same step: the card held at full strength for the whole films
+     * scene and only began fading once pixel B was already running, so the transition played on
+     * top of a card that was still there. The card now leaves in the tail of its own scene and
+     * the mosaic follows it.
+     */
+    const films = sweepScene(counts, "films").map((s) => s.transitionState.filmFade);
 
-    const fades = sweepScene(counts, "pixelB").map((s) => s.transitionState.filmFade);
+    // Held while the films are being read, then away across the tail — never cut (§7.7
+    // 'Film content must not disappear abruptly').
+    expect(films[0]).toBe(1);
+    expect(films[films.length - 1]).toBe(0);
+    expect(isNonIncreasing(films)).toBe(true);
+    expect(intermediateStages(films).length).toBeGreaterThanOrEqual(MIN_INTERMEDIATE_STAGES);
 
-    expect(fades[0]).toBe(1);
-    expect(fades[fades.length - 1]).toBe(0);
-    expect(isNonIncreasing(fades)).toBe(true);
+    // Gone BEFORE the transition, not during it. This is the whole point of the change.
+    expect(enter(counts, "pixelB").transitionState.filmFade).toBe(0);
+    expect(sweepScene(counts, "pixelB").every((s) => s.transitionState.filmFade === 0)).toBe(true);
     expect(enter(counts, "tracks").transitionState.filmFade).toBe(0);
   });
 
@@ -511,10 +524,20 @@ describe.each(COUNT_FIXTURES)("scene state driven by %s", (_label, counts) => {
     expect(beats[0]).toBe(false);
     expect(states[states.length - 1].transitionState.darkBeat).toBe(false);
 
-    // Something is on screen for effectively the whole transition: the film only clears at the
-    // very end, so the blocks always advance across content rather than across nothing.
-    const withFilm = states.filter((s) => s.transitionState.filmFade > 0).length;
-    expect(withFilm / states.length).toBeGreaterThan(0.8);
+    /*
+     * Something is on screen for effectively the whole transition — but it is the MOSAIC now,
+     * not the film.
+     *
+     * This used to demand filmFade > 0 across 80% of pixel B, which is the opposite of the
+     * order brief §7.7 sets out: the card fades at step 2 and the mosaic starts at step 3. With
+     * the card gone before the scene opens, what keeps the frame from being empty is the
+     * transition itself, so that is what is asserted.
+     */
+    const withMosaic = states.filter((s) => s.transitionState.pixelB !== null).length;
+    expect(withMosaic / states.length).toBeGreaterThan(0.8);
+
+    // And the card really has left before any of it runs.
+    expect(states.every((s) => s.transitionState.filmFade === 0)).toBe(true);
 
     // The beat still exists — it is a beat, not a gap — and it is one contiguous late stretch.
     const first = beats.indexOf(true);
@@ -700,10 +723,15 @@ describe.each(COUNT_FIXTURES)("cross-scene hand-offs driven by %s", (_label, cou
   /* ---------------------------------- brief §7.7: pixel B dark beat -> tracks */
 
   it("keeps the last film on stage while its content fades, instead of cutting it", () => {
-    const states = sweepScene(counts, "pixelB", HANDOFF_STEPS);
+    const states = sweepScene(counts, "films", HANDOFF_STEPS);
 
+    /*
+     * Brief §7.7 steps 1 and 2, which happen in the FILMS scene now rather than in pixel B:
+     * the last film stays on stage, and its content fades away with continued scroll.
+     */
     // Step 1: "Film 03 remains visible" — the last film, whatever the lens's film count is.
-    expect(states.every((s) => s.transitionState.filmIndex === counts.films - 1)).toBe(true);
+    const tail = states.filter((s) => s.sceneProgress >= 0.82);
+    expect(tail.every((s) => s.transitionState.filmIndex === counts.films - 1)).toBe(true);
 
     // Step 2: "the poster and left description begin fading" with continued scroll. A fade that
     // is genuinely scroll-linked passes through many stages; a step change passes through none.

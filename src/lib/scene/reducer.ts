@@ -74,7 +74,18 @@ const GRID_STATEMENT_RESET_BELOW = 0.2;
  * film now holds almost to the end of the transformation, so the blocks are always advancing
  * across something rather than across nothing.
  */
-const FILM_FADE_COMPLETE_AT = 0.88;
+/**
+ * Where the film card starts leaving, in the FILMS scene's own progress.
+ *
+ * The card used to hold at full strength until pixel B had already started, and only then
+ * fade across it — so the transition ran on top of a card that was still there. The card now
+ * leaves first and the transition follows it, which is the order the two were always meant to
+ * read in.
+ *
+ * It must reach 0 AT films progress 1, not after: a full viewport of frozen scroll separates
+ * every scene pair, and a ramp with further to travel would stall half-faded across it.
+ */
+const FILM_FADE_FROM = 0.82;
 /**
  * Where the empty beat at the end of pixel B begins — and, just as importantly, where it ENDS.
  *
@@ -219,12 +230,12 @@ function nextGridStatementRevealed(
   return previous;
 }
 
-/** Film content fades 1 -> 0 across pixel B and is gone in every later scene. */
+/** Film content fades 1 -> 0 across the tail of its OWN scene, and is gone in every later one. */
 function nextFilmFade(activeOrdinal: number, progress: number): number {
-  const ordinal = SCENE_ORDINAL.pixelB;
+  const ordinal = SCENE_ORDINAL.films;
   if (activeOrdinal < ordinal) return 1;
   if (activeOrdinal > ordinal) return 0;
-  return 1 - ramp(progress, FILM_FADE_COMPLETE_AT);
+  return 1 - clamp01((clamp01(progress) - FILM_FADE_FROM) / (1 - FILM_FADE_FROM));
 }
 
 /**

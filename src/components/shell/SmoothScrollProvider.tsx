@@ -26,10 +26,12 @@
  * the overlay and the O portal opens onto wherever the user landed, skipping the thesis, menu
  * deck, grid statement and pixel A: four of the ten scenes in brief §6's fixed sequence.
  *
- * `lenis.stop()` alone is not enough. Under `prefers-reduced-motion` smoothing is off, so the
- * wheel is never intercepted and the browser scrolls natively regardless of Lenis's state — which
- * is exactly the path a motion-sensitive visitor takes. The non-passive wheel/touch listeners are
- * what actually hold the page still on that path.
+ * Neither `lenis.stop()` nor a plain preventDefault() is enough on its own. Under
+ * `prefers-reduced-motion` smoothing is off and the browser scrolls natively regardless of
+ * Lenis's state; with smoothing ON, Lenis handles the wheel itself and scrolls the document
+ * programmatically, which preventDefault() does not touch. The lock therefore CAPTURES the
+ * gesture and stops it propagating, which covers both paths without freezing the programmatic
+ * scrolling the reveal and the skip link depend on.
  */
 
 import { useEffect, useRef, type ReactNode } from "react";
@@ -277,9 +279,27 @@ export function SmoothScrollProvider({
      * Preventing the wheel and touch gestures stops exactly the thing that caused the defect (a
      * flick during the ~3.2s loader carrying the document past four scenes) and nothing else.
      */
-    const block = (event: Event) => event.preventDefault();
-    // Non-passive, or preventDefault() is ignored and the page scrolls anyway.
-    const listen: AddEventListenerOptions = { passive: false };
+    /*
+     * preventDefault() alone did NOT hold the page.
+     *
+     * It stops the BROWSER scrolling. It does not stop Lenis, which runs its own wheel
+     * handler, reads the delta and then scrolls the document programmatically from its own
+     * rAF loop. Lenis registers that handler when it is constructed, which is before this
+     * effect ever runs, so it saw every event first and moved the page while the loader was
+     * still up — the exact defect the lock exists to prevent, just by a different route.
+     *
+     * Capturing and stopping the event is what actually holds it: on the capture phase this
+     * runs before any listener Lenis attached, and stopImmediatePropagation means Lenis never
+     * receives the event at all. Note this still is not `lenis.stop()` — Lenis itself keeps
+     * running, so the reveal, the skip link and a fragment entry can all still move the page
+     * deliberately while the loader is on screen. The INPUT is blocked, not the scroller.
+     */
+    const block = (event: Event) => {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    };
+    // Non-passive, or preventDefault() is ignored; capture, or Lenis gets there first.
+    const listen: AddEventListenerOptions = { passive: false, capture: true };
     /*
      * The lock blocked the wheel and touch but not the KEYBOARD, so Page Down during the loader
      * scrolled the document under the overlay and the portal opened on wherever it landed — the
@@ -300,9 +320,11 @@ export function SmoothScrollProvider({
     window.addEventListener("keydown", blockKeys, listen);
 
     return () => {
-      window.removeEventListener("wheel", block);
-      window.removeEventListener("touchmove", block);
-      window.removeEventListener("keydown", blockKeys);
+      // The capture flag is part of a listener's identity: remove without it and the
+      // listener stays attached, and the page is locked for the rest of the session.
+      window.removeEventListener("wheel", block, listen);
+      window.removeEventListener("touchmove", block, listen);
+      window.removeEventListener("keydown", blockKeys, listen);
     };
   }, [locked]);
 
