@@ -27,12 +27,12 @@
   /* Families — bound to next/font CSS variables in src/app/layout.tsx */
   --font-latin: var(--font-montserrat), "Helvetica Neue", Arial, sans-serif;
   /*
-   * Kalameh first — the approved Persian brand face (brief §4). Vazirmatn stays
-   * behind it as the glyph safety net and is only fetched if Kalameh fails to
+   * Aria first — the approved Persian brand face (brief §4). Vazirmatn stays
+   * behind it as the glyph safety net and is only fetched if Aria fails to
    * match; Montserrat then covers the Latin fragments that run inline in Persian
    * text, and Tahoma is the last resort with no download at all.
    */
-  --font-persian: var(--font-kalameh), var(--font-vazirmatn), var(--font-montserrat), Tahoma,
+  --font-persian: var(--font-aria), var(--font-vazirmatn), var(--font-montserrat), Tahoma,
     sans-serif;
 
   /* Layout */
@@ -85,18 +85,17 @@ h4 {
   margin: 0;
   font-weight: 800;
   /*
-   * Tall enough to hold Kalameh, which 1.02 was not.
+   * Tall enough to hold Aria, which 1.02 was not quite.
    *
-   * Measured at the rendered size, after size-adjust: Kalameh's ink runs 1.0647em from the
-   * top of ا/ل/ک to the dots under ی/ج, against Vazirmatn's 0.9644em. So 1.02 cleared
-   * Vazirmatn with ~6% to spare and CLIPS Kalameh by 4%. Where the line box is also a reveal
-   * mask — ArtPiecesScene .line is overflow: hidden — that is not a near miss, it shaves the
-   * tops off the section labels.
+   * Measured at the rendered size after size-adjust, Aria's ink runs 1.0396em from the top
+   * of ا/ل/ک to the dots under ی/ج, against Vazirmatn's 0.9644em — about 8% taller even
+   * once the faces are matched for optical size. So the designed 1.02 cleared the old face
+   * and is 2% short of this one.
    *
-   * 1.14 restores roughly the headroom the design had over Vazirmatn's ink. Latin keeps the
-   * tight display setting below; Montserrat's own ink fits it and always did.
+   * 1.06 clears it with a little room and stays close to the tight display setting the
+   * design asked for. Latin keeps 1.02 below; Montserrat's ink fits it and always did.
    */
-  line-height: 1.14;
+  line-height: 1.06;
   /*
    * No tracking by default, because the default heading here is PERSIAN.
    *

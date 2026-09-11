@@ -2,7 +2,7 @@
  * Typefaces for the DROP Immersive Weekly Lens (brief §4, "Typography").
  *
  * Montserrat and Vazirmatn come through `next/font/google`, which downloads the
- * font files at build time and serves them from our own origin; Kalameh is a
+ * font files at build time and serves them from our own origin; Aria is a
  * licensed local face loaded through `next/font/local` from `./fonts`. Either
  * way the bytes are ours and no request leaves for a font host at runtime.
  *
@@ -48,14 +48,14 @@ export const montserrat = Montserrat({
 });
 
 /**
- * The Persian SAFETY NET, no longer the Persian voice — Kalameh below is.
+ * The Persian SAFETY NET, no longer the Persian voice — Aria below is.
  *
  * Kept in the stack rather than deleted because it is the one face here that is
  * certain to carry the whole Arabic block, and a missing glyph in a Persian
  * headline is a worse failure than an unused `@font-face` rule.
  *
  * `preload: false` is what makes that free: Next still emits the face, but the
- * browser only fetches it if Kalameh fails to match a glyph. In the normal case
+ * browser only fetches it if Aria fails to match a glyph. In the normal case
  * nothing downloads, so the safety net costs a rule and no bytes.
  */
 export const vazirmatn = Vazirmatn({
@@ -72,52 +72,59 @@ export const vazirmatn = Vazirmatn({
  * Persian face — the primary editorial voice of the page.
  *
  * Brief §4 says to "self-host Vazirmatn until a final licensed Persian brand
- * typeface is approved". Kalameh is that typeface, so this is the swap the brief
- * was holding the place for rather than a departure from it. Self-hosted for the
- * same reason Vazirmatn was: the files are served from our own origin and no
- * request leaves for a font host at runtime.
+ * typeface is approved". Aria is that typeface, so this is the swap the brief was
+ * holding the place for rather than a departure from it. Self-hosted for the same
+ * reason Vazirmatn was: the files are served from our own origin and no request
+ * leaves for a font host at runtime.
  *
- * Three weights, not the four that were supplied. The page asks for 800 (eight
- * rules), 700 (five), 600 (one) and the 400 of body copy; nothing asks for a light
- * weight, so Thin would have been ~86KB nobody downloads for a reason. The three
- * here cover every request through normal CSS font matching: 600 resolves up to
- * Bold, and 800 resolves up to Black, which is the heaviest face the family has and
- * the one the 800 rules were reaching for.
+ * FOUR weights, and every one of them is a real face rather than a near miss. The
+ * page asks for 800 (eight rules), 700 (five), 600 (one) and the 400 of body copy,
+ * and Aria draws all four: usWeightClass 400 / 600 / 700 / 800 read straight from
+ * each file's OS/2 table. That is the thing the previous face could not do — it had
+ * no 800, so CSS matched upward to Black and every heading rendered a step heavy,
+ * and dropping Black to avoid that collapsed the hero and the closing statement onto
+ * one weight. Nothing is being approximated here.
  *
- * TTF rather than woff2 because that is the format supplied. They are ~90KB each
- * where woff2 would be roughly half; converting them is worth doing before launch,
- * and needs a tool this machine does not currently have.
+ * The family ships twelve weights; the eight nothing asks for are not shipped. Aria
+ * also has a second face at four of those classes (Normal beside Regular, UltraBold
+ * beside ExtraBold, Heavy beside Black) — the conventional member is taken in each
+ * case.
+ *
+ * woff2, converted from the supplied TTFs: 1153KB of TTF became 379KB, which is the
+ * difference between four weights being affordable and not.
  *
  * `adjustFontFallback` is left at its default. For `next/font/local` that default
  * is the string `'Arial'` rather than the boolean `true` that the Google loaders
  * above take — same anti-CLS mechanism, different spelling of the option, and
  * passing `true` here would be a type error rather than a silent downgrade.
  */
-export const kalameh = localFont({
+export const aria = localFont({
   src: [
-    { path: "./fonts/KalamehWeb-Regular.ttf", weight: "400", style: "normal" },
-    { path: "./fonts/KalamehWeb-Bold.ttf", weight: "700", style: "normal" },
+    { path: "./fonts/Aria-Regular.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/Aria-SemiBold.woff2", weight: "600", style: "normal" },
+    { path: "./fonts/Aria-Bold.woff2", weight: "700", style: "normal" },
+    { path: "./fonts/Aria-ExtraBold.woff2", weight: "800", style: "normal" },
   ],
   display: "swap",
   preload: true,
-  variable: "--font-kalameh",
+  variable: "--font-aria",
   /*
-   * Optical size, not a preference.
+   * Optical size, measured rather than chosen.
    *
-   * Kalameh draws far smaller per em than Vazirmatn: measured in the browser at 100px,
-   * the same Persian string is 639.9px wide against 812.6px, with an ink ascent of 53.7
-   * against 68.5. Both ratios land on the same number -- 1.2699 and 1.2756 -- so it is a
-   * uniform scale difference rather than a shape difference.
+   * Aria sets about 6.5% smaller per em than Vazirmatn, which every font-size and
+   * line-height in this repo was tuned against. At 100px the same Persian string is
+   * 7.595em wide against 8.1265em, with an ink ascent of 0.648 against 0.6846 — ratios
+   * of 1.070 and 1.057, close enough to each other to be a uniform scale rather than a
+   * difference in shape.
    *
-   * Every font-size, line-height and measured layout in this repo was tuned against
-   * Vazirmatn's optical size. Dropping in a face that renders a fifth smaller leaves all
-   * of those numbers describing type that is no longer there: small glyphs adrift in line
-   * boxes sized for bigger ones. Correcting it here fixes every one of those rules at
-   * once, where correcting it rule by rule would be thirty edits and a permanent trap for
-   * the next person who changes a font-size.
+   * 106.3% is the mean of the two. It also brings the `ch` unit back into line: Aria's
+   * zero is 0.527em against Vazirmatn's 0.562em, a ratio of 1.066 that tracks the text
+   * ratio almost exactly, so adjusting the face fixes the measures at the same time.
+   * (The previous face did NOT behave that way — its zero was 19% out of step with its
+   * own text, which is why every ch measure had to be hand-corrected and then undone.)
    */
-  declarations: [{ prop: "size-adjust", value: "127.3%" }],
+  declarations: [{ prop: "size-adjust", value: "106.3%" }],
 });
 
 /** Every font CSS variable, ready to hang on `<html>`. */
-export const fontVariables = `${montserrat.variable} ${vazirmatn.variable} ${kalameh.variable}`;
+export const fontVariables = `${montserrat.variable} ${vazirmatn.variable} ${aria.variable}`;

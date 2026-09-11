@@ -226,7 +226,7 @@
   line-height: 1.1;
   /* The Persian half of the closing pair; .statementEn below carries the Latin tracking. */
   letter-spacing: normal;
-  max-inline-size: 15ch;
+  max-inline-size: 18ch;
   text-wrap: balance;
 }
 
@@ -315,7 +315,7 @@
   }
 
   .statement {
-    max-inline-size: 18ch;
+    max-inline-size: 22ch;
   }
 }
 
