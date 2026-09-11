@@ -26,13 +26,11 @@
  *
  * ## Carousel precedence — most recent input wins
  *
- * `trackIndex` is the one index with discrete inputs. Inside the tracks scene, scroll
- * stepping is RELATIVE: each `scrollProgress` event applies the delta between the scroll
- * band it lands in and the band the previous event landed in. So after a `carouselNext` /
- * `carouselPrev` / `carouselTo`, subsequent scroll stepping resumes from the index the
- * discrete input set instead of snapping back to the raw scroll-derived index.
- * Entering or leaving the tracks scene re-syncs `trackIndex` to the scroll position — the
- * carousel offset only lives as long as the scene does.
+ * `trackIndex` is the one index driven ENTIRELY by discrete inputs. Scroll does not move it:
+ * `carouselNext` / `carouselPrev` / `carouselTo` are the only things that do, dispatched by
+ * the controls, the keyboard, a drag, or the scene's own auto-advance while it is on screen.
+ * Inside the scene the index simply holds whatever the last of those made it, and arriving at
+ * the scene from either direction starts at the first track.
  *
  * ## Grid statement one-shot
  *
@@ -201,20 +199,31 @@ function scopedFlippedCards(activeOrdinal: number, count: number, progress: numb
  * Tracks carousel index. Relative stepping inside the scene preserves any discrete carousel
  * offset (most recent input wins); entering or leaving the scene re-syncs to scroll.
  */
+/**
+ * The carousel's index, which SCROLL NO LONGER MOVES.
+ *
+ * This is a departure from brief §7.8, whose Interaction list opens with "Vertical scroll
+ * advances the pinned carousel" — recorded rather than slipped in, by explicit direction. The
+ * rest of that list is unaffected: "Drag and swipe also change the active item" is still how
+ * it moves, and it is now the only way alongside the controls, the keyboard and the timer the
+ * scene runs while it is on screen.
+ *
+ * So inside the scene the index is whatever the last discrete input made it. Arriving at the
+ * scene from either direction starts at the first track: the old behaviour synced the index to
+ * the scroll band, which only meant anything while scroll was an input.
+ */
 function nextTrackIndex(
   state: SceneState,
   sceneId: SceneId,
-  progress: number,
+  _progress: number,
   count: number,
 ): number {
   const ordinal = SCENE_ORDINAL.tracks;
   const activeOrdinal = SCENE_ORDINAL[sceneId];
   if (activeOrdinal < ordinal) return 0;
   if (activeOrdinal > ordinal) return lastIndex(count);
-  if (state.sceneId !== "tracks") return bandIndex(progress, count);
-
-  const delta = bandIndex(progress, count) - bandIndex(state.sceneProgress, count);
-  return clampInt(state.transitionState.trackIndex + delta, 0, lastIndex(count));
+  if (state.sceneId !== "tracks") return 0;
+  return clampInt(state.transitionState.trackIndex, 0, lastIndex(count));
 }
 
 function nextGridStatementRevealed(

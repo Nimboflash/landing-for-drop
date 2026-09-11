@@ -405,13 +405,30 @@ describe.each(COUNT_FIXTURES)("scene state driven by %s", (_label, counts) => {
     expect(isNonDecreasing(indices)).toBe(true);
   });
 
-  it("scrolls the carousel through every track", () => {
+  it("holds the carousel still through a scroll of its own scene", () => {
+    /*
+     * Brief §7.8 opens its Interaction list with "Vertical scroll advances the pinned
+     * carousel". It does not any more, by explicit direction: the carousel moves on swipe, the
+     * controls, the keyboard, and the scene's own auto-advance. Scroll is not one of its inputs,
+     * so scrolling the whole scene must leave the index exactly where it was.
+     */
     const indices = sweepScene(counts, "tracks").map((s) => s.transitionState.trackIndex);
 
     expect(indices[0]).toBe(0);
-    expect(indices[indices.length - 1]).toBe(counts.tracks - 1);
-    expect(unique(indices)).toEqual(range(counts.tracks));
-    expect(isNonDecreasing(indices)).toBe(true);
+    expect(unique(indices)).toEqual([0]);
+  });
+
+  it("moves the carousel on discrete input alone", () => {
+    let state = enter(counts, "tracks");
+    expect(state.transitionState.trackIndex).toBe(0);
+
+    // Every index is still reachable — through the inputs that remain, not through scroll.
+    const seen = [state.transitionState.trackIndex];
+    for (let i = 1; i < counts.tracks; i += 1) {
+      state = sceneStateReducer(state, { type: "carouselNext" }, counts);
+      seen.push(state.transitionState.trackIndex);
+    }
+    expect(seen).toEqual(range(counts.tracks));
   });
 
   it("reveals every art piece in editorial order", () => {
@@ -620,29 +637,29 @@ describe.each(COUNT_FIXTURES)("scene state driven by %s", (_label, counts) => {
     expect(state.transitionState.gridStatementRevealed).toBe(true);
   });
 
-  it("resumes scroll stepping from the index a carousel button set (most recent input wins)", () => {
+  it("leaves a button-set index untouched by any amount of scrolling", () => {
     const atBand = (band: number) => scroll("tracks", bandProgress(band, counts.tracks));
 
     let state = enter(counts, "tracks");
+
+    // Scroll alone does nothing at all now.
     state = sceneStateReducer(state, atBand(2), counts);
-    expect(state.transitionState.trackIndex).toBe(2);
+    expect(state.transitionState.trackIndex).toBe(0);
 
     state = sceneStateReducer(state, { type: "carouselNext" }, counts);
-    expect(state.transitionState.trackIndex).toBe(3);
-
-    // One band of reverse scroll steps back from 3 — not back to the raw scroll band 1.
-    state = sceneStateReducer(state, atBand(1), counts);
-    expect(state.transitionState.trackIndex).toBe(2);
-
-    state = sceneStateReducer(state, { type: "carouselPrev" }, counts);
     expect(state.transitionState.trackIndex).toBe(1);
 
-    // Forward scroll resumes from the button's index.
-    state = sceneStateReducer(state, atBand(2), counts);
-    expect(state.transitionState.trackIndex).toBe(2);
+    // Scrolling forward, backward, and to the ends of the scene all leave it on 1.
+    for (const band of [0, 3, 1, counts.tracks - 1]) {
+      state = sceneStateReducer(state, atBand(band), counts);
+      expect(state.transitionState.trackIndex).toBe(1);
+    }
+
+    state = sceneStateReducer(state, { type: "carouselPrev" }, counts);
+    expect(state.transitionState.trackIndex).toBe(0);
   });
 
-  it("resumes scroll stepping from the index carouselTo set", () => {
+  it("leaves a carouselTo index untouched by scrolling", () => {
     const atBand = (band: number) => scroll("tracks", bandProgress(band, counts.tracks));
 
     let state = enter(counts, "tracks");
@@ -650,7 +667,7 @@ describe.each(COUNT_FIXTURES)("scene state driven by %s", (_label, counts) => {
     expect(state.transitionState.trackIndex).toBe(2);
 
     state = sceneStateReducer(state, atBand(1), counts);
-    expect(state.transitionState.trackIndex).toBe(3);
+    expect(state.transitionState.trackIndex).toBe(2);
 
     state = sceneStateReducer(state, atBand(0), counts);
     expect(state.transitionState.trackIndex).toBe(2);

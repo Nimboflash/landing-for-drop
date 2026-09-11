@@ -40,13 +40,24 @@ export const LOADER_MAX_MS = 4_000;
 
 /* ----------------------------------------------------------------- count-driven */
 
-/** Brief §6: tracks run `max(340vh, trackCount * 55vh)` with a sensible cap. */
-export const TRACKS_VH_PER_TRACK = 55;
-export const TRACKS_MIN_VH = 340;
+/*
+ * Brief §6 runs tracks at `max(340vh, trackCount * 55vh)`, and §7.8 adds "Scroll length
+ * responds to item count". Both exist for one reason: that length was what advanced the
+ * carousel. Scroll no longer advances it — it is swipe, controls, keyboard and the scene's own
+ * auto-advance now — so the length is not pacing any more, it is just scroll with nothing on
+ * the other end of it. Eleven tracks were buying 605vh, about six screens of a pinned scene
+ * holding still.
+ *
+ * A DEPARTURE FROM THE BRIEF on both counts, recorded rather than slipped in, and downstream
+ * of the §7.8 interaction change that was asked for. The scene keeps a single screen of hold
+ * so it still arrives and leaves as a pinned scene rather than flicking past.
+ */
+export const TRACKS_VH_PER_TRACK = 0;
+export const TRACKS_MIN_VH = 140;
 /**
- * The "sensible cap" the brief asks for. Beyond this the carousel stops reading as pacing and
- * starts reading as a dead scroll zone; a longer playlist compresses its per-track scroll
- * instead of extending the page (11 seed tracks land at 605vh, well inside the cap).
+ * The cap. It no longer binds — with the per-track term at zero every playlist lands on the
+ * floor — but it is kept so the function still refuses to run away if the per-track term is
+ * ever restored.
  */
 export const TRACKS_MAX_VH = 760;
 

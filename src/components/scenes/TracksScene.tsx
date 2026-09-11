@@ -87,6 +87,7 @@ import {
   useCallback,
   useEffect,
   useId,
+  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
@@ -179,6 +180,17 @@ export const DEFAULT_COVERFLOW_SLOTS = COVERFLOW_SLOTS.desktop;
  * arrow controls that sit over the field. Anything this far out is invisible anyway.
  */
 const CASE_STACK_TOP = 40;
+
+/**
+ * How long each track holds before the carousel advances itself, in ms.
+ *
+ * Long enough to read a title and a maker before it moves, which is what the slide is for.
+ * Brief §7.8's "No audio autoplay" is untouched — nothing here plays audio, it advances a
+ * picture — and its "snap cleanly without feeling like a generic component library carousel"
+ * is why this stops for good on the first real input rather than fighting the reader for the
+ * rest of the scene.
+ */
+const AUTOPLAY_INTERVAL_MS = 4200;
 
 /** How far a pointer must travel before the gesture commits to an axis. */
 const DRAG_AXIS_LOCK_PX = 8;
@@ -345,6 +357,14 @@ export function TracksScene({
   const stageRef = useRef<HTMLDivElement | null>(null);
   const scopeRef = useRef<MotionScope | null>(null);
   const crossfadeRef = useRef<gsap.core.Tween | null>(null);
+  /**
+   * Set once the reader touches the carousel in any way, and never cleared.
+   *
+   * Auto-advance exists to show that the field moves; the moment someone moves it themselves
+   * that is answered, and a timer that keeps tugging afterwards is the thing that makes a
+   * carousel feel like it is arguing with you.
+   */
+  const takenOverRef = useRef(false);
   const dragRef = useRef<DragGesture | null>(null);
   /** True while the click that ends a real drag is still on its way, so it selects nothing. */
   const suppressClickRef = useRef(false);
@@ -449,9 +469,51 @@ export function TracksScene({
 
   /* ------------------------------------------------------------------ input */
 
+  /**
+   * Auto-advance, while the scene is on screen and the reader has not taken over.
+   *
+   * Scroll no longer moves this carousel, so without something the field is simply still until
+   * it is touched — and a reader who does not think to swipe never learns that there are eleven
+   * tracks behind the one they can see. The timer is what advertises that.
+   *
+   * It goes through `onNext`, the same discrete input the arrows and the keyboard use, so the
+   * reducer stays the only thing that owns the index. Gated four ways: not before the scene is
+   * the active one, not under reduced motion (brief §16 — motion is the thing being removed),
+   * not while the tab is in the background, and never again once `takenOverRef` is set.
+   */
+  useEffect(() => {
+    if (!sceneActive || reducedMotion || takenOverRef.current) return;
+
+    let timer: number | undefined;
+    const stop = () => {
+      if (timer !== undefined) window.clearInterval(timer);
+      timer = undefined;
+    };
+    const start = () => {
+      stop();
+      timer = window.setInterval(() => {
+        if (takenOverRef.current) {
+          stop();
+          return;
+        }
+        onNext();
+      }, AUTOPLAY_INTERVAL_MS);
+    };
+
+    const onVisibility = () => (document.hidden ? stop() : start());
+    if (!document.hidden) start();
+    document.addEventListener("visibilitychange", onVisibility);
+
+    return () => {
+      stop();
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [sceneActive, reducedMotion, onNext]);
+
   const handleKeyDown = useCallback(
     (event: ReactKeyboardEvent<HTMLDivElement>) => {
       if (event.altKey || event.ctrlKey || event.metaKey) return;
+      takenOverRef.current = true;
       // A key means the pointer sequence is over. A drag that ended without producing a click
       // would otherwise leave the suppression flag armed, and swallow the click that an Enter or
       // a Space on the focused case is about to fire.
@@ -480,6 +542,7 @@ export function TracksScene({
 
   const handlePointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.pointerType === "mouse" && event.button !== 0) return;
+    takenOverRef.current = true;
     const stage = stageRef.current;
     if (!stage) return;
     const width = stage.getBoundingClientRect().width;
@@ -571,8 +634,19 @@ export function TracksScene({
     [endDrag],
   );
 
+  const takeOverAnd = useCallback(
+    (act: () => void) => () => {
+      takenOverRef.current = true;
+      act();
+    },
+    [],
+  );
+  const handlePrevious = useMemo(() => takeOverAnd(onPrevious), [takeOverAnd, onPrevious]);
+  const handleNext = useMemo(() => takeOverAnd(onNext), [takeOverAnd, onNext]);
+
   const handleSelect = useCallback(
     (index: number) => {
+      takenOverRef.current = true;
       if (suppressClickRef.current) {
         suppressClickRef.current = false;
         return;
@@ -761,7 +835,7 @@ export function TracksScene({
             data-carousel-control="prev"
             tabIndex={sceneActive ? 0 : -1}
             aria-label={CAROUSEL_PREVIOUS_LABEL}
-            onClick={onPrevious}
+            onClick={handlePrevious}
           >
             <span className={styles.controlGlyph} aria-hidden="true">
               ‹
@@ -773,7 +847,7 @@ export function TracksScene({
             data-carousel-control="next"
             tabIndex={sceneActive ? 0 : -1}
             aria-label={CAROUSEL_NEXT_LABEL}
-            onClick={onNext}
+            onClick={handleNext}
           >
             <span className={styles.controlGlyph} aria-hidden="true">
               ›
