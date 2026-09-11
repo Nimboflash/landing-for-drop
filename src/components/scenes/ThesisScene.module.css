@@ -91,8 +91,9 @@
   position: relative;
   font-family: var(--font-persian);
   font-size: var(--title-lg);
+  /* The other place 800 is spent: the hero line, the page's opening voice. */
   font-weight: 800;
-  line-height: 1.15;
+  line-height: 1.22;
   /*
    * No tracking: this is the page's largest Persian type, and Persian is cursive. A negative
    * value does not tighten the line, it pushes joined letterforms into each other — the effect

@@ -83,7 +83,20 @@ h2,
 h3,
 h4 {
   margin: 0;
-  font-weight: 800;
+  /*
+   * 700, not 800, and the reason is measured rather than felt.
+   *
+   * These rules were drawn against Vazirmatn, whose 700 and 800 sit close together — ink
+   * density 0.282 and 0.301, a fifth of a step apart. Aria's are far apart: 0.292 and 0.358.
+   * So the weight this design called 800 is nearest Aria's 700 (off by 0.009), and Aria's own
+   * 800 overshoots it by 0.057, about 19% heavier than anything here was drawn at.
+   *
+   * Using 800 everywhere also flattened the page: it landed on 40px, 32px, 24px AND 18px type
+   * at once, so every heading on the site was one weight and size alone carried the hierarchy.
+   * 700 is the heading weight now, and 800 is spent deliberately — on the two largest
+   * statements and nowhere else.
+   */
+  font-weight: 700;
   /*
    * Tall enough to hold Aria, which 1.02 was not quite.
    *
@@ -95,7 +108,15 @@ h4 {
    * 1.06 clears it with a little room and stays close to the tight display setting the
    * design asked for. Latin keeps 1.02 below; Montserrat's ink fits it and always did.
    */
-  line-height: 1.06;
+  /*
+   * 1.18, the same leading the explicit Persian display rules use.
+   *
+   * 1.06 cleared Aria's 1.0396em ink by 2% — technically not crowded, but visibly tighter than
+   * the headings that set their own, so the same size read differently depending on whether its
+   * scene had an opinion. Persian carries ascenders, descenders and dot clusters outside the
+   * x-height band, and wants the room. Latin keeps 1.02 below.
+   */
+  line-height: 1.18;
   /*
    * No tracking by default, because the default heading here is PERSIAN.
    *

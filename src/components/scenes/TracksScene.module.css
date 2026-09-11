@@ -90,8 +90,8 @@
 .headingFa {
   font-family: var(--font-persian);
   font-size: var(--title-lg);
-  font-weight: 800;
-  line-height: 1.1;
+  font-weight: 700;
+  line-height: 1.18;
   color: var(--drop-white);
 }
 
@@ -104,7 +104,7 @@
 .headingEn {
   font-family: var(--font-latin);
   font-size: var(--title-lg);
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.2em;
   /* The tracking pushes the row off-centre by one trailing space; give it back. */
   text-indent: 0.2em;
@@ -549,7 +549,7 @@
 .title {
   font-family: var(--font-latin);
   font-size: var(--title-md);
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.05;
   letter-spacing: -0.015em;
   color: var(--drop-white);

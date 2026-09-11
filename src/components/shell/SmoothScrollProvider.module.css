@@ -29,7 +29,8 @@
   color: var(--drop-off-white);
   font-family: var(--font-persian);
   font-size: var(--label);
-  line-height: 1;
+  /* Above Aria's 1.0396em ink, or the Persian label is crowded by its own line box. */
+  line-height: 1.15;
   cursor: pointer;
 
   /* Out of sight until it is the thing the reader is on. */

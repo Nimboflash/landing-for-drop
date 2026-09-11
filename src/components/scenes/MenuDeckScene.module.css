@@ -28,7 +28,7 @@
  */
 .heading {
   font-size: var(--title-md);
-  font-weight: 800;
+  font-weight: 700;
 
   /*
    * The heading introduces the section, then yields the frame to the deck.
