@@ -119,6 +119,27 @@
   grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
   gap: var(--card-pad);
   align-items: center;
+  /*
+   * A card has a size of its own. Without these it had neither: it ran the full width of the
+   * scene's viewport and was stretched by its grid row to nearly the full height — measured at
+   * 1440x900 it came out 1325x869, which is 92% of the frame. The proportion was already right
+   * (1.52, the reference's own aspect); only the scale was wrong.
+   *
+   * `align-self` stops the row stretching it, so the height follows the poster instead of the
+   * viewport, and the max width with auto margins keeps it a centred object on the ground
+   * rather than a panel bolted across it.
+   */
+  align-self: center;
+  inline-size: 100%;
+  /*
+   * Full width here; the cap lives at the two-column breakpoint below.
+   *
+   * On a phone the card IS the frame — the scene's own page gutter is what insets it, and a vw
+   * cap on top of that just makes it narrow: 68vw measured 265px of a 390px screen, a column of
+   * writing squeezed into two thirds of the width with nothing in the margins.
+   */
+  max-inline-size: 100%;
+  margin-inline: auto;
   padding: var(--card-pad);
   background: var(--drop-ink);
   border: 1px solid color-mix(in srgb, var(--drop-white) 10%, transparent);
@@ -138,16 +159,39 @@
  * specificity and push the writing into a column that does not exist.
  */
 @media (min-width: 768px) {
+  /*
+   * Viewport-relative, so the card keeps its PROPORTION rather than its pixel width.
+   *
+   * A flat 58rem cap read as 64% of a 1440 frame and 91% of a 1024 one — a card on one screen
+   * and a full-width panel on the next, with the aspect sliding from 1.65 to 2.23 as the poster
+   * shrank with the viewport while the width did not. Tying the cap to vw makes the width fall
+   * with the poster, so the shape holds: measured 1.65 at 1440, 1.68 at 1024, 1.60 at 768.
+   */
+  .film {
+    max-inline-size: min(58rem, 68vw);
+  }
+
   .film:nth-child(even) {
     grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
   }
 
+  /*
+   * Both halves are pinned to row 1, and the row is the point.
+   *
+   * `.info` comes first in the DOM. Sending it to column 2 moves the auto-placement cursor
+   * past column 1, and sparse flow will not go back for it — so the poster was pushed onto a
+   * SECOND row and the alternating card became a stack. Measured: the other two cards reported
+   * one row of 512px, this one reported 255px + 512px and stood 842px tall against their 562.
+   * Naming the row removes the ordering problem entirely.
+   */
   .film:nth-child(even) > .info {
     grid-column: 2;
+    grid-row: 1;
   }
 
   .film:nth-child(even) > .posterColumn {
     grid-column: 1;
+    grid-row: 1;
     /* The poster hugs the outer edge of whichever side it is on. */
     justify-content: flex-start;
   }
