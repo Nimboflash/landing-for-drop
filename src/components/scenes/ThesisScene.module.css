@@ -20,6 +20,19 @@
   /* Fallbacks: the component writes both, but the static render must stand without them. */
   --drop-thesis-progress: 0;
   --drop-argument-reveal: 0;
+  /*
+   * The hand-over curve: the reveal, smootherstepped.
+   *
+   * The two halves have to be complementary or the frame goes empty between them, and
+   * complementary means they necessarily cross at half strength each. What decides whether
+   * that reads as a dissolve or as two paragraphs printed over each other is how LONG it
+   * lasts. Smootherstep has a mid-slope of 1.875 against linear's 1, so the crossing is
+   * roughly twice as quick and the band where both are legible is correspondingly narrow.
+   */
+  --drop-handover: calc(
+    var(--drop-argument-reveal) * var(--drop-argument-reveal) * var(--drop-argument-reveal) *
+      (var(--drop-argument-reveal) * (var(--drop-argument-reveal) * 6 - 15) + 10)
+  );
 
   display: grid;
   justify-items: center;
@@ -224,13 +237,32 @@
  * the messages retire over reveal 0 -> 0.5 and the argument arrives over 0.5 -> 1. `argumentReveal()`
  * is already smoothstepped, so neither half shows an edge at the seam.
  */
+/*
+ * The hand-over is a CROSS-fade, and it has to be — the two halves cannot both be off.
+ *
+ * Splitting the reveal into two exclusive halves (messages over 0 -> 0.5, argument over
+ * 0.5 -> 1) looked like it avoided the two competing. What it actually did was leave the frame
+ * EMPTY in the middle: at reveal 0.5 both clamps evaluate to 0. Swept in the browser, the sum
+ * of the two opacities fell below a half across reveal 0.30 to 0.70 and hit exactly 0 at the
+ * midpoint — nine of twenty-one sampled frames, in a scrubbed scene where the reader can stop
+ * on any of them and does stop on that one, because it is the middle of the gesture.
+ *
+ * Complementary opacities cannot do that: 1-r and r sum to 1 at every value of r. `reveal` is
+ * already smoothstepped, so the crossing is quick rather than a long even blend.
+ *
+ * The two are superimposed in one cell, so they are pulled APART as they cross — the messages
+ * lift away and the argument rises into the space they leave. At the midpoint, where both sit
+ * at half strength, they are 4svh apart rather than on the same pixels, which is what keeps a
+ * cross-fade from reading as two texts printed over each other.
+ */
 .thesis[data-presentation="stage"] .messages {
-  opacity: clamp(0, calc(1 - var(--drop-argument-reveal) * 2), 1);
-  translate: 0 calc(var(--drop-argument-reveal) * -2.5svh);
+  opacity: calc(1 - var(--drop-handover));
+  translate: 0 calc(var(--drop-handover) * -8svh);
 }
 
 .thesis[data-presentation="stage"] .argument {
-  opacity: clamp(0, calc(var(--drop-argument-reveal) * 2 - 1), 1);
+  opacity: var(--drop-handover);
+  translate: 0 calc((1 - var(--drop-handover)) * 8svh);
 }
 
 .thesis[data-presentation="stage"] .statement {
