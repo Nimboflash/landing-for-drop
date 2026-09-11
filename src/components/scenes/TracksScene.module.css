@@ -175,6 +175,10 @@
   perspective: 1600px;
   perspective-origin: 50% 42%;
   /* Vertical gestures stay the page's; horizontal ones become carousel steps. */
+  /*
+   * Vertical touch belongs to the page, horizontal belongs to the carousel — so the browser is
+   * allowed to pan the page on Y and the pointer handler gets every X gesture uninterrupted.
+   */
   touch-action: pan-y;
   user-select: none;
   -webkit-user-select: none;

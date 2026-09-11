@@ -192,6 +192,16 @@ const CASE_STACK_TOP = 40;
  */
 const AUTOPLAY_INTERVAL_MS = 4200;
 
+/**
+ * How much horizontal wheel travel counts as one step.
+ *
+ * A trackpad two-finger swipe does not produce a pointer drag — it produces `wheel` events with
+ * a horizontal delta — so on a laptop the most natural way to swipe this carousel was reaching
+ * nothing at all. Larger than the drag step because wheel deltas arrive in a long stream and a
+ * small threshold turns one flick into a dozen steps.
+ */
+const WHEEL_STEP_PX = 140;
+
 /** How far a pointer must travel before the gesture commits to an axis. */
 const DRAG_AXIS_LOCK_PX = 8;
 /** One carousel step, as a fraction of the field's width. */
@@ -509,6 +519,43 @@ export function TracksScene({
       document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [sceneActive, reducedMotion, onNext]);
+
+  /**
+   * Horizontal wheel as a swipe.
+   *
+   * Bound natively rather than through React's `onWheel`, because React attaches wheel listeners
+   * passively at the root and `preventDefault()` from a passive listener does nothing — the page
+   * would take the gesture as a horizontal scroll and the carousel would not move.
+   *
+   * Only a gesture whose horizontal intent EXCEEDS its vertical one is taken. A trackpad emits
+   * both axes on almost every flick, and the vertical component belongs to the page: reading the
+   * dominant axis is what keeps this from stealing a normal scroll, the same rule the drag
+   * gesture already applies when it commits to an axis.
+   */
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    let carried = 0;
+    const onWheel = (event: WheelEvent) => {
+      if (Math.abs(event.deltaX) <= Math.abs(event.deltaY)) return;
+      event.preventDefault();
+      takenOverRef.current = true;
+
+      carried += event.deltaX;
+      while (carried >= WHEEL_STEP_PX) {
+        onNext();
+        carried -= WHEEL_STEP_PX;
+      }
+      while (carried <= -WHEEL_STEP_PX) {
+        onPrevious();
+        carried += WHEEL_STEP_PX;
+      }
+    };
+
+    stage.addEventListener("wheel", onWheel, { passive: false });
+    return () => stage.removeEventListener("wheel", onWheel);
+  }, [onNext, onPrevious]);
 
   const handleKeyDown = useCallback(
     (event: ReactKeyboardEvent<HTMLDivElement>) => {
