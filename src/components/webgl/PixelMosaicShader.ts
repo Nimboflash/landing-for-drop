@@ -769,8 +769,24 @@ export const pixelBShader: PixelMosaicModule = createPixelMosaicShader({
   key: "pixelB",
   from: "wavyDots",
   to: "black",
-  spectralMix: 1,
-  energyGain: 0.3,
+  /*
+   * The colour has to read as LIGHT, and at spectralMix 1 / gain 0.3 it did not.
+   *
+   * The frontier colour is the brand hue scaled by the gain, so a low gain does not make the
+   * hue restrained, it makes it DARK. Computed at the frontier peak, the old pair produced
+   * #3b1500 and #11001e -- a dull brown and a near-black violet. DROP purple starts at #480082,
+   * already dark, so 30% of it is effectively black and the cells read as mud rather than as
+   * the 'restrained DROP orange/purple energy' of brief 7.7.
+   *
+   * Mixing a little white into the hue before scaling is what turns pigment into light, and the
+   * gain then sets how much of it there is. At 0.85 / 0.66 the same peaks compute to #833a14 and
+   * #331350: roughly double the value, with saturation still at 0.85 and 0.74 so both are
+   * unmistakably the brand colours. Restraint is unchanged -- this lives only in the frontier
+   * band, which decays within about 0.07 of progress behind the front, and section 4's rule
+   * against accent colour as a large fill is about area, which none of this touches.
+   */
+  spectralMix: 0.85,
+  energyGain: 0.66,
   honorsDarkBeat: true,
   fromCss: "#000000",
   toCss: "#000000",
