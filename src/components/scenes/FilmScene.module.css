@@ -97,14 +97,60 @@
 
 /* -------------------------------------------------------------------- film */
 
+/*
+ * Each recommendation is a CARD: one side the poster, the other the writing.
+ *
+ * The ground it sits on is unchanged — the dot field still runs behind it — so the card is a
+ * surface laid onto the scene rather than a new background. `--drop-ink` rather than pure
+ * black for exactly that reason: on a black field a black card is invisible, and #111 with a
+ * hairline reads as an edge without becoming a second colour.
+ *
+ * Sharp corners, deliberately. The reference this composition follows rounds its card at 16px;
+ * the brief does not allow it — §4 'Menu cards: border-radius: 0' and §7.10 'Sharp corners',
+ * repeated as a hard rule in CLAUDE.md. The card shape is adopted, the radius is not.
+ *
+ * Padding and gap are the same value, which is what makes the two halves read as one object
+ * rather than two columns that happen to share a background.
+ */
 .film {
+  --card-pad: clamp(0.75rem, 2.2vw, 1.5rem);
   display: grid;
-  /* Brief §7.6/§16: information physically left, poster physically right. Held by the grid. */
   direction: ltr;
   grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
-  gap: clamp(1.5rem, 4vw, 3.5rem);
+  gap: var(--card-pad);
   align-items: center;
+  padding: var(--card-pad);
+  background: var(--drop-ink);
+  border: 1px solid color-mix(in srgb, var(--drop-white) 10%, transparent);
   border-radius: 0;
+}
+
+/*
+ * The sides alternate, and that is a DEPARTURE FROM THE BRIEF recorded on purpose.
+ *
+ * §7.6 Layout is explicit that the direction holds: 'Deliberate layout direction remains
+ * consistent even for Persian content: left: film information; right: poster stack/current
+ * poster.' Alternating is the opposite instruction, and it is the one that was asked for.
+ * Same class of call as the grounds that moved off §7 by art direction.
+ *
+ * Scoped to the two-column breakpoint. Below it there is only one column, and the mobile rule
+ * puts every child in it — a nth-child override left unscoped would outrank that rule on
+ * specificity and push the writing into a column that does not exist.
+ */
+@media (min-width: 768px) {
+  .film:nth-child(even) {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  }
+
+  .film:nth-child(even) > .info {
+    grid-column: 2;
+  }
+
+  .film:nth-child(even) > .posterColumn {
+    grid-column: 1;
+    /* The poster hugs the outer edge of whichever side it is on. */
+    justify-content: flex-start;
+  }
 }
 
 /* ------------------------------------------------------------ information */
