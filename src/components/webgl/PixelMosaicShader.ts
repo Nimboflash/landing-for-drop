@@ -50,6 +50,7 @@ import {
   type BackgroundFrame,
   type BackgroundShaderModule,
 } from "./shader-contract";
+import { ACID_LIME_FIELD_GLSL } from "./AcidLimeShader";
 import {
   WAVY_DOTS_DEFAULT_DETAIL,
   WAVY_DOTS_DEFAULT_MIN_CELL_PX,
@@ -406,6 +407,27 @@ vec3 dropGreenGridLook(vec2 fragPx, vec2 res, float t, float detail) {
  * own detail uniforms, so that this program and the mesh program cannot drift apart.
  */
 /**
+ * The acid-lime field, on the mosaic's own program.
+ *
+ * NOT a stand-in, unlike the green grid and mono mesh looks above: the GLSL is AcidLimeShader's
+ * own {@link ACID_LIME_FIELD_GLSL}, included verbatim and called on the same clock, so transition
+ * B resolves into the exact frame the Tracks ground is already drawing rather than into a
+ * lookalike that has to be kept in sync by hand.
+ *
+ * That is the arrangement WavyDotsShader and this file already share, and it is available here
+ * for the same reason: the mode is driven by `wavyDotsTime`, which is the clock this uniform
+ * carries, so `time` can be passed straight through.
+ */
+export const ACID_LIME_LOOK_GLSL = /* glsl */ `
+${ACID_LIME_FIELD_GLSL}
+
+  vec3 dropAcidLimeLook(vec2 fragPx, vec2 res, float time, float detail) {
+    vec2 uv = clamp(fragPx / max(res, vec2(1.0)), 0.0, 1.0);
+    return acidLimeField(uv, max(res.x, 1.0) / max(res.y, 1.0), time);
+  }
+`;
+
+/**
  * The flat black ground, as a look the mosaic can dissolve *into*.
  *
  * Unlike the green-grid and mesh looks this is not a stand-in for anything: `BlackShader` paints
@@ -452,7 +474,10 @@ vec3 dropWavyDotsLook(vec2 fragPx, vec2 res, float t, float detail) {
 /* -------------------------------------------------------------------------- */
 
 /** The background modes this mosaic knows how to render as an outgoing or incoming look. */
-type MosaicLookMode = Extract<BackgroundMode, "greenGrid" | "wavyDots" | "monoMesh" | "black">;
+type MosaicLookMode = Extract<
+  BackgroundMode,
+  "greenGrid" | "wavyDots" | "monoMesh" | "black" | "acidLime"
+>;
 
 /**
  * The GLSL look function per mode. Typed against {@link MosaicLookMode} so a new pairing cannot
@@ -460,6 +485,7 @@ type MosaicLookMode = Extract<BackgroundMode, "greenGrid" | "wavyDots" | "monoMe
  */
 const LOOK_FUNCTION: Readonly<Record<MosaicLookMode, string>> = {
   greenGrid: "dropGreenGridLook",
+  acidLime: "dropAcidLimeLook",
   wavyDots: "dropWavyDotsLook",
   monoMesh: "dropMonoMeshLook",
   black: "dropBlackLook",
@@ -528,6 +554,7 @@ function fragmentShader(spec: PixelTransitionSpec): string {
   // program too would leave them unused, and a uniform the compiler strips is one the canvas then
   // writes to for nothing.
   const usesMesh = spec.from === "monoMesh" || spec.to === "monoMesh";
+  const usesAcidLime = spec.from === "acidLime" || spec.to === "acidLime";
 
   return /* glsl */ `
 varying vec2 vUv;
@@ -557,6 +584,7 @@ ${WAVY_DOTS_FIELD_GLSL}
 ${WAVY_DOTS_LOOK_ADAPTER_GLSL}
 ${GREEN_GRID_LOOK_GLSL}
 ${BLACK_LOOK_GLSL}
+${usesAcidLime ? ACID_LIME_LOOK_GLSL : ""}
 ${usesMesh ? MESH_FIELD_GLSL : ""}
 ${usesMesh ? MESH_LATTICE_GLSL : ""}
 ${usesMesh ? MONO_MESH_LOOK_GLSL : ""}
@@ -768,7 +796,14 @@ export const pixelAShader: PixelMosaicModule = createPixelMosaicShader({
 export const pixelBShader: PixelMosaicModule = createPixelMosaicShader({
   key: "pixelB",
   from: "wavyDots",
-  to: "black",
+  /*
+   * Resolves into the Tracks ground, which is the acid-lime field now rather than flat black.
+   *
+   * Dissolving to black while the scene it hands over to is green would put a ground change at
+   * the boundary the mosaic exists to hide — and it is also why this transition had stopped
+   * reading: dots to black is two dark fields, so there was nothing for the cells to reveal.
+   */
+  to: "acidLime",
   /*
    * The colour has to read as LIGHT, and at spectralMix 1 / gain 0.3 it did not.
    *
@@ -789,5 +824,5 @@ export const pixelBShader: PixelMosaicModule = createPixelMosaicShader({
   energyGain: 0.66,
   honorsDarkBeat: true,
   fromCss: "#000000",
-  toCss: "#000000",
+  toCss: "#050604",
 });

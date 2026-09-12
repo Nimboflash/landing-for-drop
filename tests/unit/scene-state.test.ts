@@ -56,13 +56,15 @@ const BRIEF_BACKGROUND_MODE: Array<[SceneId, BackgroundMode]> = [
   ["menu", "monoMesh"],
   // The grid statement keeps the mesh. Brief 7.4 asks for a dark forest-green ground and this
   // departs from it by explicit art-direction decision, the same call that moved the mesh to the
-  // opening scenes and put Tracks and Art Pieces on flat black. The lattice is now drawn OVER the
+  // opening scenes and took Tracks and Art Pieces off it. The lattice is now drawn OVER the
   // field instead of arriving with a ground of its own.
   ["gridStatement", "monoMesh"],
   ["pixelA", "pixelA"],
   ["films", "wavyDots"],
   ["pixelB", "pixelB"],
-  ["tracks", "black"],
+  // Brief 7.8 asks for the mesh here. Tracks went to flat black by art direction and then to the
+  // acid-lime field, which is near-black under the carousel and pools its green low in the frame.
+  ["tracks", "acidLime"],
   ["artPieces", "black"],
   ["footer", "footerLight"],
 ];

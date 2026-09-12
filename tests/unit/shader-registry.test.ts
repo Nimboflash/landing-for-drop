@@ -48,7 +48,8 @@ import {
  * instead of passing one.
  *
  * Brief Section 14 ("Shared canvas state") names the first seven. `black` was added when Tracks
- * and Art Pieces were moved off the Monochrome Mesh onto a flat ground.
+ * and Art Pieces were moved off the Monochrome Mesh onto a flat ground; `acidLime` when Tracks
+ * moved again, off that flat ground onto a field that is alive under the carousel.
  */
 const BRIEF_BACKGROUND_MODES = [
   "offWhiteGlow",
@@ -58,6 +59,7 @@ const BRIEF_BACKGROUND_MODES = [
   "pixelB",
   "monoMesh",
   "black",
+  "acidLime",
   "footerLight",
 ] as const satisfies readonly BackgroundMode[];
 

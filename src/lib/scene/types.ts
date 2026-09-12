@@ -45,13 +45,14 @@ export type BackgroundMode =
   | "pixelB"
   | "monoMesh"
   | "black"
+  | "acidLime"
   | "footerLight";
 
 /**
  * Fixed scene -> background mode mapping.
  *
- * The Monochrome Mesh opens the page (loader / thesis / menu) and Tracks and Art Pieces sit on a
- * flat black ground. The loader still paints its own off-white overlay canvas on top; this is the
+ * The Monochrome Mesh opens the page (loader / thesis / menu), Art Pieces sits on a flat black
+ * ground and Tracks on the acid-lime field. The loader still paints its own off-white overlay canvas on top; this is the
  * ground its O portal opens onto.
  */
 export const SCENE_BACKGROUND_MODE: Readonly<Record<SceneId, BackgroundMode>> = {
@@ -76,7 +77,16 @@ export const SCENE_BACKGROUND_MODE: Readonly<Record<SceneId, BackgroundMode>> = 
   pixelA: "pixelA",
   films: "wavyDots",
   pixelB: "pixelB",
-  tracks: "black",
+  /*
+   * The Tracks ground is the acid-lime field, not flat black.
+   *
+   * Brief §7.8 specifies the Monochrome Mesh preset here; an earlier art-direction decision
+   * had already moved it to flat black, and this moves it again by the same kind of call. The
+   * field is near-black almost everywhere — the green pools low, under the caption rather than
+   * under the carousel — so the change is a ground that is alive rather than a ground that is
+   * bright.
+   */
+  tracks: "acidLime",
   artPieces: "black",
   footer: "footerLight",
 } as const;

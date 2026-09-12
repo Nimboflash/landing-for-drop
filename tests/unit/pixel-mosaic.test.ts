@@ -302,9 +302,10 @@ describe("transitions A and B share one lattice", () => {
     expect(pixelAShader.transition.from).toBe("monoMesh");
     expect(pixelAShader.transition.to).toBe("wavyDots");
     expect(pixelBShader.transition.from).toBe("wavyDots");
-    // Brief Section 7.7 resolved B into the Monochrome Mesh; Tracks now sits on flat black, and
-    // the mosaic has to resolve into the ground that actually follows it or the handover cuts.
-    expect(pixelBShader.transition.to).toBe("black");
+    // Brief Section 7.7 resolved B into the Monochrome Mesh; Tracks sits on the acid-lime field
+    // now, and the mosaic has to resolve into the ground that actually follows it or the handover
+    // cuts. The second assertion is the one that matters: whatever Tracks is on, B ends there.
+    expect(pixelBShader.transition.to).toBe("acidLime");
     expect(pixelBShader.transition.to).toBe(SCENE_BACKGROUND_MODE.tracks);
   });
 

@@ -14,6 +14,7 @@
 
 import type { BackgroundMode } from "@/lib/scene";
 
+import { acidLimeShader } from "./AcidLimeShader";
 import { blackShader } from "./BlackShader";
 import { footerLightShader } from "./FooterLightShader";
 import { greenGridShader } from "./GreenGridShader";
@@ -37,6 +38,7 @@ export const BACKGROUND_SHADERS = {
   pixelB: pixelBShader,
   monoMesh: monoMeshShader,
   black: blackShader,
+  acidLime: acidLimeShader,
   footerLight: footerLightShader,
 } as const satisfies Readonly<Record<BackgroundMode, BackgroundShaderModule>>;
 
