@@ -39,12 +39,19 @@ import { wavyDotsTime } from "./WavyDotsShader";
 const BG = [0.02, 0.024, 0.016] as const;
 
 /**
- * The green. A directed value — rgb(6, 59, 0) — and the only chromatic colour in this field.
+ * The green. A directed value and the only chromatic colour in this field.
+ *
+ * rgb(3, 30, 0): half the value of the rgb(6, 59, 0) this started from, on exactly the same hue.
+ * The first pass read as a vivid wash rather than a ground, so the whole field was taken down
+ * rather than the pool being made smaller — the composition was right, the light was not.
+ *
+ * This is the one knob for how dark the field is. Scaling it moves every pixel of the scene,
+ * because the ground is this colour mixed down toward ACID_BG and nothing else.
  *
  * Written as plain sRGB over 255, which is the convention every shader here uses (see
  * `GLSL_BRAND_COLORS`, where DROP off-white is 0.94902 rather than a linearised 0.887).
  */
-const ACID = [6 / 255, 59 / 255, 0 / 255] as const;
+const ACID = [3 / 255, 30 / 255, 0 / 255] as const;
 
 /* ------------------------------------------------------------------ tuning */
 

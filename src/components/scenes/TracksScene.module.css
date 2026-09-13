@@ -39,42 +39,20 @@
  */
 
 /*
- * Reading ground for text over the live mesh.
+ * The reading ground is GONE, and the gap is deliberate.
  *
- * The Monochrome Mesh's control colours run all the way up to #E4E4E6 (brief §7.8), so its light
- * lobes drift behind the heading and caption and take white text down to ~1.7:1 — measured, not
- * assumed. Brief §16 requires WCAG AA, and §14 forbids "shader motion that lowers text contrast",
- * so the mesh is darkened where text sits, exactly as §7.9 already sanctions for reading comfort.
+ * There used to be a full-width black band behind the heading and the caption here — a vertical
+ * feather up to rgba(0, 0, 0, 0.82), inset -50vw so it ran past both edges of the viewport. It
+ * existed because this scene sat on the Monochrome Mesh, whose brightest lobe is around
+ * rgb(200, 201, 205); off-white copy over that needed a scrim to clear AA at all.
  *
- * A soft ellipse rather than a panel: the mesh stays alive and visible through it, and no card
- * edge appears. 0.68 at the centre puts the worst-case lobe (~rgb(200,201,205)) under the ceiling
- * every line needs — including the 4.5:1 the small metadata line requires.
+ * The ground is the acid-lime field now: near-black where the heading sits and a deep green
+ * where the caption does. The copy clears 4.5:1 several times over on its own, so the band was
+ * buying nothing — and it was charging for it, drawing a hard horizontal edge across a field
+ * whose whole point is that it drifts without seams.
  *
- * Lighthouse cannot see this: its contrast rule silently skips text over a canvas. The measurement
- * is the [manual] sampling pass described in docs/qa/.
+ * If this scene is ever moved back onto a light ground, the band has to come back with it.
  */
-.readingGround::before {
-  content: "";
-  position: absolute;
-  z-index: -1;
-  inset: -2.75rem -50vw;
-  /*
-   * A horizontal band, not a radial ellipse. An ellipse only darkens the middle, so the ends of a
-   * long title land in its faded zone and still measured under AA — the band feathers on the
-   * vertical axis only, so every line gets the same ground from end to end. It runs wider than the
-   * viewport so nothing falls off its sides.
-   */
-  background: linear-gradient(
-    to bottom,
-    rgba(0, 0, 0, 0) 0%,
-    rgba(0, 0, 0, 0.5) 9%,
-    rgba(0, 0, 0, 0.82) 22%,
-    rgba(0, 0, 0, 0.82) 78%,
-    rgba(0, 0, 0, 0.5) 91%,
-    rgba(0, 0, 0, 0) 100%
-  );
-  pointer-events: none;
-}
 
 .heading {
   position: relative;

@@ -715,7 +715,7 @@ export function TracksScene({
       */}
       <h2
         ref={headingRef}
-        className={`${styles.heading} ${styles.readingGround} ${styles.entranceGate}`}
+        className={`${styles.heading} ${styles.entranceGate}`}
         id={headingId}
         data-section-heading="tracks"
         data-tracks-entered={entered}
@@ -831,7 +831,7 @@ export function TracksScene({
                     belongs to travels, scales and tilts.
                   */}
                   <div
-                    className={`${styles.caption} ${styles.readingGround}`}
+                    className={styles.caption}
                     data-track-caption
                     dir="rtl"
                     {...(active ? {} : { inert: true, "aria-hidden": true })}
