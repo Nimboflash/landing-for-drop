@@ -309,10 +309,43 @@ describe("transitions A and B share one lattice", () => {
     expect(pixelBShader.transition.to).toBe(SCENE_BACKGROUND_MODE.tracks);
   });
 
-  it("keeps the orange/purple energy pass unique to transition B", () => {
+  it("keeps the chromatic energy pass unique to transition B", () => {
     // Brief Section 7.7, step 4 — only the second transition passes through colour.
     expect(pixelBShader.transition.spectralMix).toBeGreaterThan(0);
     expect(pixelAShader.transition.spectralMix).toBe(0);
+  });
+
+  it("colours that energy in the ground it resolves into, not in the brief's orange", () => {
+    /*
+     * Brief Section 7.7 asks for orange/purple here. An explicit art direction replaced it with
+     * greens when Tracks moved onto the acid field: with the dot floor resolving INTO that
+     * ground, an orange band across the middle belonged to no scene on either side of it.
+     *
+     * Asserted as a relation rather than as two literals — what matters is that the frontier is
+     * green and that its hot end is genuinely lighter than its cool end, because the energy is
+     * screen-blended and a dark frontier colour would do nothing at all.
+     */
+    const [hot, cool] = pixelBShader.transition.spectralPair;
+    for (const [name, colour] of [
+      ["hot", hot],
+      ["cool", cool],
+    ] as const) {
+      const [red, green, blue] = colour;
+      expect(green, `${name} end is not green-dominant`).toBeGreaterThan(red);
+      expect(green, `${name} end is not green-dominant`).toBeGreaterThan(blue);
+    }
+    expect(hot[1]).toBeGreaterThan(cool[1]);
+  });
+
+  it("no longer blacks the ground out for the beat it still holds", () => {
+    /*
+     * The reducer's dark beat is untouched — the shell still gates the Tracks entrance on it
+     * (`entered={!transitionState.darkBeat}`). Only the shader's dimming is gone: 0.3 of the acid
+     * field is black, so the sequence read green, black, green. Empty of CONTENT is what step 6
+     * asks for; empty of LIGHT was never the requirement.
+     */
+    expect(pixelBShader.transition.honorsDarkBeat).toBe(false);
+    expect(pixelAShader.transition.honorsDarkBeat).toBe(false);
   });
 });
 

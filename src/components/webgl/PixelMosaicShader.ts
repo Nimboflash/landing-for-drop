@@ -508,6 +508,17 @@ export type PixelTransitionSpec = {
   spectralMix: number;
   /** Peak frontier energy, screen-blended so it can never flood. */
   energyGain: number;
+  /**
+   * The two colours the frontier energy mixes between, per cell, as sRGB 0-255 triples.
+   *
+   * A spec field rather than a constant because the two transitions no longer want the same
+   * pair, and because a frontier colour is an art-direction decision that should be legible
+   * next to the transition it belongs to instead of buried in the GLSL.
+   *
+   * Inert wherever `spectralMix` is 0 — the pair is mixed against DROP white by that amount,
+   * so at 0 the energy is achromatic whatever this says.
+   */
+  spectralPair: readonly [readonly [number, number, number], readonly [number, number, number]];
   /** Whether this transition honours the reducer's `darkBeat` flag (brief Section 7.7, step 6). */
   honorsDarkBeat: boolean;
   /** Static colours for the no-WebGL path. */
@@ -521,6 +532,21 @@ export type PixelMosaicModule = BackgroundShaderModule & {
   /** Reads this transition's `{ seed, progress }` out of reducer output. Never computes it. */
   readDescriptor(transitionState: TransitionState): PixelDescriptor | null;
 };
+
+/**
+ * The two ends of transition B's frontier colour, as sRGB 0-255.
+ *
+ * Both are greens, and they are the SAME FAMILY as the acid ground the transition resolves into
+ * rather than a second palette laid over it. HOT is well above the ground so the band still reads
+ * as light arriving — the energy is screen-blended, so a colour darker than the field would do
+ * nothing at all — and COOL sits near the ground so the far cells settle into it instead of
+ * standing out against it.
+ *
+ * Per cell the frontier picks a point between them from its own chroma hash, so the band is a
+ * range of greens rather than one flat colour.
+ */
+const ACID_FRONTIER_HOT = [150, 245, 70] as const;
+const ACID_FRONTIER_COOL = [22, 96, 8] as const;
 
 /**
  * Frontier shaping: how fast the energy falls away ahead of / behind a cell's own flip point.
@@ -547,6 +573,11 @@ const DARK_BEAT_RAMP = 0.05;
 /** Sentinel for "the reducer has not raised the dark beat yet". Progress is never negative. */
 const BEAT_UNSET = -1;
 
+/** An sRGB 0-255 triple as a GLSL vec3 literal, on the plain over-255 convention every shader here uses. */
+function glslRgb255(rgb: readonly [number, number, number]): string {
+  return `vec3(${rgb.map((channel) => (channel / 255).toFixed(5)).join(", ")})`;
+}
+
 function fragmentShader(spec: PixelTransitionSpec): string {
   const fromLook = LOOK_FUNCTION[spec.from];
   const toLook = LOOK_FUNCTION[spec.to];
@@ -572,6 +603,8 @@ ${usesMesh ? "uniform highp float uMeshTime;" : ""}
 ${usesMesh ? MESH_FIELD_UNIFORMS_GLSL : ""}
 
 #define DROP_MOSAIC_SPECTRAL ${glslFloat(spec.spectralMix)}
+#define DROP_MOSAIC_SPECTRAL_A ${glslRgb255(spec.spectralPair[0])}
+#define DROP_MOSAIC_SPECTRAL_B ${glslRgb255(spec.spectralPair[1])}
 #define DROP_MOSAIC_ENERGY ${glslFloat(spec.energyGain)}
 #define DROP_MOSAIC_ENERGY_PRE_FALLOFF ${glslFloat(ENERGY_PRE_FALLOFF)}
 #define DROP_MOSAIC_ENERGY_POST_FALLOFF ${glslFloat(ENERGY_POST_FALLOFF)}
@@ -614,7 +647,7 @@ void main() {
   float heat = mix(pre, post, step(0.0, edge)) * envelope;
 
   float chroma = dropMosaicHash(cell.x, cell.y, uSeedKey + DROP_MOSAIC_CH_CHROMA);
-  vec3 spectral = mix(DROP_ORANGE, DROP_PURPLE, chroma);
+  vec3 spectral = mix(DROP_MOSAIC_SPECTRAL_A, DROP_MOSAIC_SPECTRAL_B, chroma);
   vec3 energyColor = mix(DROP_WHITE, spectral, DROP_MOSAIC_SPECTRAL);
   // Separate channel from the hue, so bright cells are not all the same colour.
   float twinkle = 0.55 + 0.45 * dropMosaicHash(cell.x, cell.y, uSeedKey + DROP_MOSAIC_CH_TWINKLE);
@@ -783,6 +816,8 @@ export const pixelAShader: PixelMosaicModule = createPixelMosaicShader({
   to: "wavyDots",
   spectralMix: 0,
   energyGain: 0.12,
+  // Inert at spectralMix 0; carried so the field is never undefined and the pair is one place.
+  spectralPair: [ACID_FRONTIER_HOT, ACID_FRONTIER_COOL],
   honorsDarkBeat: false,
   fromCss: "#050505",
   toCss: "#000000",
@@ -822,7 +857,31 @@ export const pixelBShader: PixelMosaicModule = createPixelMosaicShader({
    */
   spectralMix: 0.85,
   energyGain: 0.66,
-  honorsDarkBeat: true,
+  /*
+   * A GREEN frontier, not the brief's orange/purple.
+   *
+   * Brief §4 reserves orange and purple for atmospheric energy and §7.7 step 4 asks for them
+   * here; this departs from that by explicit art direction, the same kind of call that moved
+   * this scene onto the acid field in the first place. The reason it reads better is that the
+   * transition is now green on BOTH sides — the dot floor resolves into the acid ground — so a
+   * band of orange crossing the middle was the only thing in the sequence that belonged to no
+   * scene on either side of it.
+   */
+  spectralPair: [ACID_FRONTIER_HOT, ACID_FRONTIER_COOL],
+  /*
+   * The beat stays, the BLACKOUT goes.
+   *
+   * Brief §7.7 step 6 asks for a short empty beat before the Tracks composition enters, and the
+   * reducer still holds it — `entered={!transitionState.darkBeat}` is untouched, so the title and
+   * the carousel are withheld exactly as before. What changed is that the ground no longer dims
+   * to 0.3 underneath it.
+   *
+   * That multiplier was tuned when this transition resolved into the mesh, where 0.3 of a bright
+   * grey still reads as dimmed grey. Against the acid field it is 0.3 of rgb(3, 30, 0) — which is
+   * black. So the sequence went green, black, green, and the beat read as a fault rather than as
+   * a rest. Empty of CONTENT is what step 6 asks for; empty of LIGHT was never the requirement.
+   */
+  honorsDarkBeat: false,
   fromCss: "#000000",
   toCss: "#050604",
 });
