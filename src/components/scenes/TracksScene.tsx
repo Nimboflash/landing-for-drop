@@ -78,7 +78,7 @@
  * Inside: `data-track-title`, `data-track-artist`, `data-track-group` (with `data-track-period`),
  * `data-track-artwork` (`asset` / `placeholder` — rights verdict, or a failed load) and
  * `data-track-source` on
- * an external link. The controls keep `data-carousel-control="prev" | "next"`. Playwright asserts
+ * an external link. Playwright asserts
  * these attributes and text only — never transforms, opacity, or computed styles.
  */
 
@@ -87,7 +87,6 @@ import {
   useCallback,
   useEffect,
   useId,
-  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
@@ -122,8 +121,6 @@ import styles from "./TracksScene.module.css";
  * data (the same reasoning the shell applies to its own control labels). Persian, because
  * Persian is the primary language.
  */
-const CAROUSEL_PREVIOUS_LABEL = "قطعهٔ قبلی";
-const CAROUSEL_NEXT_LABEL = "قطعهٔ بعدی";
 /** Prefix for a case's accessible name; the track's own title and artist complete it. */
 const SELECT_TRACK_LABEL = "نمایش قطعه";
 /** Announced inside an external link, so "opens elsewhere" is never left to a visual cue. */
@@ -161,7 +158,11 @@ const PAINT_ENVIRONMENT: RuntimeEnvironment =
  * and mobile is swipe-first — which keeps three so the neighbours peek in and advertise the
  * swipe. Two slots each side is five positions; one is three.
  */
-export const COVERFLOW_SLOTS = Object.freeze({ desktop: 2, tablet: 1, mobile: 1 });
+export const COVERFLOW_SLOTS = Object.freeze({
+  desktop: 2,
+  tablet: 1,
+  mobile: 1,
+});
 
 /** Brief §15 breakpoints. */
 const DESKTOP_MIN_PX = 1200;
@@ -191,6 +192,32 @@ const CASE_STACK_TOP = 40;
  * rest of the scene.
  */
 const AUTOPLAY_INTERVAL_MS = 4200;
+
+/**
+ * How long the field waits after the reader touches it before it starts advancing again.
+ *
+ * Interaction used to stop the timer FOREVER, and that was wrong twice over. It made a stray
+ * event permanent — and one stray event was easy to come by, because the wheel handler counted
+ * any single frame with more horizontal than vertical delta, which a trackpad produces while
+ * you are simply scrolling the page down past this section. Reaching the carousel at all could
+ * therefore switch its motion off before you had seen it move once.
+ *
+ * A pause that expires cannot fail that way. The worst a spurious event can now do is cost one
+ * turn. Longer than the interval on purpose: a deliberate swipe should get a rest, not a nudge
+ * from the timer a moment later.
+ */
+const AUTOPLAY_RESUME_AFTER_MS = 7000;
+
+/**
+ * How much more horizontal than vertical a wheel gesture must be before the carousel takes it.
+ *
+ * A plain `>` let the jitter either side of a vertical scroll qualify, because deltaX 1 beats
+ * deltaY 0. The margin is what separates a sideways flick from the noise on a downward one.
+ */
+const WHEEL_AXIS_MARGIN = 1.6;
+
+/** Below this, a wheel delta is noise rather than a gesture, whatever its axis. */
+const WHEEL_MIN_DELTA_PX = 2;
 
 /**
  * How much horizontal wheel travel counts as one step.
@@ -296,7 +323,11 @@ export function caseDepth(distance: number, slots: number): number {
  * a wrapping index would break the non-decreasing contract the scroll mapping depends on. What
  * wraps is the picture, not the position.
  */
-export function ringOffset(index: number, activeIndex: number, count: number): number {
+export function ringOffset(
+  index: number,
+  activeIndex: number,
+  count: number,
+): number {
   if (count <= 0) return 0;
   const raw = (((index - activeIndex) % count) + count) % count;
   return raw > Math.floor(count / 2) ? raw - count : raw;
@@ -374,7 +405,20 @@ export function TracksScene({
    * that is answered, and a timer that keeps tugging afterwards is the thing that makes a
    * carousel feel like it is arguing with you.
    */
-  const takenOverRef = useRef(false);
+  /**
+   * When the reader last drove the carousel, as a `performance.now()` reading.
+   *
+   * This replaces a boolean that, once set, never cleared. Autoplay reads it on every tick and
+   * simply skips the turn while the reading is recent, so the field yields to the reader and
+   * then comes back on its own.
+   */
+  const lastInputRef = useRef(Number.NEGATIVE_INFINITY);
+
+  /** Note that the reader drove the field, so the timer stands down for a while. */
+  const noteInput = useCallback(() => {
+    lastInputRef.current =
+      typeof performance === "object" ? performance.now() : Date.now();
+  }, []);
   const dragRef = useRef<DragGesture | null>(null);
   /** True while the click that ends a real drag is still on its way, so it selects nothing. */
   const suppressClickRef = useRef(false);
@@ -390,13 +434,21 @@ export function TracksScene({
    * so the client reproduces the server's HTML exactly, and the real value arrives immediately
    * afterwards as a subscription update rather than as a cascading render.
    */
-  const slots = useSyncExternalStore(subscribeViewport, readSlots, readDefaultSlots);
+  const slots = useSyncExternalStore(
+    subscribeViewport,
+    readSlots,
+    readDefaultSlots,
+  );
   const finePointer = useSyncExternalStore(
     subscribeFinePointer,
     readFinePointer,
     readDefaultFinePointer,
   );
-  const tier = useSyncExternalStore(neverChanges, readQualityTier, readDefaultQualityTier);
+  const tier = useSyncExternalStore(
+    neverChanges,
+    readQualityTier,
+    readDefaultQualityTier,
+  );
 
   /**
    * Pointer tilt is a desktop enhancement and nothing depends on it (brief §15: "No feature may
@@ -404,7 +456,9 @@ export function TracksScene({
    * tier that has already decided it cannot afford pointer response.
    */
   const pointerTiltEnabled =
-    !reducedMotion && finePointer && QUALITY_TIER_SETTINGS[tier].shaderDetail.pointerResponse;
+    !reducedMotion &&
+    finePointer &&
+    QUALITY_TIER_SETTINGS[tier].shaderDetail.pointerResponse;
 
   /** One motion scope for the scene's lifetime; `revert()` kills everything created inside it. */
   useEffect(() => {
@@ -474,7 +528,10 @@ export function TracksScene({
    * sibling rather than its child and would never inherit a property set on the field.
    */
   useEffect(() => {
-    headingRef.current?.style.setProperty("--drop-tracks-progress", clamp01(progress).toFixed(4));
+    headingRef.current?.style.setProperty(
+      "--drop-tracks-progress",
+      clamp01(progress).toFixed(4),
+    );
   }, [progress]);
 
   /* ------------------------------------------------------------------ input */
@@ -486,13 +543,17 @@ export function TracksScene({
    * it is touched — and a reader who does not think to swipe never learns that there are eleven
    * tracks behind the one they can see. The timer is what advertises that.
    *
-   * It goes through `onNext`, the same discrete input the arrows and the keyboard use, so the
-   * reducer stays the only thing that owns the index. Gated four ways: not before the scene is
+   * It goes through `onNext`, the same discrete input the keyboard and a swipe use, so the
+   * reducer stays the only thing that owns the index. Gated three ways: not before the scene is
    * the active one, not under reduced motion (brief §16 — motion is the thing being removed),
-   * not while the tab is in the background, and never again once `takenOverRef` is set.
+   * and not while the tab is in the background.
+   *
+   * Reader input does NOT stop it, it defers it — see AUTOPLAY_RESUME_AFTER_MS. The timer keeps
+   * running and skips its turn while the last input is recent, so the field gets out of the way
+   * and then comes back without needing anything to start it again.
    */
   useEffect(() => {
-    if (!sceneActive || reducedMotion || takenOverRef.current) return;
+    if (!sceneActive || reducedMotion) return;
 
     let timer: number | undefined;
     const stop = () => {
@@ -502,10 +563,11 @@ export function TracksScene({
     const start = () => {
       stop();
       timer = window.setInterval(() => {
-        if (takenOverRef.current) {
-          stop();
-          return;
-        }
+        const now =
+          typeof performance === "object" ? performance.now() : Date.now();
+        // Yield the turn while the reader is still driving; the timer itself keeps running, so
+        // the field picks itself back up without needing anything to restart it.
+        if (now - lastInputRef.current < AUTOPLAY_RESUME_AFTER_MS) return;
         onNext();
       }, AUTOPLAY_INTERVAL_MS);
     };
@@ -538,9 +600,13 @@ export function TracksScene({
 
     let carried = 0;
     const onWheel = (event: WheelEvent) => {
-      if (Math.abs(event.deltaX) <= Math.abs(event.deltaY)) return;
+      const across = Math.abs(event.deltaX);
+      const down = Math.abs(event.deltaY);
+      // Sideways, decisively, and big enough to be a gesture at all.
+      if (across < WHEEL_MIN_DELTA_PX || across <= down * WHEEL_AXIS_MARGIN)
+        return;
       event.preventDefault();
-      takenOverRef.current = true;
+      noteInput();
 
       carried += event.deltaX;
       while (carried >= WHEEL_STEP_PX) {
@@ -555,12 +621,12 @@ export function TracksScene({
 
     stage.addEventListener("wheel", onWheel, { passive: false });
     return () => stage.removeEventListener("wheel", onWheel);
-  }, [onNext, onPrevious]);
+  }, [onNext, onPrevious, noteInput]);
 
   const handleKeyDown = useCallback(
     (event: ReactKeyboardEvent<HTMLDivElement>) => {
       if (event.altKey || event.ctrlKey || event.metaKey) return;
-      takenOverRef.current = true;
+      noteInput();
       // A key means the pointer sequence is over. A drag that ended without producing a click
       // would otherwise leave the suppression flag armed, and swallow the click that an Enter or
       // a Space on the focused case is about to fire.
@@ -584,25 +650,28 @@ export function TracksScene({
       }
       event.preventDefault();
     },
-    [count, onNext, onPrevious, onSelect],
+    [count, onNext, onPrevious, onSelect, noteInput],
   );
 
-  const handlePointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
-    if (event.pointerType === "mouse" && event.button !== 0) return;
-    takenOverRef.current = true;
-    const stage = stageRef.current;
-    if (!stage) return;
-    const width = stage.getBoundingClientRect().width;
-    suppressClickRef.current = false;
-    dragRef.current = {
-      pointerId: event.pointerId,
-      startX: event.clientX,
-      startY: event.clientY,
-      anchorX: event.clientX,
-      axis: "none",
-      step: Math.max(DRAG_MIN_STEP_PX, width * DRAG_STEP_FRACTION),
-    };
-  }, []);
+  const handlePointerDown = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (event.pointerType === "mouse" && event.button !== 0) return;
+      noteInput();
+      const stage = stageRef.current;
+      if (!stage) return;
+      const width = stage.getBoundingClientRect().width;
+      suppressClickRef.current = false;
+      dragRef.current = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        anchorX: event.clientX,
+        axis: "none",
+        step: Math.max(DRAG_MIN_STEP_PX, width * DRAG_STEP_FRACTION),
+      };
+    },
+    [noteInput],
+  );
 
   const handlePointerMove = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -612,14 +681,19 @@ export function TracksScene({
 
       const gesture = dragRef.current;
       if (!gesture || gesture.pointerId !== event.pointerId) {
-        if (pointerTiltEnabled) applyTilt(root, stage, event.clientX, event.clientY);
+        if (pointerTiltEnabled)
+          applyTilt(root, stage, event.clientX, event.clientY);
         return;
       }
 
       if (gesture.axis === "none") {
         const dx = event.clientX - gesture.startX;
         const dy = event.clientY - gesture.startY;
-        if (Math.abs(dx) < DRAG_AXIS_LOCK_PX && Math.abs(dy) < DRAG_AXIS_LOCK_PX) return;
+        if (
+          Math.abs(dx) < DRAG_AXIS_LOCK_PX &&
+          Math.abs(dy) < DRAG_AXIS_LOCK_PX
+        )
+          return;
         // A vertical gesture belongs to the page, not to the carousel: never fight the scroll.
         gesture.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
         if (gesture.axis !== "x") return;
@@ -633,6 +707,16 @@ export function TracksScene({
         }
       }
       if (gesture.axis !== "x") return;
+
+      /*
+       * Keep the timer at bay for as long as the drag lasts.
+       *
+       * The press already stamped the clock, but that stamp expires — a reader who holds a slow
+       * drag for longer than the resume window would have the field start advancing underneath
+       * their own finger. Re-stamping on every committed move makes the pause last exactly as
+       * long as the gesture does.
+       */
+      noteInput();
 
       // Every threshold crossed is one event into the reducer — the carousel keeps no index.
       let travel = event.clientX - gesture.anchorX;
@@ -653,7 +737,7 @@ export function TracksScene({
       );
       root.style.setProperty("--drop-tracks-drag", `${lean.toFixed(1)}px`);
     },
-    [onNext, onPrevious, pointerTiltEnabled],
+    [onNext, onPrevious, pointerTiltEnabled, noteInput],
   );
 
   const endDrag = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
@@ -662,7 +746,8 @@ export function TracksScene({
     dragRef.current = null;
 
     const stage = stageRef.current;
-    if (stage?.hasPointerCapture(event.pointerId)) stage.releasePointerCapture(event.pointerId);
+    if (stage?.hasPointerCapture(event.pointerId))
+      stage.releasePointerCapture(event.pointerId);
 
     const root = rootRef.current;
     if (!root) return;
@@ -681,26 +766,16 @@ export function TracksScene({
     [endDrag],
   );
 
-  const takeOverAnd = useCallback(
-    (act: () => void) => () => {
-      takenOverRef.current = true;
-      act();
-    },
-    [],
-  );
-  const handlePrevious = useMemo(() => takeOverAnd(onPrevious), [takeOverAnd, onPrevious]);
-  const handleNext = useMemo(() => takeOverAnd(onNext), [takeOverAnd, onNext]);
-
   const handleSelect = useCallback(
     (index: number) => {
-      takenOverRef.current = true;
+      noteInput();
       if (suppressClickRef.current) {
         suppressClickRef.current = false;
         return;
       }
       onSelect(index);
     },
-    [onSelect],
+    [onSelect, noteInput],
   );
 
   /* ----------------------------------------------------------------- render */
@@ -815,7 +890,10 @@ export function TracksScene({
                             plastic both pass over its left edge rather than under it.
                           */}
                           <span className={styles.caseBody}>
-                            <TrackDisc track={track} environment={PAINT_ENVIRONMENT} />
+                            <TrackDisc
+                              track={track}
+                              environment={PAINT_ENVIRONMENT}
+                            />
                             <span className={styles.spine} aria-hidden="true" />
                             <span className={styles.gloss} aria-hidden="true" />
                           </span>
@@ -850,7 +928,10 @@ export function TracksScene({
                           <span data-track-title lang="en" dir="ltr">
                             {track.title}
                           </span>
-                          <span className="visually-hidden"> ({EXTERNAL_LINK_NOTE})</span>
+                          <span className="visually-hidden">
+                            {" "}
+                            ({EXTERNAL_LINK_NOTE})
+                          </span>
                         </a>
                       ) : (
                         <span data-track-title lang="en" dir="ltr">
@@ -858,10 +939,19 @@ export function TracksScene({
                         </span>
                       )}
                     </p>
-                    <p className={styles.artist} data-track-artist lang="en" dir="ltr">
+                    <p
+                      className={styles.artist}
+                      data-track-artist
+                      lang="en"
+                      dir="ltr"
+                    >
                       {track.artist}
                     </p>
-                    <p className={styles.group} data-track-group data-track-period={track.period}>
+                    <p
+                      className={styles.group}
+                      data-track-group
+                      data-track-period={track.period}
+                    >
                       {track.groupTitle.fa}
                     </p>
                   </div>
@@ -871,35 +961,26 @@ export function TracksScene({
           </ol>
 
           {/*
-            Brief §7.8 and §15: visible arrow controls, keyboard accessible, on every viewport.
-            Never disabled at the ends — the reducer clamps the index, and a control that
-            disappears from the interaction model at the edges is a control that cannot be
-            relied on.
+            There are no arrow controls, and their absence is a decision rather than an omission.
+
+            Brief §7.8 and §15 ask for visible arrows on every viewport. An explicit art direction
+            removed them: the field advances itself, and a pair of chevrons parked over it read as
+            furniture sitting on the one composition that is meant to be all motion.
+
+            Nothing was removed from the INTERACTION model with them, which is the reason this is
+            safe. Every path they offered is still here and still reaches the same reducer actions:
+
+              pointer drag / touch swipe   handlePointerDown ... endDrag
+              trackpad horizontal wheel    the native wheel listener
+              click an off-centre case     handleSelect, on .caseButton
+              keyboard                     handleKeyDown on this group: ArrowLeft / ArrowRight,
+                                           Home / End, with every case in the tab order
+
+            The keyboard path is the one that would have made this an accessibility regression, so
+            it is worth being precise: the handler is bound on the group, each case is a real
+            <button>, and key events bubble from the focused case to it. A reader on a keyboard
+            tabs to any case and drives the carousel from there, exactly as before.
           */}
-          <button
-            type="button"
-            className={`${styles.control} ${styles.previous}`}
-            data-carousel-control="prev"
-            tabIndex={sceneActive ? 0 : -1}
-            aria-label={CAROUSEL_PREVIOUS_LABEL}
-            onClick={handlePrevious}
-          >
-            <span className={styles.controlGlyph} aria-hidden="true">
-              ‹
-            </span>
-          </button>
-          <button
-            type="button"
-            className={`${styles.control} ${styles.next}`}
-            data-carousel-control="next"
-            tabIndex={sceneActive ? 0 : -1}
-            aria-label={CAROUSEL_NEXT_LABEL}
-            onClick={handleNext}
-          >
-            <span className={styles.controlGlyph} aria-hidden="true">
-              ›
-            </span>
-          </button>
         </div>
       </div>
     </>
@@ -937,7 +1018,10 @@ function TrackDisc({
   const painted = canDisplayAsset(asset, environment) && !loadFailed;
 
   return (
-    <span className={styles.disc} data-track-artwork={painted ? "asset" : "placeholder"}>
+    <span
+      className={styles.disc}
+      data-track-artwork={painted ? "asset" : "placeholder"}
+    >
       {painted ? (
         <Image
           className={styles.discArtwork}
@@ -997,7 +1081,8 @@ function readDefaultSlots(): number {
 const FINE_POINTER_QUERY = "(pointer: fine)";
 
 function finePointerQuery(): MediaQueryList | null {
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return null;
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function")
+    return null;
   try {
     return window.matchMedia(FINE_POINTER_QUERY);
   } catch {
@@ -1045,7 +1130,10 @@ const ACTIVE_CASE_SELECTOR = `[data-track][data-active="true"] [${CASE_ATTRIBUTE
  * scene is pinned, and letting the browser scroll a newly focused element into view would move
  * the very scroll position the reducer is reading its progress from.
  */
-function followFocusToActiveCase(root: HTMLElement | null, dragging: boolean): void {
+function followFocusToActiveCase(
+  root: HTMLElement | null,
+  dragging: boolean,
+): void {
   if (!root || dragging || typeof document === "undefined") return;
 
   const focused = document.activeElement;
@@ -1061,7 +1149,12 @@ function followFocusToActiveCase(root: HTMLElement | null, dragging: boolean): v
  * transition on the tilt layer rather than by a tween, so the follow costs no timeline and
  * nothing is left ticking when the pointer leaves.
  */
-function applyTilt(root: HTMLElement, stage: HTMLElement, clientX: number, clientY: number): void {
+function applyTilt(
+  root: HTMLElement,
+  stage: HTMLElement,
+  clientX: number,
+  clientY: number,
+): void {
   const rect = stage.getBoundingClientRect();
   if (rect.width === 0 || rect.height === 0) return;
   const x = ((clientX - rect.left) / rect.width - 0.5) * 2;

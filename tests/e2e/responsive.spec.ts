@@ -57,9 +57,18 @@ const VIEWPORTS: ReadonlyArray<{ label: string; width: number; height: number; b
 
 /**
  * Brief §15: "Five-position music coverflow where space allows" on desktop, "Three-position
- * coverflow" on tablet. Mobile is specified as swipe-first with visible arrow controls and is
- * given no number — so mobile is asserted as "fewer than the desktop field, but a neighbour still
- * peeks on each side to advertise the gesture" rather than against an invented figure.
+ * coverflow" on tablet. Mobile is specified as swipe-first and is given no number.
+ *
+ * §15 wrote that mobile line as "Tracks are swipe-first, with visible arrow controls", and §7.8
+ * as "Left/right arrow controls are available and keyboard accessible". An explicit ART DIRECTION
+ * has since removed the arrow buttons from the composition, so the citation no longer describes
+ * anything in the DOM. What it was asking for — a way to step the field that is not the swipe
+ * itself — is now carried by a tap on an off-centre case and by the carousel's roving-tabindex
+ * keyboard path (ArrowLeft / ArrowRight / Home / End on the `[data-tracks-carousel]` group), both
+ * reaching the same reducer actions the arrows did. Mobile is still asserted as "fewer than the
+ * desktop field, but a neighbour still peeks on each side to advertise the gesture" rather than
+ * against an invented figure — with the arrows gone, that peeking neighbour is also the only
+ * thing advertising the gesture, which makes the range below load-bearing rather than decorative.
  */
 const COVERFLOW_POSITIONS: Record<"desktop" | "tablet", number> = { desktop: 5, tablet: 3 };
 const MOBILE_COVERFLOW_RANGE = { min: 2, max: 3 };
@@ -152,6 +161,22 @@ async function scrollIntoScene(page: Page, sceneId: string, steps = 80): Promise
       break;
     }
   }
+}
+
+/**
+ * Step the tracks carousel from the keyboard, the way a reader without a pointer does.
+ *
+ * This file used to drive the carousel through its arrow controls; an explicit art direction
+ * removed them, and nothing was removed from the interaction model with them. The key handler
+ * sits on the `[data-tracks-carousel]` group and the cases use a ROVING TABINDEX — exactly one
+ * case is tabbable, the active one — so a key pressed on the centre case bubbles to the group and
+ * reaches the same reducer actions the arrows reached: ArrowLeft / ArrowRight step, Home / End
+ * jump. The locator is re-resolved on every press on purpose: each step moves which case is
+ * centred, and therefore which button is the carousel's single tab stop.
+ */
+async function pressTrackKey(page: Page, key: string): Promise<void> {
+  await page.locator("[data-track][data-active='true'] button").press(key, { timeout: 20_000 });
+  await settle(page);
 }
 
 /** A required bounding box. Fails loudly rather than letting a `null` disable an assertion. */
@@ -259,51 +284,37 @@ test("pinning is preserved across every viewport", async ({ page }) => {
 /* ============================================================================ §15 coverflow */
 
 for (const viewport of VIEWPORTS) {
-  test(`${viewport.label}: the coverflow paints the positions §15 allows, with arrow controls`, async ({
-    page,
-  }) => {
+  test(`${viewport.label}: the coverflow paints the positions §15 allows`, async ({ page }) => {
     await openAt(page, viewport.width, viewport.height);
     await scrollIntoScene(page, "tracks");
 
-    const previous = page.locator("[data-carousel-control='prev']");
-    const next = page.locator("[data-carousel-control='next']");
+    const carousel = page.locator("[data-tracks-carousel]");
     const active = page.locator("[data-track][data-active='true']");
     const inField = page.locator("[data-track][data-in-field='true']");
 
-    // Brief §15 mobile: "Tracks are swipe-first, with visible arrow controls." Asserted as real
-    // geometry rather than through Playwright's visibility heuristic: both controls have a real
-    // box, and both boxes are inside the viewport the reader is looking at.
-    await expect(previous).toHaveCount(1);
-    await expect(next).toHaveCount(1);
-    for (const [name, control] of [
-      ["prev", "[data-carousel-control='prev']"],
-      ["next", "[data-carousel-control='next']"],
-    ] as const) {
-      const box = await boxOf(page, control, `${viewport.label} ${name} control`);
-      expect(box.width, `${name} control has no width`).toBeGreaterThan(0);
-      expect(box.height, `${name} control has no height`).toBeGreaterThan(0);
-      expect(box.x, `${name} control sits off the left edge`).toBeGreaterThanOrEqual(-EPSILON);
-      expect(
-        box.x + box.width,
-        `${name} control sits off the right edge`,
-      ).toBeLessThanOrEqual(viewport.width + EPSILON);
-      expect(box.y, `${name} control sits above the fold`).toBeGreaterThanOrEqual(-EPSILON);
-      expect(
-        box.y + box.height,
-        `${name} control sits below the fold`,
-      ).toBeLessThanOrEqual(viewport.height + EPSILON);
-    }
+    // DELETED, with its subject: the block that took both arrow controls' bounding boxes and
+    // required each to have a real box inside the viewport at all four sizes — the geometric half
+    // of §15's "visible arrow controls". The arrow buttons and their data hook no longer exist in
+    // the DOM by art direction, and "the arrows are on screen" has no weaker form worth
+    // asserting, so that coverage is gone rather than watered down. Nothing was substituted for
+    // it here: the only on-screen geometry left in the tracks scene belongs to the CASES, and how
+    // many of those paint at this band is what the rest of this test already measures. The other
+    // half of the citation — keyboard reachability and labelling — is accessibility.spec.ts's.
+    await expect(carousel).toHaveCount(1);
 
-    // Drive the carousel to an index with room on both sides. The controls are the input under
-    // test — no hover, no wheel, no keyboard.
-    for (let click = 0; click < COUNT_FIELD_AT_INDEX + 2; click += 1) {
-      await previous.click({ timeout: 20_000 });
-    }
+    // Drive the carousel to an index with room on both sides. The keyboard is the input under
+    // test — no hover, no wheel, no drag. `Home` lands on the first track whatever the scroll
+    // left behind, and each `ArrowRight` is one step along the field, which is composed
+    // left-to-right whatever `dir` the text inside it carries.
+    await pressTrackKey(page, "Home");
     await expect(active).toHaveAttribute("data-index", "0");
-    for (let click = 0; click < COUNT_FIELD_AT_INDEX; click += 1) {
-      await next.click({ timeout: 20_000 });
+    for (let step = 0; step < COUNT_FIELD_AT_INDEX; step += 1) {
+      await pressTrackKey(page, "ArrowRight");
     }
     await expect(active).toHaveAttribute("data-index", String(COUNT_FIELD_AT_INDEX));
+    // The group reflects the index it was driven to, so the keys reached the machine rather than
+    // merely moving focus around the field.
+    await expect(carousel).toHaveAttribute("data-track-index", String(COUNT_FIELD_AT_INDEX));
 
     const painted = await inField.count();
     if (viewport.band === "mobile") {
@@ -487,22 +498,33 @@ test("no feature depends on hover: mobile reads and drives the page without one"
 
   await scrollIntoScene(page, "tracks");
   const active = page.locator("[data-track][data-active='true']");
-  const next = page.locator("[data-carousel-control='next']");
 
-  // The carousel advances from a control press, with no pointer ever resting on the field.
-  // Rewound to the first slide first, so the step under test can never be a clamp at the end.
-  const previous = page.locator("[data-carousel-control='prev']");
-  const trackCount = await page.locator("[data-track]").count();
-  for (let click = 0; click < trackCount; click += 1) {
-    await previous.click({ timeout: 20_000 });
-  }
+  // The carousel advances with no pointer ever resting on the field — the keyboard has no hover
+  // state at all (brief §16). Rewound to the first slide first, so the step under test can never
+  // be a clamp at the end.
+  await pressTrackKey(page, "Home");
   await expect(active).toHaveAttribute("data-index", "0");
-  await next.click({ timeout: 20_000 });
+  await pressTrackKey(page, "ArrowRight");
   await expect(active).toHaveAttribute("data-index", "1");
 
-  // …and from the keyboard, which has no hover state at all (brief §16).
-  await page.locator("[data-carousel-control='next']").focus();
-  await expect(next).toBeFocused();
+  // The keyboard reaches the field on its own, with no pointer having touched it: the roving
+  // tabindex keeps exactly one case tabbable — the centre one — and that is the tab stop the
+  // arrow keys above were driven from. Asserted here, before any click: a click scrolls its
+  // target into view, and a scene that has been nudged out of the viewport lets its tab stop go.
+  const activeCase = page.locator("[data-track][data-active='true'] button").first();
+  await expect(activeCase).toHaveAttribute("tabindex", "0");
+  await activeCase.focus();
+  await expect(activeCase).toBeFocused();
+
+  // …and the field advances from a TAP on an off-centre case: a press, never a hover, which is
+  // the affordance a touch reader has now that the arrow controls are gone by art direction. The
+  // pressed case's own index is read first, so the assertion is "the case you pressed became the
+  // centre one" rather than a guess about which neighbour the field was offering.
+  const neighbour = page.locator("[data-track][data-in-field='true']:not([data-active='true'])");
+  const neighbourIndex = await neighbour.first().getAttribute("data-index");
+  expect(neighbourIndex, "the field paints no neighbour to press").not.toBeNull();
+  await neighbour.first().locator("button").click({ timeout: 20_000 });
+  await expect(active).toHaveAttribute("data-index", String(neighbourIndex));
 });
 
 /* ------------------------------------------------------------------------------ tiny helper */

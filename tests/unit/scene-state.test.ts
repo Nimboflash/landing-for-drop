@@ -675,17 +675,26 @@ describe.each(COUNT_FIXTURES)("scene state driven by %s", (_label, counts) => {
     expect(state.transitionState.trackIndex).toBe(2);
   });
 
-  it("clamps the carousel at the first and last track", () => {
+  it("wraps the carousel at both ends, and clamps a jump that lands out of range", () => {
+    /*
+     * Stepping WRAPS. The coverflow field is a ring — the last case is painted next to the first
+     * — and an index that stopped at the end contradicted what the reader could see, as well as
+     * leaving a self-advancing carousel parked on its last track for good.
+     */
     const last = counts.tracks - 1;
     let state = enter(counts, "tracks");
 
     state = sceneStateReducer(state, { type: "carouselPrev" }, counts);
+    expect(state.transitionState.trackIndex).toBe(last);
+
+    state = sceneStateReducer(state, { type: "carouselNext" }, counts);
     expect(state.transitionState.trackIndex).toBe(0);
 
     state = sceneStateReducer(state, { type: "carouselTo", index: last }, counts);
     state = sceneStateReducer(state, { type: "carouselNext" }, counts);
-    expect(state.transitionState.trackIndex).toBe(last);
+    expect(state.transitionState.trackIndex).toBe(0);
 
+    // A jump, by contrast, is contained rather than taken round the loop.
     state = sceneStateReducer(state, { type: "carouselTo", index: counts.tracks + 99 }, counts);
     expect(state.transitionState.trackIndex).toBe(last);
 

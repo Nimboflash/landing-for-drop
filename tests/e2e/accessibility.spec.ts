@@ -137,8 +137,15 @@ const FILM_TITLES_EN = ["SHOWING UP", "PERFECT DAYS", "PATERSON"] as const;
  * from the components they are declared in. Persian, because Persian is the primary language.
  */
 const SKIP_LINK_LABEL_FA = "پرش به محتوای اصلی";
-const CAROUSEL_PREVIOUS_LABEL_FA = "قطعهٔ قبلی";
-const CAROUSEL_NEXT_LABEL_FA = "قطعهٔ بعدی";
+/**
+ * The prefix of a case button's accessible name; the track's own title and artist complete it
+ * (`نمایش قطعه: <title> — <artist>`).
+ *
+ * This is the string §16's "controls have accessible labels" now rests on for the carousel: the
+ * case buttons are its only controls. The two previous/next label constants that used to sit here
+ * were deleted with the arrow controls they named — see the carousel tests below.
+ */
+const SELECT_TRACK_LABEL_FA = "نمایش قطعه";
 
 /** Brief §7.10: five metadata slots, all disabled until final destinations exist. */
 const FOOTER_SLOT_COUNT = 5;
@@ -544,6 +551,25 @@ test("the decorative WebGL canvas is hidden from assistive technology and not fo
  * Brief §16: "Carousel supports keyboard arrows and clear focus states" and "Controls have
  * accessible labels".
  *
+ * ## The arrow controls are gone, and that is a decision
+ *
+ * Brief §7.8 and §15 ask for a visible previous/next pair over the field on every viewport. An
+ * explicit art direction removed them: the two chevron buttons, their data hooks and their Persian
+ * labels are all gone from the DOM. The citation is not dropped, it moves — what §16 asks of "the
+ * carousel's controls" is now carried entirely by the cases:
+ *
+ * | what the arrows carried | what carries it now |
+ * | --- | --- |
+ * | a labelled control for the reader to find | every case is a `<button>` named from its track |
+ * | a tab stop into the carousel | the roving tabindex — the active case, and only it |
+ * | prev / next dispatched to the reducer | the group's key handler: `ArrowLeft` / `ArrowRight` |
+ * | a click target that selects another track | the case's own `onClick` |
+ *
+ * DELETED WITH THEM, and deliberately not softened into something that still passes: that each
+ * control exists on every viewport, that it carries its own Persian `aria-label`, and that it is
+ * never disabled at the ends of the playlist. Those assertions have no subject left. (Arrow
+ * placement and the 44px touch target were never this file's box — they were `responsive.spec.ts`'s.)
+ *
  * Focus visibility is asserted as `:focus-visible` matching — the selector the stylesheet keys its
  * ring off — rather than by reading a computed outline, which would be testing the styling layer.
  */
@@ -553,42 +579,50 @@ test("every carousel control is keyboard operable, labelled, and shows a visible
   await openJourney(page);
   await scrollIntoScene(page, "tracks", 0.4);
 
-  const controls: ReadonlyArray<readonly [string, string]> = [
-    ['[data-carousel-control="prev"]', CAROUSEL_PREVIOUS_LABEL_FA],
-    ['[data-carousel-control="next"]', CAROUSEL_NEXT_LABEL_FA],
-  ];
-
-  for (const [selector, label] of controls) {
-    const control = page.locator(selector);
-    await expect(control, `${selector} exists on every viewport`).toHaveCount(1);
-    await expect(control).toHaveAttribute("aria-label", label);
-    // Never disabled at the ends — a control that leaves the interaction model at an edge is a
-    // control a keyboard user cannot rely on (brief §7.8).
-    await expect(control).not.toBeDisabled();
-
-    await control.focus();
-    const report = await focusReport(page);
-    expect(report?.label, `${selector} takes focus`).toBe(label);
-    expect(report?.focusVisible, `${selector} matches :focus-visible when focused`).toBe(true);
+  // Every case the field paints is a named control, and the name is built from the track's own
+  // data — never a bare "button", never an index.
+  const caseLabels = await page.evaluate(() =>
+    [...document.querySelectorAll("[data-track][data-in-field='true'] [data-track-case]")].map(
+      (element) => element.getAttribute("aria-label") ?? "",
+    ),
+  );
+  expect(caseLabels.length, "the painted field has cases to check").toBeGreaterThan(0);
+  for (const label of caseLabels) {
+    expect(label, "a case announces itself as a track selector").toContain(SELECT_TRACK_LABEL_FA);
+    expect(
+      TRACK_TITLES_EN.some((title) => label.includes(title)),
+      `the case label names its track — got "${label}"`,
+    ).toBe(true);
   }
 
-  // The active case is the carousel's single tab stop, and it is labelled from the track data.
+  // The roving tabindex is what replaced the pair of always-tabbable chevrons: exactly one case is
+  // tabbable, and it is the active one.
+  await expect(
+    page.locator('[data-track] [data-track-case][tabindex="0"]'),
+    "the carousel offers exactly one tab stop",
+  ).toHaveCount(1);
   const activeCase = page.locator('[data-track][data-active="true"] [data-track-case]');
+  await expect(activeCase, "and that tab stop is the active case").toHaveAttribute("tabindex", "0");
+  // Never disabled — a control that leaves the interaction model is a control a keyboard user
+  // cannot rely on.
+  await expect(activeCase).not.toBeDisabled();
+
   await activeCase.focus();
   const caseReport = await focusReport(page);
   expect(caseReport?.focusVisible, "the active case shows a visible focus state").toBe(true);
-  const caseLabel = caseReport?.label ?? "";
-  expect(
-    TRACK_TITLES_EN.some((title) => caseLabel.includes(title)),
-    `the case label names its track — got "${caseLabel}"`,
-  ).toBe(true);
+  expect(caseReport?.label ?? "", "the focused case is the one that is announced").toContain(
+    SELECT_TRACK_LABEL_FA,
+  );
 
-  // Operating the controls from the keyboard, not by clicking them.
+  // Operating a control from the keyboard, not by clicking it. A case is a real button, so Enter
+  // and Space both activate it and both reach the same reducer action a pointer click does; the
+  // selection is by absolute index, so it says where the field landed and not merely that it moved.
+  // (Reaching a neighbour with the arrow keys is the next test's subject.)
   const start = await trackIndex(page);
-  await page.locator('[data-carousel-control="next"]').focus();
+  await page.locator(`[data-track][data-index="${start + 1}"] [data-track-case]`).focus();
   await page.keyboard.press("Enter");
   await expect.poll(() => trackIndex(page)).toBe(start + 1);
-  await page.locator('[data-carousel-control="prev"]').focus();
+  await page.locator(`[data-track][data-index="${start}"] [data-track-case]`).focus();
   await page.keyboard.press("Space");
   await expect.poll(() => trackIndex(page)).toBe(start);
 });
@@ -630,8 +664,8 @@ test("the tracks carousel advances and retreats with the arrow keys", async ({ p
  *
  * Sequential `Tab` traversal is asserted on engines with a standard tab order. **Safari is
  * excluded**: with "Full Keyboard Access" off — its factory default — WebKit's `Tab` visits only
- * form controls and elements carrying an explicit `tabindex`, so the skip link and the arrow
- * buttons are skipped there. That is a browser preference, applied to every site, not a property
+ * form controls and elements carrying an explicit `tabindex`, so the skip link is skipped there
+ * and the cycle never starts. That is a browser preference, applied to every site, not a property
  * of this page; the substance (each control focusable, labelled, `:focus-visible`, and operable
  * from the keyboard) is asserted on every engine by the tests above.
  */
@@ -666,11 +700,14 @@ test("a keyboard-only visitor can operate the page without a pointer", async ({
     expect(stop.insideFooter, "the disabled footer slots are not focusable").toBe(false);
   }
 
-  // The carousel's controls are all reachable this way.
-  expect(stops.flatMap((stop) => stop.hookNames)).toContain("data-track-case");
-  const hooks = stops.flatMap((stop) => stop.hooks);
-  expect(hooks).toContain("data-carousel-control=prev");
-  expect(hooks).toContain("data-carousel-control=next");
+  // The carousel is reachable this way, and it costs the page exactly one tab stop: with the arrow
+  // controls gone, the roving tabindex on the cases is the whole of the carousel's tab order.
+  // (Deleted with the arrows: the two assertions that the previous and next control hooks turn up
+  // among these stops.)
+  const caseStops = stops.filter((stop) => stop.hookNames.includes("data-track-case"));
+  expect(caseStops, "the carousel contributes exactly one tab stop — the active case").toHaveLength(
+    1,
+  );
 
   // Activating the skip link moves focus into the main landmark.
   await page.keyboard.press("Home");
@@ -954,7 +991,7 @@ test("axe reports no WCAG A/AA violations across the journey", async ({ page }) 
  * | 5 | pixelA / mosaic | mid-transition, ~50% replaced — the highest-variance ground on the page | any statement text still held over the mosaic |
  * | 6 | films / WavyDots | a frame where a bright dot band crosses the left text column | view label, film title, director/year meta, rationale, and the poster credit line |
  * | 7 | pixelB / mosaic | mid-transition, through the orange/purple energy beat | any film text still on screen during the fade |
- * | 8 | tracks / MonochromeMesh | the mesh at its lightest (its controls run up to #E4E4E6) | track title, artist, group label, and the arrow-control glyphs |
+ * | 8 | tracks / MonochromeMesh | the mesh at its lightest (its controls run up to #E4E4E6) | track title, artist, and the group label — the arrow-control glyphs this row used to name were removed by art direction, and no control text is left over the field |
  * | 9 | artPieces / MonochromeMesh "reading" variant | the lightest reading frame | index, category, creator/year, rationale, and the media credit |
  * | 10 | footer / FooterLight | the beam at full intensity, crossing the closing block | the closing statement, the disabled CTA text, and the five metadata slots |
  *

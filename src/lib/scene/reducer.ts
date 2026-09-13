@@ -499,6 +499,32 @@ function applyScrollProgress(
   return sameSceneState(state, next) ? state : next;
 }
 
+/**
+ * Move the carousel, WRAPPING at both ends.
+ *
+ * The field was already a ring — `ringOffset` in the scene puts track 0 next to the last one, so
+ * the reader can see the playlist join up. The index clamped instead, which meant the two
+ * disagreed: the case after the last one was visible on screen and unreachable by going forward.
+ *
+ * A clamp is also the wrong shape for a carousel that advances itself. It ran to the end and
+ * then sat there, and every later step — a swipe, a key, the timer — did nothing at all. What
+ * looked like the autoplay having died was the index having arrived.
+ *
+ * Stepping wraps; `carouselTo` still CLAMPS, because a jump to an index out of range is a
+ * mistake to be contained rather than a lap to be taken.
+ */
+function stepTrackIndex(state: SceneState, delta: number, counts: LensCounts): SceneState {
+  const total = Math.max(1, counts.tracks);
+  const current = state.transitionState.trackIndex;
+  // `%` keeps the sign of the dividend in JS, so a step back from 0 needs the extra `+ total`.
+  const wrapped = (((current + delta) % total) + total) % total;
+  if (wrapped === current) return state;
+  return {
+    ...state,
+    transitionState: { ...state.transitionState, trackIndex: wrapped },
+  };
+}
+
 function withTrackIndex(state: SceneState, trackIndex: number, counts: LensCounts): SceneState {
   const clamped = clampInt(trackIndex, 0, lastIndex(counts.tracks));
   if (clamped === state.transitionState.trackIndex) return state;
@@ -511,8 +537,8 @@ function withTrackIndex(state: SceneState, trackIndex: number, counts: LensCount
 /**
  * `(state, event, counts) -> state`. Pure, deterministic, GPU-free.
  *
- * Carousel events are accepted in any scene — the tracks carousel is the only consumer, and
- * clamping to `0..counts.tracks - 1` keeps the index in range at both ends.
+ * Carousel events are accepted in any scene — the tracks carousel is the only consumer. Stepping
+ * wraps around the playlist; `carouselTo` clamps to `0..counts.tracks - 1`.
  */
 export function sceneStateReducer(
   state: SceneState,
@@ -524,10 +550,10 @@ export function sceneStateReducer(
       return applyScrollProgress(state, event.sceneId, event.progress, counts);
 
     case "carouselNext":
-      return withTrackIndex(state, state.transitionState.trackIndex + 1, counts);
+      return stepTrackIndex(state, 1, counts);
 
     case "carouselPrev":
-      return withTrackIndex(state, state.transitionState.trackIndex - 1, counts);
+      return stepTrackIndex(state, -1, counts);
 
     case "carouselTo":
       return withTrackIndex(state, event.index, counts);

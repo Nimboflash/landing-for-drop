@@ -575,57 +575,6 @@
 
 /* ----------------------------------------------------------------- controls */
 
-/*
- * Visible on every viewport and never disabled at the ends (brief §7.8, §15). Square, outlined,
- * and above the field so a neighbouring case can never intercept the press.
- */
-.control {
-  position: absolute;
-  /* Level with the middle of the case, whatever the case's size at this breakpoint. */
-  top: calc(var(--case-height) / 2);
-  z-index: 50;
-  display: grid;
-  place-items: center;
-  width: 3rem;
-  height: 3rem;
-  padding: 0;
-  border: 1px solid rgba(255, 255, 255, 0.38);
-  border-radius: 0;
-  background: rgba(0, 0, 0, 0.45);
-  color: var(--drop-white);
-  cursor: pointer;
-  transform: translateY(-50%);
-  transition:
-    background-color 240ms var(--ease-material),
-    border-color 240ms var(--ease-material);
-}
-
-.control:hover {
-  background: rgba(255, 255, 255, 0.14);
-  border-color: rgba(255, 255, 255, 0.7);
-}
-
-.control:focus-visible {
-  outline: 2px solid var(--drop-orange);
-  outline-offset: 3px;
-}
-
-.previous {
-  left: 0;
-}
-
-.next {
-  right: 0;
-}
-
-.controlGlyph {
-  font-family: var(--font-latin);
-  font-size: 1.5rem;
-  line-height: 1;
-  /* The chevrons are direction-neutral glyphs; the field they drive is physically LTR. */
-  direction: ltr;
-}
-
 /* -------------------------------------------------------------- responsive */
 
 /*
@@ -649,40 +598,14 @@
     --case-width: clamp(11rem, min(52vw, 34svh), 17rem);
     --case-step: calc(var(--case-width) * 0.86);
     --case-scale-step: 0.24;
-    /* Room for the control row that now sits between the case and the caption. */
+    /*
+     * This used to reserve room for a row of arrow controls between the case and the caption.
+     * The arrows are gone; the room stays, because on a phone the caption needs the same
+     * clearance from the artwork whether or not anything sits in the gap.
+     */
     --caption-block: 11.25rem;
   }
 
-  /*
-   * On a phone the arrows come OFF the artwork.
-   *
-   * Level with the middle of the case they sat on top of the neighbouring jewel cases — the field
-   * is only ~52vw wide here, so the side positions overlap the very artwork the reader is being
-   * asked to look at, and the target was 40x40, under the 44px minimum. Below the case they are
-   * clear of every case, paired at the centre so the thumb finds them together, and 44x44.
-   *
-   * Physical left/right are deliberate, matching this file's existing rule: the coverflow field is
-   * physically LTR even on an RTL page, so "previous" must stay on the physical left of "next" or
-   * the arrows would disagree with the direction the cases actually travel.
-   */
-  .control {
-    width: 2.75rem;
-    height: 2.75rem;
-    top: calc(var(--case-height) + 0.75rem);
-    transform: none;
-  }
-
-  .previous {
-    left: 50%;
-    right: auto;
-    margin-left: -3.5rem;
-  }
-
-  .next {
-    right: 50%;
-    left: auto;
-    margin-right: -3.5rem;
-  }
 
   .caption {
     top: calc(var(--case-height) + 4.4rem);
@@ -695,8 +618,8 @@
 }
 
 /*
- * Reduced motion keeps the coverflow, the five positions, every control and every track — only
- * the travel between them stops (brief §16). `globals.css` already collapses transitions and
+ * Reduced motion keeps the coverflow, the five positions and every track — only the travel
+ * between them stops (brief §16). `globals.css` already collapses transitions and
  * keyframes; these rules make the intent explicit at the scene, and the crossfade the brief asks
  * for is driven from the component because a collapsed transition cannot express it.
  */
@@ -704,8 +627,7 @@
   .case,
   .caseBody,
   .caseTilt,
-  .caption,
-  .control {
+  .caption {
     transition: none;
   }
 

@@ -357,26 +357,56 @@ test("navigating away and back leaves the scene machine's triggers un-grown", as
   }
 });
 
-test("carousel controls route through the same state machine as scroll", async ({ page }) => {
+/**
+ * The arrow controls this test used to click are gone.
+ *
+ * Brief §7.8 ("Left/right arrow controls are available and keyboard accessible") and §15 ("Tracks
+ * are swipe-first, with visible arrow controls") both ask for them; an explicit art direction
+ * removed them anyway, so neither the buttons nor their Persian labels are in the DOM any more.
+ * The citation stays because the REQUIREMENT did not move — only its carrier did. What answers
+ * §7.8's "keyboard accessible" and §16's "Carousel supports keyboard arrows and clear focus" now
+ * is the group's own key handler plus the roving tab stop: ArrowLeft / ArrowRight / Home / End on
+ * `[data-tracks-carousel]`, driven from the one case that is tabbable at a time, the active one.
+ * Swipe, trackpad wheel and clicking an off-centre case are the other three ways in, unchanged.
+ *
+ * So this test keeps its subject — a discrete input reaches the same reducer as scroll, and
+ * clamps at the ends the same way — and changes only the input it uses to prove it.
+ */
+test("discrete carousel input routes through the same state machine as scroll", async ({
+  page,
+}) => {
   await page.goto("/");
   // Scroll the tracks scene into play first: a discrete input only outlives scroll while its own
   // scene is the active one (the reducer re-syncs `trackIndex` on entering and leaving).
   await scrollUntilScene(page, "tracks");
 
+  const carousel = page.locator("[data-tracks-carousel]");
   const activeTrack = page.locator("[data-track][data-active='true']");
-  const previous = page.locator("[data-carousel-control='prev']");
-  const next = page.locator("[data-carousel-control='next']");
+
+  // The carousel's single tab stop: a keyboard reader tabs to the centre case and drives the
+  // field from there, so that is where the keys are aimed.
+  await activeTrack.locator("[data-track-case]").focus();
 
   // Rewind past the start: the index clamps at the first track whatever the scroll position was.
-  for (let click = 0; click < TRACK_TITLES.length + 1; click += 1) {
-    await previous.click();
+  // The field is composed physically left-to-right, so `ArrowLeft` retreats even under `dir=rtl`.
+  for (let press = 0; press < TRACK_TITLES.length + 1; press += 1) {
+    await page.keyboard.press("ArrowLeft");
   }
   await expect(activeTrack).toHaveCount(1);
   await expect(activeTrack).toHaveAttribute("data-index", "0");
   await expect(activeTrack).toHaveAttribute("aria-current", "true");
   await expect(activeTrack).toContainText(TRACK_TITLES[0]);
+  await expect(carousel).toHaveAttribute("data-track-index", "0");
 
-  await next.click();
+  await page.keyboard.press("ArrowRight");
   await expect(activeTrack).toHaveAttribute("data-index", "1");
   await expect(activeTrack).toContainText(TRACK_TITLES[1]);
+  await expect(carousel).toHaveAttribute("data-track-index", "1");
+
+  // The whole field repaints around the new centre rather than the centre just being relabelled:
+  // the case that was centred is now one step out, still painted, and no longer the current one.
+  const firstTrack = page.locator("[data-track][data-index='0']");
+  await expect(firstTrack).toHaveAttribute("data-offset", "-1");
+  await expect(firstTrack).toHaveAttribute("data-in-field", "true");
+  await expect(firstTrack).not.toHaveAttribute("aria-current", "true");
 });

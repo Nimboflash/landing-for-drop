@@ -259,6 +259,22 @@ async function openFixture(page: Page, slug: string): Promise<void> {
   expect(response?.status(), `${url} must render the fixture lens in development`).toBe(200);
 }
 
+/**
+ * Step the tracks carousel from the keyboard, the way a reader without a pointer does.
+ *
+ * The carousel used to be driven here through its arrow controls; an explicit art direction
+ * removed them, and nothing was removed from the interaction model with them. The key handler
+ * lives on the `[data-tracks-carousel]` group and the cases use a ROVING TABINDEX — exactly one
+ * case is tabbable, the active one — so a key pressed on the centre case bubbles to the group and
+ * reaches the same reducer actions the arrows did: ArrowLeft / ArrowRight step, Home / End jump.
+ *
+ * The locator is re-resolved on every press on purpose: each step moves which case is the centre
+ * one, and therefore which button is the carousel's single tab stop.
+ */
+async function pressTrackKey(page: Page, key: string): Promise<void> {
+  await page.locator("[data-track][data-active='true'] button").press(key);
+}
+
 /** Every scene id, in the DOM's order. */
 async function sceneOrder(page: Page): Promise<(string | null)[]> {
   return page
@@ -415,25 +431,29 @@ test("the fixture's four tracks are each reachable and the field is never empty"
   await openFixture(page, VARIABLE_COUNTS.slug);
   await scrollUntilScene(page, "tracks");
 
+  const carousel = page.locator("[data-tracks-carousel]");
   const active = page.locator("[data-track][data-active='true']");
   const inField = page.locator("[data-track][data-in-field='true']");
-  const next = page.locator("[data-carousel-control='next']");
-  const previous = page.locator("[data-carousel-control='prev']");
 
-  // Rewind to the first slide whatever the scroll position left behind.
-  for (let click = 0; click < VARIABLE_COUNTS.tracks + 1; click += 1) await previous.click();
+  // Rewind to the first slide whatever the scroll position left behind. This walk used to click
+  // the arrow controls; they are gone by art direction, so it walks the keyboard path instead —
+  // the same reducer actions, reached the way a reader without a pointer reaches them.
+  await pressTrackKey(page, "Home");
   await expect(active).toHaveAttribute("data-index", "0");
+  // The group reflects the index it was driven to, so the key reached the machine rather than
+  // merely moving focus.
+  await expect(carousel).toHaveAttribute("data-track-index", "0");
 
   for (let position = 1; position <= VARIABLE_COUNTS.tracks; position += 1) {
     await expect(active).toHaveCount(1);
     await expect(active).toContainText(fixtureTrackTitle(position));
     // A coverflow field with nothing painted in it is the failure this guards against.
     expect(await inField.count(), "the coverflow field must never be empty").toBeGreaterThan(0);
-    if (position < VARIABLE_COUNTS.tracks) await next.click();
+    if (position < VARIABLE_COUNTS.tracks) await pressTrackKey(page, "ArrowRight");
   }
 
   // Past the last slide the index clamps rather than wrapping into emptiness.
-  await next.click();
+  await pressTrackKey(page, "ArrowRight");
   await expect(active).toHaveAttribute("data-index", String(VARIABLE_COUNTS.tracks - 1));
   await expect(active).toContainText(fixtureTrackTitle(VARIABLE_COUNTS.tracks));
 });
@@ -544,16 +564,16 @@ test("a three-item carousel paints a real field, not an empty one", async ({ pag
 
   const inField = page.locator("[data-track][data-in-field='true']");
   const active = page.locator("[data-track][data-active='true']");
-  const next = page.locator("[data-carousel-control='next']");
-  const previous = page.locator("[data-carousel-control='prev']");
 
-  for (let click = 0; click < MINIMUM_COUNTS.tracks + 1; click += 1) await previous.click();
+  // Same keyboard path as the four-track walk above: Home rewinds, ArrowRight steps. The arrow
+  // controls this test used to click were removed by art direction, not deprecated as an input.
+  await pressTrackKey(page, "Home");
   await expect(active).toHaveAttribute("data-index", "0");
 
   for (let position = 1; position <= MINIMUM_COUNTS.tracks; position += 1) {
     await expect(active).toContainText(fixtureTrackTitle(position));
     expect(await inField.count()).toBeGreaterThan(0);
-    if (position < MINIMUM_COUNTS.tracks) await next.click();
+    if (position < MINIMUM_COUNTS.tracks) await pressTrackKey(page, "ArrowRight");
   }
   // With only three tracks the whole playlist is inside the field at once — nothing is stranded
   // outside it and nothing is painted that does not exist.

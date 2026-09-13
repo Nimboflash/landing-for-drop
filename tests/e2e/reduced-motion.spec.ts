@@ -19,9 +19,18 @@ import { expect, test as base, type Page } from "@playwright/test";
  * | §7.1 static logo, then a simple O-shaped crossfade | the loader reports the static path and still hands over | that the crossfade reads as an O |
  * | §7.3 menu shows fronts, no 3D flip | every card presents `front` at every point of the deck's run | — |
  * | §7.6 films crossfade | all three films are reachable, one at a time | that the swap is a crossfade rather than a cut |
- * | §7.8 coverflow kept, stepped by a non-animated crossfade, all four inputs | the field still spans both sides of the active case, motion reports `static`, and scroll / buttons / keyboard / pointer-drag each still step it | that the step reads as a crossfade |
+ * | §7.8 coverflow kept, stepped by a non-animated crossfade, all four inputs | the field still spans both sides of the active case, motion reports `static`, and scroll / case buttons / keyboard / pointer-drag each still step it | that the step reads as a crossfade |
  * | §7.10 static gradient ribbon, simple outline reveal | the footer reports `static` and the shared canvas reports reduced motion | the ribbon's look |
  * | §16 no content lost | the whole W04 inventory is readable across one reduced-motion pass | — |
+ *
+ * That §7.8 row says "case buttons" where the brief says arrows. Brief §7.8 ("Left/right arrow
+ * controls are available and keyboard accessible") and §15 ("Tracks are swipe-first, with visible
+ * arrow controls") were overruled by an explicit art direction: the prev/next chevrons are gone,
+ * because a pair of controls parked over the one composition that is meant to be all motion reads
+ * as furniture. The citation stands; what carries it changed. Nothing left the interaction model
+ * with them — each case is itself a `<button>` that selects its track through the same reducer
+ * action the arrows fired — so the four-input claim below is unchanged in substance, and changed
+ * only in which button it presses.
  *
  * Nothing below reads a computed style, an inline transform or opacity, a GSAP internal, or a
  * canvas pixel. "Readable" means: attached, carrying its text, and not inside `[inert]` or
@@ -470,6 +479,12 @@ test("the tracks carousel keeps its coverflow field under reduced motion", async
  * keyboard all still step the carousel (brief §7.8, §19 "Carousel supports scroll, drag/swipe,
  * buttons, and keyboard").
  *
+ * The button input is the cases themselves. The prev/next arrow controls of brief §7.8 and §15
+ * were removed by an explicit art direction and are no longer in the DOM at all; every case is a
+ * real `<button>` whose click reaches the same reducer action the forward arrow fired. The
+ * capability §19 names is therefore still here and still exercised — through
+ * `[data-track] [data-track-case]`, one press per direction, which is the arrows' claim exactly.
+ *
  * Each input is exercised in isolation and asserted only as "the published index moved the way the
  * input asked" — never by how far, which is the drag threshold's business and viewport-dependent.
  */
@@ -485,12 +500,22 @@ test("all four carousel inputs still step the carousel under reduced motion", as
     early,
   );
 
-  /* --- 2. buttons --- */
+  /* --- 2. buttons: the cases, since the prev/next arrows were removed by art direction --- *
+   * A painted neighbour is clicked in each direction, so the same one-step-forward, one-step-back
+   * claim the arrows carried is made by the control that replaced them. The neighbour is named by
+   * its own `data-index`, never by a screen position.
+   */
   await scrollIntoScene(page, "tracks", 0.4);
   const beforeButtons = await trackIndex(page);
-  await page.locator('[data-carousel-control="next"]').click();
+  expect(
+    beforeButtons,
+    "the middle of the tracks scene parks the field away from its last case",
+  ).toBeLessThan(TRACK_TITLES.length - 1);
+
+  await page.locator(`[data-track][data-index="${beforeButtons + 1}"] [data-track-case]`).click();
   await expect.poll(() => trackIndex(page)).toBe(beforeButtons + 1);
-  await page.locator('[data-carousel-control="prev"]').click();
+  // The case just left behind now sits at offset -1, still painted, so it can be clicked back.
+  await page.locator(`[data-track][data-index="${beforeButtons}"] [data-track-case]`).click();
   await expect.poll(() => trackIndex(page)).toBe(beforeButtons);
 
   /* --- 3. keyboard, from the carousel's roving tab stop --- */
