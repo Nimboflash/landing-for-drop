@@ -638,10 +638,17 @@ test("the tracks carousel advances and retreats with the arrow keys", async ({ p
 
   await page.locator('[data-track][data-active="true"] [data-track-case]').focus();
   const start = await trackIndex(page);
-  expect(start).toBeGreaterThan(0);
+  expect(start).toBeGreaterThanOrEqual(0);
+  expect(start).toBeLessThan(TRACK_TITLES_EN.length);
 
+  /*
+   * Modulo, not `start + 1`: the carousel is a ring, so a step from the last track lands on the
+   * first. `start` is wherever the scene's own auto-advance has reached by the time the test
+   * arrives, and it can be the last one — a literal `+ 1` would flake exactly then.
+   */
+  const total = TRACK_TITLES_EN.length;
   await page.keyboard.press("ArrowRight");
-  await expect.poll(() => trackIndex(page)).toBe(start + 1);
+  await expect.poll(() => trackIndex(page)).toBe((start + 1) % total);
   await page.keyboard.press("ArrowLeft");
   await expect.poll(() => trackIndex(page)).toBe(start);
 

@@ -452,8 +452,26 @@ test("the fixture's four tracks are each reachable and the field is never empty"
     if (position < VARIABLE_COUNTS.tracks) await pressTrackKey(page, "ArrowRight");
   }
 
-  // Past the last slide the index clamps rather than wrapping into emptiness.
+  /*
+   * Past the last track the carousel WRAPS, and the field stays painted across the join.
+   *
+   * This assertion used to expect a clamp. The coverflow was already a ring on screen —
+   * `ringOffset` paints the last case next to the first — while the index stopped dead at the
+   * end, so the case the reader could see ahead of them was unreachable by going forward, and a
+   * carousel that advances itself parked on its last track for good.
+   */
   await pressTrackKey(page, "ArrowRight");
+  await expect(active).toHaveAttribute("data-index", "0");
+  await expect(active).toContainText(fixtureTrackTitle(1));
+  expect(await inField.count(), "the field must stay painted across the wrap").toBeGreaterThan(0);
+
+  /*
+   * And backwards over the same join, which is the step this file stopped exercising when the
+   * arrow controls went: the old rewind clicked `previous` more times than there are tracks to
+   * prove the lower bound held. `Home` reaches index 0 through a different reducer action
+   * (`carouselTo`), so without this, nothing here would drive `carouselPrev` at all.
+   */
+  await pressTrackKey(page, "ArrowLeft");
   await expect(active).toHaveAttribute("data-index", String(VARIABLE_COUNTS.tracks - 1));
   await expect(active).toContainText(fixtureTrackTitle(VARIABLE_COUNTS.tracks));
 });

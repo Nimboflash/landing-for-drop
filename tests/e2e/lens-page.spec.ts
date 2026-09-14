@@ -387,15 +387,35 @@ test("discrete carousel input routes through the same state machine as scroll", 
   // field from there, so that is where the keys are aimed.
   await activeTrack.locator("[data-track-case]").focus();
 
-  // Rewind past the start: the index clamps at the first track whatever the scroll position was.
-  // The field is composed physically left-to-right, so `ArrowLeft` retreats even under `dir=rtl`.
-  for (let press = 0; press < TRACK_TITLES.length + 1; press += 1) {
-    await page.keyboard.press("ArrowLeft");
-  }
+  /*
+   * `Home` first, so the rest of this test starts from a known index whatever the scroll
+   * position or the scene's own auto-advance has done. It used to rewind by pressing `ArrowLeft`
+   * more times than there are tracks and rely on the index clamping at 0; stepping WRAPS now, so
+   * over-pressing no longer converges anywhere in particular.
+   */
+  await page.keyboard.press("Home");
   await expect(activeTrack).toHaveCount(1);
   await expect(activeTrack).toHaveAttribute("data-index", "0");
   await expect(activeTrack).toHaveAttribute("aria-current", "true");
   await expect(activeTrack).toContainText(TRACK_TITLES[0]);
+  await expect(carousel).toHaveAttribute("data-track-index", "0");
+
+  /*
+   * One step back from the first track lands on the last one, and one step forward returns.
+   *
+   * This is the ring closing, asserted from the end where it is easiest to get wrong — and it is
+   * the only place in this file that drives `carouselPrev`. The field is composed physically
+   * left-to-right, so `ArrowLeft` retreats even under `dir=rtl`.
+   */
+  await page.keyboard.press("ArrowLeft");
+  await expect(activeTrack).toHaveAttribute(
+    "data-index",
+    String(TRACK_TITLES.length - 1),
+  );
+  await expect(activeTrack).toContainText(TRACK_TITLES[TRACK_TITLES.length - 1]);
+
+  await page.keyboard.press("ArrowRight");
+  await expect(activeTrack).toHaveAttribute("data-index", "0");
   await expect(carousel).toHaveAttribute("data-track-index", "0");
 
   await page.keyboard.press("ArrowRight");

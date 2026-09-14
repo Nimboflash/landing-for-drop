@@ -27,16 +27,23 @@
  *
  * No ScrollTrigger, no progress of its own, and — the important one for a carousel — **no local
  * active index**. `trackIndex` is reducer output (BUILD-GUIDE seam 2, one-way data flow), and all
- * four input methods are dumb event sources feeding the same reducer through
+ * every input method is a dumb event source feeding the same reducer through
  * {@link TracksSceneProps.onPrevious} / {@link TracksSceneProps.onNext} /
  * {@link TracksSceneProps.onSelect}:
  *
  * | input | routed as |
  * | --- | --- |
- * | scroll | the shell's ScrollTrigger, already wired |
  * | drag / swipe | one step per drag threshold crossed |
- * | arrow buttons | `onPrevious` / `onNext` |
+ * | trackpad horizontal wheel | one step per WHEEL_STEP_PX of sideways travel |
+ * | click an off-centre case | `onSelect` |
  * | keyboard arrows, Home / End | `onPrevious` / `onNext` / `onSelect` |
+ * | the scene's own timer | `onNext`, while the reader is not driving |
+ *
+ * Two rows that used to be here are gone. SCROLL no longer moves this carousel — up and down
+ * belong to the page, and the field is driven sideways by hand or by its own timer. ARROW
+ * BUTTONS were removed by explicit art direction; brief §7.8 and §15 ask for them, and the
+ * keyboard row is what carries that requirement now, with every case a real button and one
+ * roving tab stop into the group.
  *
  * Because the whole presentation is a pure function of `trackIndex`, reverse scroll steps
  * backward through exactly the states forward scroll produced, and the reducer's documented
