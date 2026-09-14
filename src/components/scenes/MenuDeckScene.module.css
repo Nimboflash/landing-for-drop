@@ -610,6 +610,22 @@
 
   .deck {
     /*
+     * A SHORT rise on a phone, because the window it has to happen in is short.
+     *
+     * `--deck-arrival` runs over the first 12.4% of the scene scrub — 1/(count+1) of the scene,
+     * times RISE_SPAN_OF_ENTRY — which on this viewport is about 95px of scroll. The wide
+     * layout's `60svh + card-height` is roughly 1036px here, so the deck was covering eleven
+     * pixels for every pixel the reader moved: it did not rise into place, it shot past, and
+     * the stack and fan and flip then played out afterwards on a deck that had already
+     * arrived. Measured on an iPhone 17 viewport before and after.
+     *
+     * Shorter travel, same window, so the rate reads as following the scroll. The deck starts
+     * partly in frame rather than a full screen below it, which on a phone is the honest
+     * composition anyway: one card is 91vw, so there is nowhere for a whole deck to hide.
+     */
+    --deck-rise: calc(14svh + var(--card-height) * 0.18);
+
+    /*
      * 91vw, so one card genuinely occupies most of the frame — the design's own figure for ~552px.
      *
      * The height cap has to be generous enough to let the vw term win, or it silently takes over
