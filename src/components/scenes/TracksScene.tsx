@@ -238,14 +238,40 @@ const WHEEL_STEP_PX = 140;
 
 /** How far a pointer must travel before the gesture commits to an axis. */
 const DRAG_AXIS_LOCK_PX = 8;
-/** One carousel step, as a fraction of the field's width. */
+/**
+ * Fallback threshold, as a fraction of the field's width.
+ *
+ * Only reached if the case step cannot be measured. The threshold is normally the step itself
+ * — see the gesture's `step` — because that is what makes the drag 1:1.
+ */
 const DRAG_STEP_FRACTION = 0.13;
 /** …with a floor, so a narrow field never turns a nudge into three steps. */
 const DRAG_MIN_STEP_PX = 56;
-/** How far the field may lean into an unfinished drag, in px. Feedback, not travel. */
-const DRAG_ELASTIC_PX = 44;
-/** Fraction of the residual drag the field actually leans by. */
-const DRAG_ELASTIC_RATIO = 0.4;
+/**
+ * How far the field may lean into an unfinished drag, as a multiple of one case step.
+ *
+ * This used to be a flat 44px at a ratio of 0.4, in a gesture whose threshold is about 156px and
+ * whose step moves the field about 254px. The two numbers were never reconciled, and both ends
+ * of that were felt: the lean saturated after 110px of finger travel, so the last 46px of every
+ * threshold produced no response at all — and then crossing it moved the field a whole step
+ * while the lean sprang back from its cap, a net jump of roughly 210px with transitions
+ * disabled. Nudge, nudge, dead zone, bang.
+ *
+ * The threshold IS one case step now, and the field leans by exactly the distance the finger
+ * has travelled. Two things fall out of that. The drag is 1:1 — the case goes where the finger
+ * goes, which is the whole of what makes a swipe feel direct. And crossing a threshold cancels
+ * exactly: the field advances one step at the same instant the lean unwinds by one, so the
+ * commit lands invisibly inside the gesture instead of snapping at the end of it.
+ *
+ * Matching the lean to the OLD threshold would not have done this. That threshold was 13% of
+ * the stage, which at this scene's proportions is well under a case step — so making one worth
+ * the other would have moved the field about 2.7px per px of finger. Direct, but in the wrong
+ * direction: a scrub rather than a drag.
+ *
+ * The cap is what keeps it a drag rather than a scrub — past a step and a half of lean the
+ * gesture has already produced steps, so there is nothing left to preview.
+ */
+const DRAG_LEAN_MAX_STEPS = 1.5;
 
 /* -------------------------------------------------------------------------- pure */
 
@@ -660,6 +686,32 @@ export function TracksScene({
     [count, onNext, onPrevious, onSelect, noteInput],
   );
 
+  /**
+   * One case step, in resolved px.
+   *
+   * NOT `parseFloat(getComputedStyle(root).getPropertyValue("--case-step"))`. A custom property
+   * that is not registered with `@property` computes to its token stream rather than to a
+   * length, so that call returns the literal text
+   * `calc(clamp(9rem, min(20vw, 30svh), 21rem) * 1.06)` and `parseFloat` gives NaN.
+   *
+   * That was written that way first and measured in the browser before it shipped, which is the
+   * only reason it is not still there: NaN would have failed SILENTLY. The ratio below falls
+   * back to 1, the drag would still have moved the field, and it would merely have felt a little
+   * wrong — the exact class of bug that survives review.
+   *
+   * A hidden probe whose WIDTH is the property does resolve it, because `width` computes the
+   * calc. One layout read per gesture, next to the one already taken for the stage.
+   */
+  const measureCaseStep = useCallback((root: HTMLElement): number => {
+    const probe = document.createElement("div");
+    probe.style.cssText =
+      "position:absolute;left:0;top:0;width:var(--case-step);height:0;visibility:hidden;pointer-events:none";
+    root.appendChild(probe);
+    const measured = probe.getBoundingClientRect().width;
+    probe.remove();
+    return Number.isFinite(measured) && measured > 0 ? measured : 0;
+  }, []);
+
   const handlePointerDown = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
       if (event.pointerType === "mouse" && event.button !== 0) return;
@@ -667,6 +719,14 @@ export function TracksScene({
       const stage = stageRef.current;
       if (!stage) return;
       const width = stage.getBoundingClientRect().width;
+
+      /*
+       * The field's own step, in px, measured once per gesture rather than per move — the
+       * pointermove path runs at pointer rate and has no business doing layout reads.
+       */
+      const root = rootRef.current;
+      const caseStep = root ? measureCaseStep(root) : 0;
+
       suppressClickRef.current = false;
       dragRef.current = {
         pointerId: event.pointerId,
@@ -674,10 +734,17 @@ export function TracksScene({
         startY: event.clientY,
         anchorX: event.clientX,
         axis: "none",
-        step: Math.max(DRAG_MIN_STEP_PX, width * DRAG_STEP_FRACTION),
+        /*
+         * One case step of finger travel per track, so the field tracks the finger 1:1. The
+         * width-based fraction is only a fallback for the case where the probe found nothing.
+         */
+        step:
+          caseStep > 0
+            ? Math.max(DRAG_MIN_STEP_PX, caseStep)
+            : Math.max(DRAG_MIN_STEP_PX, width * DRAG_STEP_FRACTION),
       };
     },
-    [noteInput],
+    [noteInput, measureCaseStep],
   );
 
   const handlePointerMove = useCallback(
@@ -738,10 +805,16 @@ export function TracksScene({
         travel -= gesture.step;
       }
 
-      const lean = Math.max(
-        -DRAG_ELASTIC_PX,
-        Math.min(DRAG_ELASTIC_PX, travel * DRAG_ELASTIC_RATIO),
-      );
+      /*
+       * The field follows the finger, at the scale the field actually moves in.
+       *
+       * `travel` is what is left over after whole steps have been dispatched, so this is the
+       * part of the gesture the reducer has not accounted for yet — and rendering it at
+       * `leanPerPx` is what makes the next threshold crossing invisible: the step adds one
+       * `--case-step` of travel at the same instant the lean loses exactly one.
+       */
+      const leanCap = gesture.step * DRAG_LEAN_MAX_STEPS;
+      const lean = Math.max(-leanCap, Math.min(leanCap, travel));
       root.style.setProperty("--drop-tracks-drag", `${lean.toFixed(1)}px`);
     },
     [onNext, onPrevious, pointerTiltEnabled, noteInput],
@@ -844,6 +917,15 @@ export function TracksScene({
                 "--track-travel": String(caseTravel(offset, slots)),
                 "--track-depth": caseDepth(offset, slots).toFixed(3),
                 "--track-presence": casePresence(offset, slots).toFixed(3),
+                /*
+                 * A fixed phase for this case's ambient cycles, from its place in the
+                 * playlist rather than from its place in the field.
+                 *
+                 * It has to come from `index`, not from `offset`: offset changes on every
+                 * step, and a phase that changed with it would jump the animation exactly
+                 * when the step is already asking the eye to follow something else.
+                 */
+                "--case-phase": String(index),
                 zIndex: Math.max(1, CASE_STACK_TOP - distance),
               };
 
@@ -1186,6 +1268,7 @@ type DragGesture = {
 type TrackStyle = CSSProperties & {
   "--track-travel": string;
   "--track-depth": string;
+  "--case-phase": string;
   "--track-presence": string;
 };
 

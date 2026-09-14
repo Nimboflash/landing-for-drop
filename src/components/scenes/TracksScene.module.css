@@ -130,6 +130,23 @@
   --case-height: calc(var(--case-width) / var(--case-aspect));
   --case-step: calc(var(--case-width) * 1.06);
   --case-depth-step: -140px;
+
+  /*
+   * ONE clock for the step, and one curve.
+   *
+   * Travel, presence and brightness are all pure functions of the same distance, so they have
+   * to be the same function of TIME as well. They were not: transform ran 760ms, opacity 520ms,
+   * the body's brightness filter 520ms and the caption 420/620ms — five clocks for one event.
+   * A case entering the field reached full opacity 240ms before it reached its slot and slid
+   * the last third of the way already solid; the outermost case leaving went 0.333 to 0 in
+   * 520ms of a 760ms move, so it stopped existing in mid-flight rather than sliding away.
+   *
+   * Shorter than the 760ms it replaces, too. The step is discrete and the reader is often
+   * taking several in a row; a long tail means the next step starts before the last one has
+   * settled, which is most of what made the field feel like it was arguing with itself.
+   */
+  --case-travel: 520ms;
+  --case-curve: var(--ease-cinematic);
   --case-turn-step: -6deg;
   --case-scale-step: 0.2;
   /* Room under the case for title, artist and group label at their largest. */
@@ -203,8 +220,11 @@
   opacity: var(--track-presence, 1);
 
   transition:
-    transform 760ms var(--ease-cinematic),
-    opacity 520ms var(--ease-cinematic);
+    transform var(--case-travel) var(--case-curve),
+    opacity var(--case-travel) var(--case-curve);
+  /* The field is the only thing moving in this scene; say so, and let it keep its layer. */
+  will-change: transform, opacity;
+  backface-visibility: hidden;
 }
 
 /* A drag leads the field directly; a transition here would make it feel rubbery and late. */
@@ -246,17 +266,30 @@
   transform-style: preserve-3d;
 }
 
-/* Ambient life, on the active case only: a slow breath, not a bob (brief §7.8, §9). */
-.track[data-active="true"] .caseFloat {
+/*
+ * Ambient life: a slow breath, not a bob (brief §7.8, §9).
+ *
+ * On EVERY case, always — not gated on [data-active="true"] the way it used to be. An animation
+ * held by a selector that toggles is an animation that restarts, and this one restarted twice
+ * on every step: the case arriving jumped straight to the `from` pose, and the case leaving
+ * snapped from wherever it had got to back to no transform at all. At a 240px case that is a
+ * jump in of about 1.7px and a jump out of up to 3.6px, both in a single frame, both on the two
+ * cases the eye is following. That is most of what read as the field stuttering.
+ *
+ * The phases are spread by the case's own index so eleven cases do not breathe in unison, and
+ * the keyframes are symmetric about the resting position so the cycle has no preferred end.
+ */
+.caseFloat {
   animation: case-float 6.4s var(--ease-material) infinite alternate;
+  animation-delay: calc(var(--case-phase, 0) * -0.73s);
 }
 
 @keyframes case-float {
   from {
-    transform: translate3d(0, 0.7%, 0);
+    transform: translate3d(0, 1.1%, 0);
   }
   to {
-    transform: translate3d(0, -1.5%, 0);
+    transform: translate3d(0, -1.1%, 0);
   }
 }
 
@@ -303,7 +336,7 @@
     0 34px 70px -28px rgba(0, 0, 0, 0.92);
   /* Distance reads as dimness, on the flat layer — a filter on a 3D layer would flatten it. */
   filter: brightness(calc(1 - var(--track-depth, 0) * 0.14));
-  transition: filter 520ms var(--ease-cinematic);
+  transition: filter var(--case-travel) var(--case-curve);
 }
 
 /* The inner tray edge: one thin line, the only detail the moulding really shows at this size. */
@@ -368,8 +401,21 @@
   pointer-events: none;
 }
 
-.track[data-active="true"] .gloss {
+/*
+ * The highlight travels on every case, always.
+ *
+ * Gated on [data-active="true"] it teleported on every step: the case losing the class reverted
+ * to the declared translateX(0) in one frame, and at 40% of a 240px case a 330% sweep is about
+ * 317px — a highlight jumping further than the case is wide, while that case is still at two
+ * thirds opacity and plainly visible. It never completed a pass either: 4200ms of autoplay
+ * against a 9.5s sweep meant it got about a third of the way and flashed back, forever, which
+ * is the opposite of the "one pass, very slow" this is supposed to be.
+ *
+ * Phased by the case's own index, like the breath, so the field is not one synchronised sweep.
+ */
+.gloss {
   animation: gloss-travel 9.5s var(--ease-material) infinite alternate;
+  animation-delay: calc(var(--case-phase, 0) * -1.21s);
 }
 
 @keyframes gloss-travel {
@@ -523,8 +569,8 @@
   transform: translateY(0.55rem);
   pointer-events: none;
   transition:
-    opacity 420ms var(--ease-cinematic),
-    transform 620ms var(--ease-cinematic);
+    opacity var(--case-travel) var(--case-curve),
+    transform var(--case-travel) var(--case-curve);
 }
 
 .track[data-active="true"] .caption {
@@ -631,8 +677,8 @@
     transition: none;
   }
 
-  .track[data-active="true"] .caseFloat,
-  .track[data-active="true"] .gloss,
+  .caseFloat,
+  .gloss,
   .track[data-in-field="true"] .discArtwork,
   .track[data-in-field="true"] .discSheen {
     animation: none;
