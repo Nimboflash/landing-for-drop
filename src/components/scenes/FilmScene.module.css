@@ -279,7 +279,7 @@
 
 .rationale {
   font-size: var(--body);
-  line-height: 1.75;
+  line-height: var(--leading-fa-prose);
   max-inline-size: 44ch;
   color: color-mix(in srgb, currentColor 78%, transparent);
 }
@@ -417,7 +417,7 @@
 
   .rationale {
     max-inline-size: none;
-    line-height: 1.65;
+    line-height: var(--leading-fa-prose);
   }
 }
 

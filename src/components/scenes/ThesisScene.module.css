@@ -64,7 +64,8 @@
 .title {
   font-family: var(--font-persian);
   font-size: var(--title-md);
-  line-height: 1.24;
+  /* The h1. Its own leading was 1.24 against the 1.18 every other Persian heading inherits. */
+  line-height: var(--leading-fa-display);
   max-inline-size: 20ch;
 }
 
@@ -106,7 +107,12 @@
   font-size: var(--title-lg);
   /* The other place 800 is spent: the hero line, the page's opening voice. */
   font-weight: 800;
-  line-height: 1.22;
+  /*
+   * Set, not inherited: this is a `p`, so the heading rule in globals does not reach it, and
+   * dropping the declaration would hand it the 1.6 of body prose. It ran 1.22 against the 1.18
+   * the grid statement sets at the same rendered size and weight.
+   */
+  line-height: var(--leading-fa-display);
   /*
    * No tracking: this is the page's largest Persian type, and Persian is cursive. A negative
    * value does not tighten the line, it pushes joined letterforms into each other — the effect
@@ -156,7 +162,9 @@
 .statement {
   font-family: var(--font-persian);
   font-size: var(--body-lg);
-  line-height: 1.9;
+  /* 1.9 here, against 1.75 for the same job in the film and art scenes — and at a LARGER size,
+     which wants less leading rather than more. */
+  line-height: var(--leading-fa-prose);
   max-inline-size: 54ch;
   text-wrap: pretty;
   color: color-mix(in srgb, currentColor 78%, transparent);
@@ -310,7 +318,7 @@
 
   .statement {
     font-size: var(--body);
-    line-height: 1.8;
+    line-height: var(--leading-fa-prose);
   }
 
   .statement[data-lens-thesis] {

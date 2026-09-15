@@ -22,7 +22,37 @@
   --title-md: clamp(1.5rem, 2.4vw, 2.8rem);
   --body-lg: clamp(1.1rem, 1.35vw, 1.45rem);
   --body: clamp(0.98rem, 1vw, 1.12rem);
-  --label: clamp(0.68rem, 0.72vw, 0.82rem);
+  /*
+   * The smallest step, and the one the page leans on hardest.
+   *
+   * Measured on the built page at 1440x900: 85 of 227 text elements resolve to this token, and
+   * 24 of those are PERSIAN — category lines, track groupings, the film sequence labels, the
+   * art disciplines. The old floor of 0.68rem bound at every width up to about 1820px, so in
+   * practice this was 10.9px on every laptop the page will meet.
+   *
+   * 10.9px is defensible for tracked Latin capitals, which is what it was drawn against. It is
+   * not defensible for Persian: the script carries dot clusters and joined forms below and
+   * above the x-height band, and at that size they close up. The floor now lands at 12.5px,
+   * which is the same type an interface would set a caption at, and the ceiling is raised to
+   * match so wide screens keep the proportion.
+   */
+  --label: clamp(0.78rem, 0.8vw, 0.92rem);
+
+  /*
+   * Leading, by role and by script, because one number cannot serve both.
+   *
+   * These exist because the same job had drifted to different values: Persian prose was set at
+   * 1.75 in the film and art scenes, 1.9 in the thesis and 1.65 on a narrow film layout, and
+   * the largest Persian display ran 1.18 in the grid statement against 1.22 in the thesis —
+   * two elements rendering at the same 77.8px with different leading. None of the outliers
+   * carried a reason. Naming the three values is what stops them drifting again.
+   *
+   * Persian wants more room than Latin at the same size, and larger type wants less than small
+   * type, which is why display is tight and prose is generous rather than the other way round.
+   */
+  --leading-fa-display: 1.18;
+  --leading-fa-prose: 1.75;
+  --leading-en-prose: 1.6;
 
   /* Families — bound to next/font CSS variables in src/app/layout.tsx */
   --font-latin: var(--font-montserrat), "Helvetica Neue", Arial, sans-serif;
@@ -116,7 +146,7 @@ h4 {
    * scene had an opinion. Persian carries ascenders, descenders and dot clusters outside the
    * x-height band, and wants the room. Latin keeps 1.02 below.
    */
-  line-height: 1.18;
+  line-height: var(--leading-fa-display);
   /*
    * No tracking by default, because the default heading here is PERSIAN.
    *
