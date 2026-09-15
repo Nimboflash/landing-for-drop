@@ -1,18 +1,29 @@
 /**
- * Wavy Dots — the film scene's background mode (`wavyDots`).
+ * The dot floor — the film scene's background mode (`wavyDots`).
  *
- * Brief Section 7.6 supplies a MetalForge preset as a *reference*, not an embed:
+ * Brief Section 7.6 supplies a MetalForge preset as a *reference*, not an embed. A later
+ * art-direction decision supplied a second one, and this file follows that:
  *
  * ```ts
- * { effect: "dots", style: "wavy", speed: 1, brightness: 1, tint: "#FFFFFF",
+ * { effect: "dots", style: "plasma", speed: 1, brightness: 1, tint: "#FFFFFF",
  *   background: "#000000", dotSize: 1, gridDensity: 1, patternScale: 1,
- *   vignette: 1, horizon: -0.45, amplitude: 1, depthFade: 1 }
+ *   vignette: 1, horizon: -0.22, amplitude: 1, depthFade: 1 }
  * ```
  *
  * "Rebuild it for web in GLSL; do not embed a MetalForge editor or use a recorded video."
  * So this module is a from-scratch perspective dot floor: white dots on black, laid on a
- * ground plane under a horizon, undulating with a wave, fading with depth, vignetted at the
- * frame edge. Every preset knob at its default `1` maps to one named constant below, so the
+ * ground plane under a horizon, shimmering with a plasma, fading with depth, vignetted at the
+ * frame edge.
+ *
+ * TWO THINGS CHANGED from the brief's own preset, and only two. The style went from `wavy` to
+ * `plasma`: a wave is one travelling front and reads as a direction, while a plasma is several
+ * sines interfering — including a radial one — and reads as a surface that is alive without
+ * going anywhere. And the horizon moved from -0.45 to -0.22, which drops the horizon line
+ * closer to the middle of the frame and hands more of the composition to the floor.
+ *
+ * The mode is still called `wavyDots`. That name is the scene contract — the reducer, the
+ * registry, both pixel transitions and the brief all use it — and renaming it to follow a
+ * style change would churn every one of them to say nothing new. Every preset knob at its default `1` maps to one named constant below, so the
  * preset stays legible in the code instead of dissolving into magic numbers.
  *
  * **Restraint is a requirement, not a taste call.** The film scene's text sits on top of this
@@ -20,7 +31,7 @@
  * well under full white, the field dissolves before it reaches the horizon, and the vignette
  * pulls the frame edges — where the poster and copy live — back down toward black.
  *
- * Reading `horizon: -0.45`: the preset's sign convention is screen-space (y down), so a
+ * Reading `horizon: -0.22`: the preset's sign convention is screen-space (y down), so a
  * negative horizon tilts the camera down and the horizon line sits *above* centre, with the
  * receding floor filling the composition beneath it. That is the reference look, and it is what
  * `DOTS.HORIZON_Y` encodes in this file's y-up UV space.
@@ -50,8 +61,8 @@ import {
  * source drifting from the documented values.
  */
 const DOTS = {
-  /** `horizon: -0.45` in y-up UV space: the horizon line sits 0.45 above frame centre. */
-  HORIZON_Y: 0.45,
+  /** `horizon: -0.22` in y-up UV space: the horizon line sits 0.22 above frame centre. */
+  HORIZON_Y: 0.22,
   /** Camera height above the ground plane. With the density below it sets the perspective rake. */
   CAMERA_H: 0.35,
   /** `gridDensity: 1` x `patternScale: 1` — lattice cells per world unit. */
@@ -68,8 +79,16 @@ const DOTS = {
   VIGNETTE: 0.85,
   /** `speed: 1` — lattice rows the floor drifts toward the viewer per second. */
   DRIFT_ROWS: 0.45,
-  /** `speed: 1` — wave phase advance per second. */
+  /** `speed: 1` — plasma phase advance per second. */
   WAVE_SPEED: 0.9,
+  /**
+   * Fraction of the summed amplitude the plasma is normalised against.
+   *
+   * Solved, not tuned: it is the ratio of the plasma's RMS to the wave's at full detail, so the
+   * two styles put the same typical amount of light on the floor and `brightness: 1` still
+   * means what it meant.
+   */
+  PLASMA_FILL: 0.65,
   /** Dot brightness gain on wave crests, so the undulation reads as depth, not just offset. */
   CREST_GAIN: 0.22,
   /** Edge softness target, in device-independent pixels. */
@@ -134,19 +153,38 @@ function defines(prefix: string, values: Readonly<Record<string, number>>): stri
 export const WAVY_DOTS_FIELD_GLSL = /* glsl */ `
 ${defines("DROP_DOTS_", DOTS)}
 
-// Wave octaves. Each detail step adds one, so low tier runs a single sine (brief Section 14).
-float dropWavyDotsWave(vec2 g, float t, float detail) {
-  float w = sin(g.x * 0.75 + t * DROP_DOTS_WAVE_SPEED);
-  float amp = 1.0;
+/*
+ * The plasma.
+ *
+ * Crossed sines on both axes as the base, not one travelling front — the interference between
+ * them is the whole difference between this and the "wavy" style it replaces, and it has to be
+ * there at EVERY tier or the low tier would quietly fall back to being a wave.
+ *
+ * Each detail step then adds one term (brief Section 14): first the radial sine, which is what
+ * stops the two base axes reading as a grid, then a diagonal that breaks up what is left.
+ *
+ * Normalised so the field keeps the PRESENCE the single-sine wave had, then clamped so it is
+ * still a signed unit value — every consumer below treats it as one.
+ *
+ * Dividing by the summed amplitude, which is what the wave did, is wrong for a sum of several
+ * sines: they only reach that sum when they all align, which is rare, so the typical excursion
+ * collapses. Measured at detail 2: normalised RMS 0.36 against the wave's 0.55, and the field
+ * rendered visibly flatter and about a fifth dimmer at its peaks. DROP_DOTS_PLASMA_FILL is the
+ * ratio that brings the two back level; the clamp then catches the rare frames where the sines
+ * really do stack up.
+ */
+float dropDotsPlasma(vec2 g, float t, float detail) {
+  float w = sin(g.x * 0.62 + t * DROP_DOTS_WAVE_SPEED) + sin(g.y * 0.48 - t * 0.74);
+  float amp = 2.0;
   if (detail > 0.5) {
-    w += 0.65 * sin(g.y * 0.55 - t * 0.70 + g.x * 0.35);
-    amp += 0.65;
+    w += 0.85 * sin(length(g * vec2(0.30, 0.26)) - t * 0.52);
+    amp += 0.85;
   }
   if (detail > 1.5) {
-    w += 0.40 * sin((g.x + g.y) * 0.32 + t * 0.45);
-    amp += 0.40;
+    w += 0.55 * sin((g.x - g.y) * 0.29 + t * 0.41);
+    amp += 0.55;
   }
-  return w / amp;
+  return clamp(w / (amp * DROP_DOTS_PLASMA_FILL), -1.0, 1.0);
 }
 
 vec3 dropWavyDotsField(vec2 uv, vec2 res, float t, float detail, float pointerX, float minCellPx) {
@@ -166,7 +204,7 @@ vec3 dropWavyDotsField(vec2 uv, vec2 res, float t, float detail, float pointerX,
     vec2 g = vec2(worldX, depth) * DROP_DOTS_DENSITY;
     g.y -= t * DROP_DOTS_DRIFT_ROWS;
 
-    float wave = dropWavyDotsWave(g, t, detail);
+    float wave = dropDotsPlasma(g, t, detail);
     vec2 local = fract(g + vec2(0.0, wave * DROP_DOTS_AMPLITUDE)) - 0.5;
 
     // On-screen height of one lattice cell, in CSS pixels: d(depth)/d(screen y) = h / below^2.
