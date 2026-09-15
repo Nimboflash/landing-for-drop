@@ -581,28 +581,47 @@ export function TracksScene({
    * the active one, not under reduced motion (brief §16 — motion is the thing being removed),
    * and not while the tab is in the background.
    *
-   * Reader input does NOT stop it, it defers it — see AUTOPLAY_RESUME_AFTER_MS. The timer keeps
-   * running and skips its turn while the last input is recent, so the field gets out of the way
-   * and then comes back without needing anything to start it again.
+   * Reader input does NOT stop it, it defers it — see AUTOPLAY_RESUME_AFTER_MS.
+   *
+   * Each advance SCHEDULES THE NEXT ONE rather than riding a fixed interval. The interval
+   * version skipped its turn while the last input was recent, which sounds equivalent and is
+   * not: the ticks sat on a grid laid down when the effect mounted, so how long the field
+   * stayed still after a touch depended on where in that grid the touch landed — anywhere from
+   * the 7s intended to 11.2s, the resume window plus a whole interval. Eleven seconds of
+   * stillness is indistinguishable from a carousel that does not advance at all, which is
+   * exactly how it was reported.
+   *
+   * Scheduling from the input instead makes the wait the number the constant says.
    */
   useEffect(() => {
     if (!sceneActive || reducedMotion) return;
 
     let timer: number | undefined;
     const stop = () => {
-      if (timer !== undefined) window.clearInterval(timer);
+      if (timer !== undefined) window.clearTimeout(timer);
       timer = undefined;
     };
     const start = () => {
       stop();
-      timer = window.setInterval(() => {
+      const tick = () => {
         const now =
           typeof performance === "object" ? performance.now() : Date.now();
-        // Yield the turn while the reader is still driving; the timer itself keeps running, so
-        // the field picks itself back up without needing anything to restart it.
-        if (now - lastInputRef.current < AUTOPLAY_RESUME_AFTER_MS) return;
+        const sinceInput = now - lastInputRef.current;
+        /*
+         * Still the reader's turn: come back when their window is up, not on the next beat of
+         * a grid that knows nothing about when they touched it.
+         */
+        if (sinceInput < AUTOPLAY_RESUME_AFTER_MS) {
+          timer = window.setTimeout(
+            tick,
+            AUTOPLAY_RESUME_AFTER_MS - sinceInput,
+          );
+          return;
+        }
         onNext();
-      }, AUTOPLAY_INTERVAL_MS);
+        timer = window.setTimeout(tick, AUTOPLAY_INTERVAL_MS);
+      };
+      timer = window.setTimeout(tick, AUTOPLAY_INTERVAL_MS);
     };
 
     const onVisibility = () => (document.hidden ? stop() : start());
