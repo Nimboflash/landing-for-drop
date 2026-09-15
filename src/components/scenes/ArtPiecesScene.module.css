@@ -124,9 +124,29 @@
   display: block;
 }
 
+/*
+ * Three tiers of presence, and only three.
+ *
+ * The row had five: the index at 70%, the category and the meta line at 76%, the body at 80%
+ * and the credit at 62%. Nothing distinguished those from each other by role — they were five
+ * settings for what a reader sees as the title, the text, and the labels around them.
+ *
+ * The title takes currentColor and is named here only so the set reads as a set.
+ *
+ * Declared on the ROW, not on the text column: the media credit is a `figcaption` beside that
+ * column rather than inside it, so scoping these to `.text` left it with an undefined variable,
+ * an invalid `color-mix`, a dropped declaration — and a caption at full strength instead of the
+ * 62% it used to have. Caught by measuring the row after the change rather than by reading it.
+ */
+.row {
+  --art-ink-title: 100%;
+  --art-ink-prose: 82%;
+  --art-ink-support: 66%;
+}
+
 .index {
   font-size: var(--label);
-  color: color-mix(in srgb, currentColor 70%, transparent);
+  color: color-mix(in srgb, currentColor var(--art-ink-support), transparent);
 }
 
 .latin {
@@ -136,7 +156,16 @@
 
 .category {
   font-size: var(--label);
-  color: color-mix(in srgb, currentColor 76%, transparent);
+  /*
+   * The one support line with a weight of its own.
+   *
+   * It says what KIND of piece this is and sits directly above the title, so it is a kicker
+   * rather than another label — but Persian is cursive and cannot take the tracking the Latin
+   * support items use to separate themselves. Weight is the tool that is left. 600 is already
+   * the page's sub-heading weight (the thesis eyebrow), so this spends nothing new.
+   */
+  font-weight: 600;
+  color: color-mix(in srgb, currentColor var(--art-ink-support), transparent);
 }
 
 .title {
@@ -159,7 +188,7 @@
 
 .meta {
   font-size: var(--label);
-  color: color-mix(in srgb, currentColor 76%, transparent);
+  color: color-mix(in srgb, currentColor var(--art-ink-support), transparent);
 }
 
 .meta .lineInner {
@@ -191,7 +220,7 @@
   font-size: var(--body);
   line-height: var(--leading-fa-prose);
   max-inline-size: 46ch;
-  color: color-mix(in srgb, currentColor 80%, transparent);
+  color: color-mix(in srgb, currentColor var(--art-ink-prose), transparent);
 }
 
 /* ------------------------------------------------------------ media column */
@@ -277,9 +306,10 @@
 .credit {
   font-family: var(--font-latin);
   font-size: var(--label);
-  line-height: 1.5;
+  /* 1.5 here against the 1.6 every other label-sized line runs. */
+  line-height: var(--leading-en-prose);
   margin: 0;
-  color: color-mix(in srgb, currentColor 62%, transparent);
+  color: color-mix(in srgb, currentColor var(--art-ink-support), transparent);
 }
 
 /* Pausable loop video (brief §16). Sharp, quiet, and never dependent on hover. */
