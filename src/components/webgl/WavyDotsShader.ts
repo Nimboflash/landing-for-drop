@@ -7,7 +7,7 @@
  * ```ts
  * { effect: "dots", style: "plasma", speed: 1, brightness: 1, tint: "#FFFFFF",
  *   background: "#000000", dotSize: 1, gridDensity: 1, patternScale: 1,
- *   vignette: 1, horizon: -0.22, amplitude: 1, depthFade: 1 }
+ *   vignette: 1, horizon: -0.45, amplitude: 1, depthFade: 1 }
  * ```
  *
  * "Rebuild it for web in GLSL; do not embed a MetalForge editor or use a recorded video."
@@ -15,11 +15,15 @@
  * ground plane under a horizon, shimmering with a plasma, fading with depth, vignetted at the
  * frame edge.
  *
- * TWO THINGS CHANGED from the brief's own preset, and only two. The style went from `wavy` to
- * `plasma`: a wave is one travelling front and reads as a direction, while a plasma is several
- * sines interfering — including a radial one — and reads as a surface that is alive without
- * going anywhere. And the horizon moved from -0.45 to -0.22, which drops the horizon line
- * closer to the middle of the frame and hands more of the composition to the floor.
+ * ONE THING CHANGED from the brief's own preset. The style went from `wavy` to `plasma`: a wave
+ * is one travelling front and reads as a direction, while a plasma is several sines interfering
+ * — including a radial one — and reads as a surface that is alive without going anywhere.
+ *
+ * The horizon briefly went with it, to the -0.22 the supplied configuration also carried, and
+ * came back. At -0.22 the horizon line sits closer to the middle of the frame: less of the
+ * composition is floor, and the nearest visible row is further from the camera, so the field
+ * loses about a fifth of its peak light to depth fade before anything else happens. The brief's
+ * -0.45 is the framing this scene keeps; the style is the part that changed.
  *
  * The mode is still called `wavyDots`. That name is the scene contract — the reducer, the
  * registry, both pixel transitions and the brief all use it — and renaming it to follow a
@@ -31,7 +35,7 @@
  * well under full white, the field dissolves before it reaches the horizon, and the vignette
  * pulls the frame edges — where the poster and copy live — back down toward black.
  *
- * Reading `horizon: -0.22`: the preset's sign convention is screen-space (y down), so a
+ * Reading `horizon: -0.45`: the preset's sign convention is screen-space (y down), so a
  * negative horizon tilts the camera down and the horizon line sits *above* centre, with the
  * receding floor filling the composition beneath it. That is the reference look, and it is what
  * `DOTS.HORIZON_Y` encodes in this file's y-up UV space.
@@ -61,8 +65,8 @@ import {
  * source drifting from the documented values.
  */
 const DOTS = {
-  /** `horizon: -0.22` in y-up UV space: the horizon line sits 0.22 above frame centre. */
-  HORIZON_Y: 0.22,
+  /** `horizon: -0.45` in y-up UV space: the horizon line sits 0.45 above frame centre. */
+  HORIZON_Y: 0.45,
   /** Camera height above the ground plane. With the density below it sets the perspective rake. */
   CAMERA_H: 0.35,
   /** `gridDensity: 1` x `patternScale: 1` — lattice cells per world unit. */
