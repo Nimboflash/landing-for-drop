@@ -638,6 +638,58 @@
 
 /* ----------------------------------------------------------------- controls */
 
+/*
+ * The listen control.
+ *
+ * A row of its own so it cannot join the caption's centred text flow and read as a fourth line
+ * of metadata — it is the one thing in this caption a reader can act on, and it has to look it.
+ */
+.listenRow {
+  display: flex;
+  justify-content: center;
+  margin-block-start: 0.85rem;
+}
+
+.listen {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /*
+   * 44px of height whatever the type does. Brief §15 asks for real touch targets, and the label
+   * inside this is `--label` type — on its own that is a target about half the size a thumb needs.
+   */
+  min-block-size: 44px;
+  padding-inline: 1.15rem;
+  font-family: var(--font-persian);
+  font-size: var(--label);
+  letter-spacing: 0.08em;
+  text-decoration: none;
+  color: var(--drop-off-white);
+  /* Sharp corners: the hard rule, and the case system it sits under keeps them too. */
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  border-radius: 0;
+  background: rgba(0, 0, 0, 0.35);
+  transition:
+    background-color 240ms var(--ease-material),
+    border-color 240ms var(--ease-material);
+}
+
+.listen:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.72);
+}
+
+.listen:focus-visible {
+  outline: 2px solid var(--drop-orange);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .listen {
+    transition: none;
+  }
+}
+
 /* -------------------------------------------------------------- responsive */
 
 /*

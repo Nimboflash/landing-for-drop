@@ -133,6 +133,13 @@ const SELECT_TRACK_LABEL = "نمایش قطعه";
 /** Announced inside an external link, so "opens elsewhere" is never left to a visual cue. */
 const EXTERNAL_LINK_NOTE = "باز شدن در تب تازه";
 
+/**
+ * The listen control's label. Interface copy, like the carousel's own labels — the lens schema
+ * carries no control strings, and inventing an editorial one would put words in the content's
+ * mouth. Persian, because the page is.
+ */
+const LISTEN_LABEL = "شنیدن";
+
 /* ------------------------------------------------------------------- environment */
 
 /**
@@ -1062,6 +1069,34 @@ export function TracksScene({
                     >
                       {track.groupTitle.fa}
                     </p>
+                    {/*
+                      A control of its own, rather than leaving the title as the only way out.
+
+                      The title has been a link for as long as a track carried a `sourceUrl`, but
+                      a linked heading is something a reader has to discover; a labelled control
+                      under the caption is something they can see. Same destination, same
+                      external-link contract — new tab, noopener, flagged, and announced as
+                      leaving the site — so the page's one rule about outbound links still holds.
+
+                      Rendered only when the data supplies a destination. Nothing here invents
+                      one, which is also what the accessibility seam asserts.
+                    */}
+                    {track.sourceUrl ? (
+                      <p className={styles.listenRow}>
+                        <a
+                          className={styles.listen}
+                          href={track.sourceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          tabIndex={sceneActive && active ? 0 : -1}
+                          data-track-listen
+                          data-external="true"
+                          aria-label={`${LISTEN_LABEL}: ${track.title} — ${track.artist} (${EXTERNAL_LINK_NOTE})`}
+                        >
+                          {LISTEN_LABEL}
+                        </a>
+                      </p>
+                    ) : null}
                   </div>
                 </li>
               );
