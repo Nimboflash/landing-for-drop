@@ -110,9 +110,12 @@ const test = base.extend<{ consoleErrors: string[] }>({
     async ({ page }, use) => {
       const errors: string[] = [];
       page.on("console", (message) => {
-        if (message.type() === "error") errors.push(`console.error: ${message.text()}`);
+        if (message.type() === "error")
+          errors.push(`console.error: ${message.text()}`);
       });
-      page.on("pageerror", (error) => errors.push(`pageerror: ${error.message}`));
+      page.on("pageerror", (error) =>
+        errors.push(`pageerror: ${error.message}`),
+      );
       await use(errors);
       expect(errors, "the journey must produce no console errors").toEqual([]);
     },
@@ -150,7 +153,9 @@ async function journeySnapshot(page: Page): Promise<JourneySnapshot> {
     const shell = document.querySelector("[data-active-scene]");
     const header = document.querySelector("[data-header-variant]");
     const named = (selector: string) =>
-      [...document.querySelectorAll(selector)].map((element) => element.getAttribute("data-scene") ?? "");
+      [...document.querySelectorAll(selector)].map(
+        (element) => element.getAttribute("data-scene") ?? "",
+      );
     return {
       activeScene: shell?.getAttribute("data-active-scene") ?? null,
       activeSections: named('[data-scene][data-active="true"]'),
@@ -159,7 +164,9 @@ async function journeySnapshot(page: Page): Promise<JourneySnapshot> {
       headerVariant: header?.getAttribute("data-header-variant") ?? null,
       contrast: shell?.getAttribute("data-contrast") ?? null,
       scrollY: Math.round(window.scrollY),
-      maxScroll: Math.round(document.documentElement.scrollHeight - window.innerHeight),
+      maxScroll: Math.round(
+        document.documentElement.scrollHeight - window.innerHeight,
+      ),
     };
   });
 }
@@ -178,7 +185,10 @@ async function settle(page: Page): Promise<void> {
 async function jumpToRatio(page: Page, ratio: number): Promise<void> {
   await page.evaluate((value) => {
     const range = document.documentElement.scrollHeight - window.innerHeight;
-    window.scrollTo({ top: range * value, behavior: "instant" as ScrollBehavior });
+    window.scrollTo({
+      top: range * value,
+      behavior: "instant" as ScrollBehavior,
+    });
   }, ratio);
 }
 
@@ -196,7 +206,10 @@ async function scrollToRatio(page: Page, ratio: number): Promise<void> {
 async function calmScrollToY(page: Page, y: number, steps = 20): Promise<void> {
   await scrollToRatio(page, 0);
   for (let step = 1; step <= steps; step += 1) {
-    await page.evaluate((top) => window.scrollTo({ top, behavior: "instant" as ScrollBehavior }), (y * step) / steps);
+    await page.evaluate(
+      (top) => window.scrollTo({ top, behavior: "instant" as ScrollBehavior }),
+      (y * step) / steps,
+    );
     await settle(page);
   }
 }
@@ -207,14 +220,23 @@ async function calmScrollToY(page: Page, y: number, steps = 20): Promise<void> {
  * the viewport changed, their cached start/end would still describe the old layout and the section
  * would report the wrong scene from its own new position.
  */
-async function scrollIntoScene(page: Page, sceneId: SceneId, fraction = 0.5): Promise<void> {
+async function scrollIntoScene(
+  page: Page,
+  sceneId: SceneId,
+  fraction = 0.5,
+): Promise<void> {
   await page.evaluate(
     ({ id, f }) => {
-      const section = document.querySelector(`[data-scene="${id}"]`) as HTMLElement | null;
+      const section = document.querySelector(
+        `[data-scene="${id}"]`,
+      ) as HTMLElement | null;
       if (section === null) throw new Error(`no section for scene "${id}"`);
       const top = section.getBoundingClientRect().top + window.scrollY;
       const usable = Math.max(0, section.offsetHeight - window.innerHeight);
-      window.scrollTo({ top: top + usable * f, behavior: "instant" as ScrollBehavior });
+      window.scrollTo({
+        top: top + usable * f,
+        behavior: "instant" as ScrollBehavior,
+      });
     },
     { id: sceneId, f: fraction },
   );
@@ -228,10 +250,13 @@ async function scrollIntoScene(page: Page, sceneId: SceneId, fraction = 0.5): Pr
  */
 async function waitPastLoader(page: Page): Promise<void> {
   await expect
-    .poll(() => page.evaluate(() => document.documentElement.dataset.dropLoader), {
-      timeout: LOADER_SETTLE_TIMEOUT_MS,
-      message: "the loader never reported itself complete",
-    })
+    .poll(
+      () => page.evaluate(() => document.documentElement.dataset.dropLoader),
+      {
+        timeout: LOADER_SETTLE_TIMEOUT_MS,
+        message: "the loader never reported itself complete",
+      },
+    )
     .toBe("complete");
   await expect(page.locator("[data-loader-overlay]")).toHaveCount(0);
 }
@@ -260,7 +285,11 @@ type Walk = {
  * shell's `data-active-scene` agrees with it. A journey that briefly shows two active scenes, or
  * none, is a broken state even if the ends of the walk look right.
  */
-async function walkJourney(page: Page, reverse = false, samples = WALK_SAMPLES): Promise<Walk> {
+async function walkJourney(
+  page: Page,
+  reverse = false,
+  samples = WALK_SAMPLES,
+): Promise<Walk> {
   const order: string[] = [];
   const sequence: string[] = [];
   const inconsistencies: string[] = [];
@@ -297,7 +326,10 @@ async function walkJourney(page: Page, reverse = false, samples = WALK_SAMPLES):
  * viewport change, where ScrollTrigger's refresh is debounced and the first attempt can land
  * against stale geometry.
  */
-async function expectSceneReachable(page: Page, sceneId: SceneId): Promise<void> {
+async function expectSceneReachable(
+  page: Page,
+  sceneId: SceneId,
+): Promise<void> {
   await expect
     .poll(
       async () => {
@@ -328,10 +360,15 @@ async function expectEverySceneReachable(page: Page): Promise<void> {
  * refused to release, or a scene whose spacer never resolved, shows up as a short page.
  */
 async function expectDocumentScrollsToItsEnd(page: Page): Promise<void> {
-  await page.evaluate(() => window.scrollTo({ top: 10_000_000, behavior: "instant" as ScrollBehavior }));
+  await page.evaluate(() =>
+    window.scrollTo({ top: 10_000_000, behavior: "instant" as ScrollBehavior }),
+  );
   await settle(page);
   const snapshot = await journeySnapshot(page);
-  expect(snapshot.maxScroll, "the page must have a scrollable range").toBeGreaterThan(0);
+  expect(
+    snapshot.maxScroll,
+    "the page must have a scrollable range",
+  ).toBeGreaterThan(0);
   expect(
     Math.abs(snapshot.scrollY - snapshot.maxScroll),
     "the document must scroll all the way to its end",
@@ -353,7 +390,9 @@ type SceneDiagnosticsSnapshot = {
  * been stripped — which is the correct state of a production bundle. Same shape `lens-page.spec.ts`
  * reads, so the leak check never reaches into GSAP internals.
  */
-async function readDiagnostics(page: Page): Promise<SceneDiagnosticsSnapshot | null> {
+async function readDiagnostics(
+  page: Page,
+): Promise<SceneDiagnosticsSnapshot | null> {
   return page.evaluate(() => {
     const diagnostics = (
       window as unknown as {
@@ -382,13 +421,17 @@ for (const route of LENS_ROUTES) {
     await openJourney(page, route);
 
     const forward = await walkJourney(page);
-    expect(forward.inconsistencies, "exactly one scene section is active at a time").toEqual([]);
+    expect(
+      forward.inconsistencies,
+      "exactly one scene section is active at a time",
+    ).toEqual([]);
 
     // The stuck-pin / dead-zone proxy: not "the scene id moved in order" but "every one of the ten
     // sections was actually reached", and reached in the brief's sequence.
-    expect(forward.order, "every scene section is reached, once, in brief §6 order").toEqual([
-      ...SCENE_ORDER_FROM_BRIEF,
-    ]);
+    expect(
+      forward.order,
+      "every scene section is reached, once, in brief §6 order",
+    ).toEqual([...SCENE_ORDER_FROM_BRIEF]);
 
     await expectDocumentScrollsToItsEnd(page);
   });
@@ -404,13 +447,17 @@ for (const route of LENS_ROUTES) {
     await walkJourney(page);
 
     const backward = await walkJourney(page, true);
-    expect(backward.inconsistencies, "exactly one scene section is active at a time").toEqual([]);
+    expect(
+      backward.inconsistencies,
+      "exactly one scene section is active at a time",
+    ).toEqual([]);
 
     // Reversibility is an acceptance criterion everywhere (brief §9, §19): the journey back is the
     // journey out, mirrored — every section reached again, in the mirrored order.
-    expect(backward.order, "every scene section is reached again on the way back").toEqual(
-      [...SCENE_ORDER_FROM_BRIEF].reverse(),
-    );
+    expect(
+      backward.order,
+      "every scene section is reached again on the way back",
+    ).toEqual([...SCENE_ORDER_FROM_BRIEF].reverse());
 
     const final = await journeySnapshot(page);
     expect(final.scrollY, "the page returns to the top").toBe(0);
@@ -454,7 +501,10 @@ test("rapid scrolling leaves the page in the state its final position calls for"
     await calmScrollToY(page, afterRapid.scrollY);
     const afterCalm = await journeySnapshot(page);
 
-    expect(afterRapid.activeSections, "one scene is active after rapid scrolling").toHaveLength(1);
+    expect(
+      afterRapid.activeSections,
+      "one scene is active after rapid scrolling",
+    ).toHaveLength(1);
     expect(
       afterRapid.activeSections,
       `rapid and calm scrolling to the same position must agree (landing ${landing})`,
@@ -489,7 +539,10 @@ test("scrolling while the loader is still on screen leaves a consistent, complet
   await settle(page);
 
   const snapshot = await journeySnapshot(page);
-  expect(snapshot.activeSections, "exactly one scene is active once the loader hands over").toHaveLength(1);
+  expect(
+    snapshot.activeSections,
+    "exactly one scene is active once the loader hands over",
+  ).toHaveLength(1);
   expect(snapshot.activeScene).toBe(snapshot.activeSections[0]);
   expect(snapshot.ariaCurrentSections).toEqual(snapshot.activeSections);
 
@@ -517,7 +570,9 @@ for (const [name, from, to] of [
   ["desktop to mobile", QA_DESKTOP, QA_MOBILE],
   ["mobile to desktop", QA_MOBILE, QA_DESKTOP],
 ] as const) {
-  test(`resizing ${name} while pinned inside a scene keeps the journey usable`, async ({ page }) => {
+  test(`resizing ${name} while pinned inside a scene keeps the journey usable`, async ({
+    page,
+  }) => {
     await page.setViewportSize(from);
     await openJourney(page, "/");
 
@@ -560,7 +615,10 @@ for (const route of LENS_ROUTES) {
     await settle(page);
 
     const after = await journeySnapshot(page);
-    expect(after.activeSections, "exactly one scene is active after a refresh").toHaveLength(1);
+    expect(
+      after.activeSections,
+      "exactly one scene is active after a refresh",
+    ).toHaveLength(1);
     expect(after.activeScene).toBe(after.activeSections[0]);
     expect(after.ariaCurrentSections).toEqual(after.activeSections);
 
@@ -571,15 +629,43 @@ for (const route of LENS_ROUTES) {
     // Where it does not, the same mount-mid-page path is covered deterministically in every engine
     // by the deep-link test below.
     if (Math.abs(after.scrollY - before.scrollY) <= 2) {
-      expect(after.activeSections, "the restored position resolves to the same scene").toEqual(
-        before.activeSections,
-      );
+      expect(
+        after.activeSections,
+        "the restored position resolves to the same scene",
+      ).toEqual(before.activeSections);
       expect(after.activeScene).toBe(before.activeScene);
       expect(after.backgroundMode).toBe(before.backgroundMode);
       expect(after.headerVariant).toBe(before.headerVariant);
     } else {
-      expect(after.scrollY, "a reload that does not restore scroll starts at the top").toBe(0);
-      expect(after.activeSections).toEqual(["loader"]);
+      /*
+       * It resumes at the OPENING, which is not the same as the top.
+       *
+       * This asserted scrollY 0 and an active `loader`, which was true while the loader simply
+       * released the page where it stood. It does not release it there any more: once the lock
+       * lifts, the shell carries the page into the first readable scene — that is the reveal
+       * target `ImmersiveLensPage` passes, and the carry is the point of it. So a reload that
+       * does not restore scroll now lands a little way in, on the first scene, by design.
+       *
+       * What this branch is actually for survives intact, and is what is asserted instead: the
+       * page resumed at the START of the journey rather than stranded mid-way, and the machine
+       * agrees with wherever it actually is. Naming a pixel offset here would only pin the
+       * carry's destination, which is layout, not behaviour.
+       */
+      expect(
+        after.scrollY,
+        "a reload that does not restore scroll resumes at the opening, not mid-journey",
+      ).toBeLessThan(before.scrollY);
+      const resumedAt = SCENE_ORDER_FROM_BRIEF.indexOf(
+        after.activeScene as SceneId,
+      );
+      expect(
+        resumedAt,
+        `resumed on a known scene — got ${after.activeScene}`,
+      ).toBeGreaterThanOrEqual(0);
+      expect(
+        resumedAt,
+        "the opening is the loader or the first scene the carry lands on",
+      ).toBeLessThanOrEqual(1);
       test.info().annotations.push({
         type: "note",
         description:
@@ -613,8 +699,14 @@ for (const route of LENS_ROUTES) {
     await settle(page);
 
     const mounted = await journeySnapshot(page);
-    expect(mounted.scrollY, "the fragment must really start the page mid-journey").toBeGreaterThan(0);
-    expect(mounted.activeSections, "exactly one scene is active on a deep-link mount").toHaveLength(1);
+    expect(
+      mounted.scrollY,
+      "the fragment must really start the page mid-journey",
+    ).toBeGreaterThan(0);
+    expect(
+      mounted.activeSections,
+      "exactly one scene is active on a deep-link mount",
+    ).toHaveLength(1);
     expect(mounted.activeScene).toBe(mounted.activeSections[0]);
     expect(
       mounted.activeScene,
@@ -623,9 +715,10 @@ for (const route of LENS_ROUTES) {
 
     await calmScrollToY(page, mounted.scrollY);
     const arrived = await journeySnapshot(page);
-    expect(arrived.activeSections, "landing here and scrolling here must agree").toEqual(
-      mounted.activeSections,
-    );
+    expect(
+      arrived.activeSections,
+      "landing here and scrolling here must agree",
+    ).toEqual(mounted.activeSections);
     expect(arrived.backgroundMode).toBe(mounted.backgroundMode);
     expect(arrived.headerVariant).toBe(mounted.headerVariant);
   });
@@ -649,32 +742,35 @@ test("navigating away and back reproduces an identical journey without growing t
 
   // The behavioural proxy BUILD-GUIDE asks for, and the strongest form of it: not just the same
   // scene at one position, but the identical state sequence across the whole page, both ways.
-  expect(secondForward.sequence, "forward journey is identical after a route round trip").toEqual(
-    firstForward.sequence,
-  );
-  expect(secondBackward.sequence, "reverse journey is identical after a route round trip").toEqual(
-    firstBackward.sequence,
-  );
+  expect(
+    secondForward.sequence,
+    "forward journey is identical after a route round trip",
+  ).toEqual(firstForward.sequence);
+  expect(
+    secondBackward.sequence,
+    "reverse journey is identical after a route round trip",
+  ).toEqual(firstBackward.sequence);
   expect(secondForward.inconsistencies).toEqual([]);
   expect(secondBackward.inconsistencies).toEqual([]);
 
   const after = await readDiagnostics(page);
   if (before && after) {
     // Brief §17: "no accumulating ScrollTriggers". One per scene is the floor.
-    expect(before.scrollTriggerCount).toBeGreaterThanOrEqual(SCENE_ORDER_FROM_BRIEF.length);
-    expect(after.scrollTriggerCount, "triggers must not accumulate across route changes").toBe(
-      before.scrollTriggerCount,
+    expect(before.scrollTriggerCount).toBeGreaterThanOrEqual(
+      SCENE_ORDER_FROM_BRIEF.length,
     );
+    expect(
+      after.scrollTriggerCount,
+      "triggers must not accumulate across route changes",
+    ).toBe(before.scrollTriggerCount);
   } else {
-    test
-      .info()
-      .annotations.push({
-        type: "note",
-        description:
-          "dev-only scene diagnostics are stripped from this build, so the ScrollTrigger count " +
-          "could not be read; the behavioural proxy (identical forward and reverse state " +
-          "sequences after the round trip) was asserted instead. Run this spec against a build " +
-          "with NEXT_PUBLIC_DROP_DIAGNOSTICS=1, or the dev server, to exercise the count.",
-      });
+    test.info().annotations.push({
+      type: "note",
+      description:
+        "dev-only scene diagnostics are stripped from this build, so the ScrollTrigger count " +
+        "could not be read; the behavioural proxy (identical forward and reverse state " +
+        "sequences after the round trip) was asserted instead. Run this spec against a build " +
+        "with NEXT_PUBLIC_DROP_DIAGNOSTICS=1, or the dev server, to exercise the count.",
+    });
   }
 });

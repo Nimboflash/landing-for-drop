@@ -351,10 +351,10 @@ export function caseDepth(distance: number, slots: number): number {
  * same slot: at 3 tracks the offsets are {0, +1, -1}, at 4 they are {0, +1, +2, -1}, and at 11 the
  * item before track 1 is track 11.
  *
- * This is PRESENTATION ONLY. The reducer still clamps the index at the ends — first and last stay
- * first and last, prev on track 1 does nothing — because that is documented, tested behaviour and
- * a wrapping index would break the non-decreasing contract the scroll mapping depends on. What
- * wraps is the picture, not the position.
+ * The index wraps to match. It did not always: this was presentation only, and the reducer
+ * clamped, so the case a reader could SEE after the last one was the one they could not reach by
+ * going forward. The clamp was there to keep a non-decreasing contract for the scroll mapping,
+ * and scroll no longer maps to this index at all, so nothing is left holding the two apart.
  */
 export function ringOffset(
   index: number,

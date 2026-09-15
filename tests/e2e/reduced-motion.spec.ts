@@ -19,7 +19,7 @@ import { expect, test as base, type Page } from "@playwright/test";
  * | §7.1 static logo, then a simple O-shaped crossfade | the loader reports the static path and still hands over | that the crossfade reads as an O |
  * | §7.3 menu shows fronts, no 3D flip | every card presents `front` at every point of the deck's run | — |
  * | §7.6 films crossfade | all three films are reachable, one at a time | that the swap is a crossfade rather than a cut |
- * | §7.8 coverflow kept, stepped by a non-animated crossfade, all four inputs | the field still spans both sides of the active case, motion reports `static`, and scroll / case buttons / keyboard / pointer-drag each still step it | that the step reads as a crossfade |
+ * | §7.8 coverflow kept, stepped by a non-animated crossfade, all four inputs | the field still spans both sides of the active case, motion reports `static`, and sideways scroll / case buttons / keyboard / pointer-drag each still step it | that the step reads as a crossfade |
  * | §7.10 static gradient ribbon, simple outline reveal | the footer reports `static` and the shared canvas reports reduced motion | the ribbon's look |
  * | §16 no content lost | the whole W04 inventory is readable across one reduced-motion pass | — |
  *
@@ -31,6 +31,13 @@ import { expect, test as base, type Page } from "@playwright/test";
  * with them — each case is itself a `<button>` that selects its track through the same reducer
  * action the arrows fired — so the four-input claim below is unchanged in substance, and changed
  * only in which button it presses.
+ *
+ * That row also says "sideways scroll" where brief §7.8's Interaction list opens with "Vertical
+ * scroll advances the pinned carousel". Up and down were given back to the page by a second
+ * explicit direction: the carousel steps by hand and by its own timer, not by the page's scroll.
+ * The scroll input §19 names did not leave either, it turned sideways — a trackpad two-finger
+ * horizontal flick steps the field, which is the gesture a laptop reader actually makes. Same
+ * shape of change as the arrows: the citation stands, what carries it moved.
  *
  * Nothing below reads a computed style, an inline transform or opacity, a GSAP internal, or a
  * canvas pixel. "Readable" means: attached, carrying its text, and not inside `[inert]` or
@@ -272,6 +279,75 @@ async function trackIndex(page: Page): Promise<number> {
   return Number(raw);
 }
 
+/**
+ * How many steps FORWARD `now` is from `from`, measured around the playlist.
+ *
+ * Stepping wraps at both ends now, so "it advanced" can no longer be spelled "the number went
+ * up": one step forward from the last case is index 0. Around the ring it still can be — a
+ * forward step lands in the near half, a backward one in the far half.
+ */
+function stepsForward(now: number, from: number): number {
+  const total = TRACK_TITLES.length;
+  return (((now - from) % total) + total) % total;
+}
+
+/**
+ * Wait until the published index has moved FORWARD from `from`, and assert it went forward rather
+ * than the long way back. Never how far: that is the input's own threshold and viewport-dependent.
+ */
+async function expectAdvanced(page: Page, from: number, message: string): Promise<void> {
+  await expect
+    .poll(async () => stepsForward(await trackIndex(page), from), { message })
+    .toBeGreaterThan(0);
+  expect(
+    stepsForward(await trackIndex(page), from),
+    `${message} — and forward around the ring, not backward`,
+  ).toBeLessThanOrEqual(Math.floor(TRACK_TITLES.length / 2));
+}
+
+/**
+ * A trackpad two-finger flick over the carousel: `wheel` events carrying both axes, one dominant,
+ * which is what a trackpad really emits — a sideways swipe produces no pointer drag at all.
+ *
+ * Dispatched at the page seam (the element under the middle of the carousel, so the gesture
+ * bubbles the same way a real one does) rather than through `page.mouse.wheel`, which Playwright
+ * refuses on a touch device and every test in this file also runs on mobile-safari.
+ *
+ * The travel is deliberately generous — a gesture, not a threshold; how much sideways travel makes
+ * one step is the component's business and is never written down here. Returns whether the
+ * carousel took the gesture, i.e. called `preventDefault` on it.
+ */
+async function flick(page: Page, deltaX: number, deltaY: number, pulses = 6): Promise<boolean> {
+  const taken = await page.evaluate(
+    ({ dx, dy, count }) => {
+      const carousel = document.querySelector("[data-tracks-carousel]");
+      if (carousel === null) return false;
+      const box = carousel.getBoundingClientRect();
+      const x = box.left + box.width / 2;
+      const y = box.top + box.height / 2;
+      const target = document.elementFromPoint(x, y) ?? carousel;
+      let prevented = false;
+      for (let pulse = 0; pulse < count; pulse += 1) {
+        const event = new WheelEvent("wheel", {
+          bubbles: true,
+          cancelable: true,
+          composed: true,
+          deltaX: dx,
+          deltaY: dy,
+          clientX: x,
+          clientY: y,
+        });
+        target.dispatchEvent(event);
+        if (event.defaultPrevented) prevented = true;
+      }
+      return prevented;
+    },
+    { dx: deltaX, dy: deltaY, count: pulses },
+  );
+  await settle(page);
+  return taken;
+}
+
 /* ============================================================================ the loader */
 
 /**
@@ -437,6 +513,20 @@ test("the grid statement keeps its text and reports static presentation", async 
  * 1. the field is still a coverflow field: cases on BOTH sides of the active one are painted
  *    positions (`data-in-field`), each with its own signed `data-offset`;
  * 2. the carousel reports `static` motion rather than dropping to a single visible item.
+ *
+ * WHAT CHANGED, and why. This test used to reach the field through a preamble that polled until
+ * the index was an interior one — "park the active case away from both ends so the field can span
+ * it on both sides" — and neither half of that preamble survives:
+ *
+ * - scroll no longer moves the index, by explicit direction, so halfway through the scene parks
+ *   nothing and the poll could only ever time out on the arrival case;
+ * - the field is measured AROUND the playlist now, so there is no end case left to avoid: the
+ *   case before the first one is the last one.
+ *
+ * So the claim is made where the old preamble was steering away from, which is strictly harder:
+ * first at the arrival case, index 0 — the exact case that used to leave the field bare on one
+ * side — and then again at an interior case, reached by a real input instead of by scroll. The
+ * subject is untouched: cases on both sides, each with its own signed offset, and `static` motion.
  */
 test("the tracks carousel keeps its coverflow field under reduced motion", async ({ page }) => {
   await openJourney(page);
@@ -446,32 +536,56 @@ test("the tracks carousel keeps its coverflow field under reduced motion", async
   await expect(carousel).toHaveAttribute("data-carousel-motion", "static");
   await expect(carousel).toHaveAttribute("data-track-count", String(TRACK_TITLES.length));
 
-  // Park the active case away from both ends so the field can span it on both sides. Halfway
-  // through the scene is an input, not an expectation — it is only asserted that the index that
-  // results is an interior one.
-  await expect
-    .poll(() => trackIndex(page), { message: "the middle of the tracks scene is not an end case" })
-    .toBeGreaterThan(0);
-  const parked = await trackIndex(page);
-  expect(parked).toBeLessThan(TRACK_TITLES.length - 1);
-
-  const field = await page.evaluate(() => ({
-    slots: Number(
-      document.querySelector("[data-tracks-carousel]")?.getAttribute("data-carousel-slots"),
-    ),
-    offsets: [...document.querySelectorAll('[data-track][data-in-field="true"]')]
-      .map((track) => Number(track.getAttribute("data-offset")))
-      .sort((a, b) => a - b),
-    discs: document.querySelectorAll("[data-track-artwork]").length,
-  }));
+  const readField = async () =>
+    page.evaluate(() => {
+      const root = document.querySelector("[data-tracks-carousel]");
+      return {
+        index: Number(root?.getAttribute("data-track-index")),
+        slots: Number(root?.getAttribute("data-carousel-slots")),
+        offsets: [...document.querySelectorAll('[data-track][data-in-field="true"]')]
+          .map((track) => Number(track.getAttribute("data-offset")))
+          .sort((a, b) => a - b),
+        discs: document.querySelectorAll("[data-track-artwork]").length,
+      };
+    });
 
   // Brief §15 gives desktop five positions and mobile three, so the count is viewport-dependent
   // and is never written down here — what must hold is that it IS a field, on both sides.
-  expect(field.slots, "the coverflow field survives reduced motion").toBeGreaterThanOrEqual(1);
-  expect(field.offsets, "a case sits before the active one").toContain(-1);
-  expect(field.offsets, "a case sits after the active one").toContain(1);
-  expect(field.offsets, "the active case is in its own field").toContain(0);
-  expect(field.discs, "every track still has its disc").toBe(TRACK_TITLES.length);
+  const expectSpansBothSides = (
+    field: Awaited<ReturnType<typeof readField>>,
+    where: string,
+  ): void => {
+    expect(field.slots, `the coverflow field survives reduced motion, ${where}`).toBeGreaterThanOrEqual(1);
+    expect(field.offsets, `a case sits before the active one, ${where}`).toContain(-1);
+    expect(field.offsets, `a case sits after the active one, ${where}`).toContain(1);
+    expect(field.offsets, `the active case is in its own field, ${where}`).toContain(0);
+    expect(field.discs, "every track still has its disc").toBe(TRACK_TITLES.length);
+  };
+
+  const arrival = await readField();
+  expect(arrival.index, "the carousel arrives at the first case and scroll leaves it there").toBe(0);
+  expectSpansBothSides(arrival, "on the first case");
+
+  // And again away from the ends, reached the way a reader reaches it: two keyboard steps in.
+  await page.locator('[data-track][data-active="true"] [data-track-case]').focus();
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowRight");
+  const interior = await readField();
+  expect(interior.index, "the keyboard stepped the field off its first case").toBe(2);
+  /*
+   * The PREMISE, not a second reading of the same number.
+   *
+   * This asserted `interior.index < TRACK_TITLES.length - 1` one line after pinning that index
+   * to exactly 2, so it could never fail. What it was reaching for is that two steps in is
+   * genuinely away from both ends — which is a claim about the PLAYLIST, and which stops being
+   * true if the fixture ever shrinks to three tracks. Asserted against the count instead, so a
+   * smaller lens fails here with a clear reason rather than quietly making the test vacuous.
+   */
+  expect(
+    TRACK_TITLES.length,
+    "two steps in is only an interior case while the playlist is longer than that",
+  ).toBeGreaterThan(3);
+  expectSpansBothSides(interior, "on an interior case");
 });
 
 /**
@@ -479,41 +593,72 @@ test("the tracks carousel keeps its coverflow field under reduced motion", async
  * keyboard all still step the carousel (brief §7.8, §19 "Carousel supports scroll, drag/swipe,
  * buttons, and keyboard").
  *
- * The button input is the cases themselves. The prev/next arrow controls of brief §7.8 and §15
- * were removed by an explicit art direction and are no longer in the DOM at all; every case is a
- * real `<button>` whose click reaches the same reducer action the forward arrow fired. The
- * capability §19 names is therefore still here and still exercised — through
- * `[data-track] [data-track-case]`, one press per direction, which is the arrows' claim exactly.
+ * Two of those four inputs are carried by something else now. Both substitutions were explicit
+ * directions, and both are recorded here rather than quietly dropped from the count:
+ *
+ * SCROLL. Up and down belong to the page: scrolling through the pinned scene no longer advances
+ * the carousel, which is a departure from brief §7.8's "Vertical scroll advances the pinned
+ * carousel" taken deliberately. So this leg's old first half — scroll from 5% of the scene to 85%
+ * and expect a bigger index — was asserting a behaviour that has been removed on purpose, and it
+ * now asserts the removal instead: the index HOLDS across a scroll of the whole scene, and a
+ * downward flick over the carousel is left to the page rather than swallowed. The scroll input
+ * §19 names did not leave, it turned sideways: a trackpad two-finger horizontal flick steps the
+ * field, and that is the second half of this leg.
+ *
+ * BUTTONS. The prev/next arrow controls of brief §7.8 and §15 were removed by an explicit art
+ * direction and are no longer in the DOM at all; every case is a real `<button>` whose click
+ * reaches the same reducer action the forward arrow fired. The capability §19 names is therefore
+ * still here and still exercised — through `[data-track] [data-track-case]`, one press per
+ * direction, which is the arrows' claim exactly.
+ *
+ * The count in the title is unchanged, and under reduced motion it is exhaustive: the scene's
+ * auto-advance timer is off by design, so these four are every way a reader has of moving the
+ * field, and each of them must still work.
  *
  * Each input is exercised in isolation and asserted only as "the published index moved the way the
- * input asked" — never by how far, which is the drag threshold's business and viewport-dependent.
+ * input asked" — never by how far, which is the threshold's business and viewport-dependent, and
+ * never as "the number went up", because stepping wraps at both ends now (see `stepsForward`).
  */
 test("all four carousel inputs still step the carousel under reduced motion", async ({ page }) => {
   await openJourney(page);
 
-  /* --- 1. scroll: the scene's own scrub is an input source like any other --- */
+  /* --- 1. scroll: down the page is the page's, sideways is the field's --- */
   await scrollIntoScene(page, "tracks", 0.05);
   const early = await trackIndex(page);
   await scrollIntoScene(page, "tracks", 0.85);
-  const late = await trackIndex(page);
-  expect(late, "scrolling forward through the tracks scene advances the carousel").toBeGreaterThan(
-    early,
-  );
+  expect(
+    await trackIndex(page),
+    "scrolling forward through the tracks scene leaves the carousel where it was",
+  ).toBe(early);
+  expect(
+    await flick(page, 4, 60),
+    "a downward trackpad flick over the carousel belongs to the page, not the field",
+  ).toBe(false);
+  expect(await trackIndex(page), "...and so it moves nothing").toBe(early);
+
+  // Sideways, though, is this carousel's own gesture: it steps, and an equal flick back returns
+  // it. Equal-and-opposite is the honest way to say "it stepped" without naming a step size.
+  await scrollIntoScene(page, "tracks", 0.5);
+  const beforeWheel = await trackIndex(page);
+  expect(await flick(page, 60, 4), "a sideways trackpad flick is taken by the carousel").toBe(true);
+  await expectAdvanced(page, beforeWheel, "a sideways trackpad scroll still steps the carousel");
+  await flick(page, -60, 4);
+  await expect
+    .poll(() => trackIndex(page), { message: "the mirror flick brings the field back" })
+    .toBe(beforeWheel);
 
   /* --- 2. buttons: the cases, since the prev/next arrows were removed by art direction --- *
    * A painted neighbour is clicked in each direction, so the same one-step-forward, one-step-back
    * claim the arrows carried is made by the control that replaced them. The neighbour is named by
-   * its own `data-index`, never by a screen position.
+   * its own `data-index`, never by a screen position — and it is taken around the ring, because
+   * the case after the last one is the first one now rather than nothing at all.
    */
   await scrollIntoScene(page, "tracks", 0.4);
   const beforeButtons = await trackIndex(page);
-  expect(
-    beforeButtons,
-    "the middle of the tracks scene parks the field away from its last case",
-  ).toBeLessThan(TRACK_TITLES.length - 1);
+  const neighbour = (beforeButtons + 1) % TRACK_TITLES.length;
 
-  await page.locator(`[data-track][data-index="${beforeButtons + 1}"] [data-track-case]`).click();
-  await expect.poll(() => trackIndex(page)).toBe(beforeButtons + 1);
+  await page.locator(`[data-track][data-index="${neighbour}"] [data-track-case]`).click();
+  await expect.poll(() => trackIndex(page)).toBe(neighbour);
   // The case just left behind now sits at offset -1, still painted, so it can be clicked back.
   await page.locator(`[data-track][data-index="${beforeButtons}"] [data-track-case]`).click();
   await expect.poll(() => trackIndex(page)).toBe(beforeButtons);
@@ -521,7 +666,7 @@ test("all four carousel inputs still step the carousel under reduced motion", as
   /* --- 3. keyboard, from the carousel's roving tab stop --- */
   await page.locator('[data-track][data-active="true"] [data-track-case]').focus();
   await page.keyboard.press("ArrowRight");
-  await expect.poll(() => trackIndex(page)).toBe(beforeButtons + 1);
+  await expect.poll(() => trackIndex(page)).toBe(neighbour);
   await page.keyboard.press("ArrowLeft");
   await expect.poll(() => trackIndex(page)).toBe(beforeButtons);
 
@@ -559,10 +704,9 @@ test("all four carousel inputs still step the carousel under reduced motion", as
     return true;
   });
   expect(dragged).toBe(true);
-  // The field is composed physically left-to-right, so dragging leftward advances it.
-  await expect
-    .poll(() => trackIndex(page), { message: "a touch swipe still steps the carousel" })
-    .toBeGreaterThan(beforeButtons);
+  // The field is composed physically left-to-right, so dragging leftward advances it — forward
+  // around the ring, since a drag that starts on the last case lands on the first.
+  await expectAdvanced(page, beforeButtons, "a touch swipe still steps the carousel");
 });
 
 /**

@@ -74,6 +74,14 @@ const REVEAL_ABORT_PX = 8;
 /** Reader input that cancels a pending reveal outright. */
 const REVEAL_CANCEL_EVENTS = ["wheel", "touchstart", "keydown", "pointerdown"] as const;
 
+/**
+ * How far the document may sit from where the carry believes it is before the carry gives up.
+ *
+ * Sub-pixel drift is normal — Lenis animates a float and the document rounds it — so this is a
+ * tolerance, not an equality.
+ */
+const REVEAL_FOREIGN_SCROLL_PX = 24;
+
 /** Keys that scroll a document, which the loader lock must hold along with wheel and touch. */
 const SCROLLING_KEYS = new Set([
   "PageDown",
@@ -219,6 +227,7 @@ export function SmoothScrollProvider({
     const teardown = () => {
       window.clearTimeout(timer);
       for (const type of REVEAL_CANCEL_EVENTS) window.removeEventListener(type, cancel);
+      window.removeEventListener("scroll", onForeignScroll);
     };
 
     /*
@@ -261,6 +270,27 @@ export function SmoothScrollProvider({
     for (const type of REVEAL_CANCEL_EVENTS) {
       window.addEventListener(type, cancel, { passive: true });
     }
+
+    /*
+     * A scroll this carry did not perform also cancels it.
+     *
+     * The four events above are the ways a READER takes the page. They are not the only ways the
+     * page moves: the browser restores a scroll position on refresh and on back-navigation, and
+     * anything driving the page programmatically — a deep link, a test harness — moves it without
+     * any of them firing. Those all lost, and lost silently. The note above this effect explains
+     * why: Lenis adopts a native scroll only while it is idle, and mid-tween it rewrites the
+     * position from its own animated value on the next tick. So the page went where it was put
+     * and was then quietly dragged back to the hero, with the scene machine still reporting the
+     * loader — a reader who refreshed halfway down the page lost their place.
+     *
+     * `animatedScroll` is what the carry itself is doing, so comparing the document against it
+     * separates our own motion from somebody else's without having to guess at intent.
+     */
+    const onForeignScroll = () => {
+      if (settled) return;
+      if (Math.abs(window.scrollY - lenis.animatedScroll) > REVEAL_FOREIGN_SCROLL_PX) cancel();
+    };
+    window.addEventListener("scroll", onForeignScroll, { passive: true });
 
     return teardown;
   }, [locked, revealTarget, reducedMotion]);

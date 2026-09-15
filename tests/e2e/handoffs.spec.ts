@@ -209,6 +209,37 @@ async function sweepSegments(
   return frames;
 }
 
+/**
+ * Wait until the scene machine is actually being driven by scroll, before any sample is taken.
+ *
+ * The reducer starts at (loader, progress 0) and leaves it only once the scene ScrollTriggers are
+ * registered and have reported. `page.goto` plus two frames does not guarantee that on a cold
+ * load: on mobile-safari, on a worker's FIRST navigation, the opening sample of a sweep comes
+ * back `data-active-scene="loader"` however far down the page it was scrolled — roughly one run
+ * in eight, never on a warm navigation — which hangs a phantom leading run on every sequence read
+ * out of that sweep. It is a start-up race in the harness, not a hand-off defect, and it predates
+ * the work this file is being read against.
+ *
+ * Priming asserts NOTHING. It is the same "scroll until the scene is right" the rest of the suite
+ * already does before it starts reading, and it only establishes the state every test in this
+ * file already assumes it begins in. Typically it costs a single pass.
+ *
+ * Deliberately NOT a wait on the loader overlay leaving the DOM: that lands the first sample on
+ * the unmount instead of before it, and turns an occasional race into a reliable failure.
+ */
+async function primeSceneMachine(page: Page): Promise<void> {
+  const films = await sceneRange(page, "films");
+  await expect
+    .poll(
+      async () => {
+        await scrollTo(page, within(films, 0.5));
+        return (await readFrame(page)).activeScene;
+      },
+      { timeout: 30_000, message: "the scene machine must follow scroll before anything is read" },
+    )
+    .toBe("films");
+}
+
 /** A point a fraction of the way through a scene's own trigger window. */
 function within(range: { start: number; end: number }, fraction: number): number {
   return range.start + (range.end - range.start) * fraction;
@@ -252,28 +283,60 @@ test.beforeEach(async ({ page }) => {
   const response = await page.goto("/");
   expect(response?.status()).toBe(200);
   await settle(page);
+  await primeSceneMachine(page);
 });
 
 /* ---------------------------------- 1. brief §7.7 — pixel B dark beat -> tracks entrance */
 
+/**
+ * Where this test now looks, and why it is not where it used to look.
+ *
+ * It used to sweep the films hand-over and then the whole of pixel B, because that is where the
+ * fade ran: the card held at full strength until pixel B was already the active scene and only
+ * then faded, so the mosaic played on top of a card that was still there. Brief §7.7 gives those
+ * as two steps in order — "2. With continued scroll, the poster and left description begin
+ * fading. 3. A colored pixel mosaic starts replacing the Wavy Dots background" — and the
+ * implementation had collapsed them into one. The card now leaves across the tail of its OWN
+ * scene (`FILM_FADE_FROM` in `src/lib/scene/reducer.ts`) and the transition follows it, reaching
+ * 0 exactly at films progress 1 so nothing stalls half-faded across the frozen viewport between
+ * the two scenes. The reducer-side half of this was already rewritten to match; this seam was
+ * missed, and swept a range in which the fade had long since finished — every sample "cleared".
+ *
+ * Nothing about the PROPERTY under test changes: steps 1 and 2 of §7.7, read as the three fade
+ * phases in order with the last film on stage throughout, and §7.7's "Film content must not
+ * disappear abruptly" — a cut still shows no "fading" run and no intermediate stages. The sweep
+ * simply starts one scene earlier so it covers the fade wherever in that stretch it is tuned to
+ * sit, and pixel B stays in range so the other half of the claim — gone BEFORE the transition,
+ * and gone for all of it — is still proved rather than assumed.
+ */
 test("film content fades across pixel B with the last film still on stage, never cut", async ({
   page,
 }) => {
-  // The films hand-over, where the film is still held, then the whole of transition B.
+  // The films scene from just inside it (so the fade is caught wherever in the tail it begins),
+  // then the hand-over, then the whole of transition B.
   const films = await sceneRange(page, "films");
   const pixelB = await sceneRange(page, "pixelB");
   const frames = await sweepSegments(page, [
+    [within(films, 0.05), films.end, 32],
     [films.end, pixelB.start, 4],
-    [pixelB.start, pixelB.end, 24],
+    [pixelB.start, pixelB.end, 12],
   ]);
-
-  // Brief §7.7 step 1: "Film 03 remains visible" — the last film by the seed's own count.
-  const onStage = new Set(column(frames, "activeFilmIndex"));
-  expect([...onStage]).toEqual([String(FILM_COUNT - 1)]);
 
   // Steps 2-6: held, then fading with continued scroll, then cleared for the beat. Three phases,
   // in that order, each entered exactly once — a cut would skip "fading" entirely.
   expect(runsOf(column(frames, "filmFade"))).toEqual([...FILM_FADE_PHASES]);
+
+  /*
+   * Brief §7.7 step 1: "Film 03 remains visible" — the last film by the seed's own count.
+   *
+   * Read off the frames from the moment the fade leaves "held", rather than off every frame in
+   * range: the sweep now opens early enough in the films scene that the earlier films are still
+   * being read through, and step 1 is a claim about what is on stage while the content fades.
+   * Which film that is stays absolute — the last one — and no scroll position is named.
+   */
+  const whileLeaving = frames.filter((frame) => frame.filmFade !== "held");
+  const onStage = new Set(column(whileLeaving, "activeFilmIndex"));
+  expect([...onStage]).toEqual([String(FILM_COUNT - 1)]);
 
   // The fade is scroll-linked, so it passes through many distinct stages on the way down.
   const fade = numericColumn(frames, "filmFadePercent");
@@ -282,7 +345,10 @@ test("film content fades across pixel B with the last film still on stage, never
   expect(isNonIncreasing(fade)).toBe(true);
   expect(intermediateStages(fade, 0, 100).length).toBeGreaterThanOrEqual(MIN_INTERMEDIATE_STAGES);
 
-  // No scene after pixel B has begun anywhere in that range.
+  // Gone before the transition, not during it, and no scene after pixel B has begun in range.
+  const withinPixelB = frames.filter((frame) => frame.activeScene === "pixelB");
+  expect(withinPixelB.length).toBeGreaterThan(0);
+  expect(withinPixelB.every((frame) => frame.filmFade === "cleared")).toBe(true);
   expect(runsOf(column(frames, "activeScene"))).toEqual(["films", "pixelB"]);
 });
 

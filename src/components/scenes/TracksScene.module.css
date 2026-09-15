@@ -179,6 +179,22 @@
   -webkit-user-select: none;
 }
 
+/*
+ * The list box itself is not a hit target, or it eats every click meant for a neighbour.
+ *
+ * The off-centre cases are pushed AWAY from the reader — `--case-depth-step` is negative — so
+ * they sit behind this element's own plane at z = 0. A box in front of another box takes the
+ * hit: the list swallowed every press outside the active case, and the only case a reader could
+ * click was the one already centred. Selecting a case is one of the four ways this carousel
+ * moves, and the only one carried by a control since the prev/next arrows were retired, so what
+ * this cost was the whole button input.
+ *
+ * Nothing here wants the list to be clickable anyway: `.track`, `.case` and an inactive
+ * `.caption` are all `pointer-events: none` already, and the two things that ARE interactive —
+ * a painted case's button and the active caption — opt back in for themselves. Drag, swipe and
+ * wheel are unaffected; they are bound to the STAGE, which is this element's parent and still
+ * receives every gesture that reaches it, directly or by bubbling.
+ */
 .cases {
   position: absolute;
   inset: 0;
@@ -186,6 +202,7 @@
   padding: 0;
   list-style: none;
   transform-style: preserve-3d;
+  pointer-events: none;
 }
 
 /*

@@ -211,6 +211,31 @@ async function openAt(page: Page, width: number, height: number): Promise<void> 
   await settle(page);
 }
 
+/**
+ * Wait until the entry loader has let go of the document.
+ *
+ * Only needed by a test that delivers a real INPUT gesture. While the loader owns the viewport
+ * the page holds still on purpose (brief §7.1): the shell captures wheel, touchmove and the
+ * scrolling keys so a flick during the ~3.2s entry cannot carry the reader past four scenes of
+ * §6's fixed sequence. Every gesture delivered inside that window is swallowed by design.
+ *
+ * Programmatic scrolling is deliberately NOT locked — the reveal, the skip link and a fragment
+ * entry all move the page while the loader is up — which is why the rest of this file, which
+ * scrolls with `window.scrollTo`, never has to wait for this.
+ *
+ * `data-drop-loader` on the document element is the loader's own published marker, the same seam
+ * journey.spec.ts, performance.spec.ts and reduced-motion.spec.ts wait on.
+ */
+async function whenLoaderReleasesTheDocument(page: Page): Promise<void> {
+  await expect
+    .poll(() => page.evaluate(() => document.documentElement.dataset.dropLoader), {
+      message: "the entry loader never released the document",
+      timeout: 30_000,
+    })
+    .toBe("complete");
+  await expect(page.locator("[data-loader-overlay]")).toHaveCount(0);
+}
+
 /* ---------------------------------------------------------------------------------- tests */
 
 test.describe.configure({ timeout: 180_000 });
@@ -420,6 +445,15 @@ for (const viewport of VIEWPORTS) {
 test("the mobile header never intercepts scroll or covers primary content", async ({ page }) => {
   const mobile = VIEWPORTS[0];
   await openAt(page, mobile.width, mobile.height);
+  // This test is the only one in this file that delivers a real gesture, so it is the only one
+  // that has to wait for the entry loader to release the document first — see the helper. It
+  // used to pass without waiting, and only because the loader lock LEAKED: Lenis ran its own
+  // wheel handler and scrolled the document programmatically, which the lock's preventDefault()
+  // never touched, so a wheel fired mid-loader moved the page anyway. That leak was the defect
+  // the lock existed to stop, and it has been closed; a gesture delivered during the entry is
+  // now correctly swallowed. Firing the wheel before this point would assert against a page
+  // that is holding still ON PURPOSE, and would say nothing at all about the header.
+  await whenLoaderReleasesTheDocument(page);
   await scrollIntoScene(page, "thesis");
 
   const header = await boxOf(page, "header", "mobile header");
@@ -523,7 +557,24 @@ test("no feature depends on hover: mobile reads and drives the page without one"
   const neighbour = page.locator("[data-track][data-in-field='true']:not([data-active='true'])");
   const neighbourIndex = await neighbour.first().getAttribute("data-index");
   expect(neighbourIndex, "the field paints no neighbour to press").not.toBeNull();
-  await neighbour.first().locator("button").click({ timeout: 20_000 });
+
+  /*
+   * The case under test is PINNED by its own index before it is pressed, and the assertion is
+   * about that same case — not about "whatever the first off-centre case is now".
+   *
+   * The field advances ITSELF now: with scroll no longer driving the carousel, an autoplay timer
+   * is what advertises that there are eleven tracks behind the one on screen. It yields while the
+   * reader is driving and comes back after they stop, so "the first off-centre case" is a moving
+   * target between the read above and the press below. Re-resolving it by position could press
+   * one case and compare against another's index — which is exactly what failed here, pressing
+   * the neighbour the field had just slid into first place and reading its index as a miss.
+   *
+   * Pinning is not a weaker assertion, it is the assertion this leg was written to make: press a
+   * case that is not in the centre, and it becomes the centre one. A press, never a hover.
+   */
+  const pressed = page.locator(`[data-track][data-index="${neighbourIndex}"]`);
+  await pressed.locator("button").click({ timeout: 20_000 });
+  await expect(pressed).toHaveAttribute("data-active", "true");
   await expect(active).toHaveAttribute("data-index", String(neighbourIndex));
 });
 

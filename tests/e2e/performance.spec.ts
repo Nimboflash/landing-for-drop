@@ -241,7 +241,24 @@ async function settle(page: Page): Promise<void> {
   );
 }
 
-/** The loader is time-based (brief §7.1); every test waits for its own published hand-over. */
+/**
+ * The loader is time-based (brief §7.1); every test waits for its own published hand-over.
+ *
+ * CHANGED: the hand-over now also waits for the background LAYER to be mounted, because
+ * `data-drop-loader="complete"` never implied it. `BackgroundCanvas` is mounted through
+ * `next/dynamic(…, { ssr: false })` (`ImmersiveLensPage.tsx`), so its chunk is fetched — and
+ * against a dev server, compiled — on its own schedule, and the page is deliberately complete
+ * without it (brief §12, §15: WebGL is decorative, the DOM is the page). That is correct product
+ * behaviour, so the wait belongs here. Without it every reader of the background raced the chunk
+ * on a loaded machine: `readPixelRatio` threw "no background canvas to measure", and the
+ * context-count test took its `before` reading before the renderer existed.
+ *
+ * The layer ROOT, deliberately, not the `<canvas>`: the root is published in both the `active` and
+ * the `fallback` ground, so a machine that genuinely cannot create a context still reaches the
+ * assertions and reports that, instead of timing out in a helper. It gets the same settle budget
+ * as the loader itself, for the same reason the loader needs one — a cold chunk has to be compiled
+ * and served before it can mount — and still fails, by name, if the layer never arrives at all.
+ */
 async function waitPastLoader(page: Page): Promise<void> {
   await expect
     .poll(() => page.evaluate(() => document.documentElement.dataset.dropLoader), {
@@ -250,6 +267,10 @@ async function waitPastLoader(page: Page): Promise<void> {
     })
     .toBe("complete");
   await expect(page.locator("[data-loader-overlay]")).toHaveCount(0);
+  await expect(
+    page.locator("[data-background-canvas]"),
+    "the background layer must have mounted before anything measures it",
+  ).toHaveCount(1, { timeout: LOADER_SETTLE_TIMEOUT_MS });
 }
 
 async function openLens(page: Page, route: string): Promise<void> {
@@ -347,7 +368,18 @@ test("a full scroll pass does not create a second WebGL context", async ({ page 
   await instrumentWebGLContexts(page);
   await openLens(page, "/");
 
+  // CHANGED: `before` is taken from the settled steady state rather than the instant the loader
+  // hands over. The assertion below is that the context count does NOT MOVE across the pass, so a
+  // baseline captured while the renderer was still being mounted moves on its own and reports a
+  // leak that never happened. Asserted rather than merely awaited, so a background that never
+  // arrives fails here by name instead of silently lowering the bar the pass is measured against.
+  await expect(page.locator("[data-background-canvas] canvas")).toHaveCount(1, {
+    timeout: LOADER_SETTLE_TIMEOUT_MS,
+  });
+  await settle(page);
   const before = await readResources(page);
+  expect(before.liveContexts, "the shared renderer must be up before the pass begins").toBe(1);
+
   await fullScrollPass(page);
   const after = await readResources(page);
 
