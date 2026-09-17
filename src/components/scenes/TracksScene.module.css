@@ -68,7 +68,7 @@
 .headingFa {
   font-family: var(--font-persian);
   font-size: var(--title-lg);
-  font-weight: 700;
+  font-weight: var(--weight-fa-heading);
   line-height: 1.18;
   color: var(--drop-white);
 }

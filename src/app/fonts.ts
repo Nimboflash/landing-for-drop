@@ -2,12 +2,12 @@
  * Typefaces for the DROP Immersive Weekly Lens (brief §4, "Typography").
  *
  * Vazirmatn comes through `next/font/google`, which downloads the font files at
- * build time and serves them from our own origin; Satoshi and Aria are local
+ * build time and serves them from our own origin; Satoshi and Abar are local
  * faces loaded through `next/font/local` from `./fonts`. Either way the bytes
  * are ours and no request leaves for a font host at runtime.
  *
  * The exported CSS variable names are load-bearing: `src/app/globals.css`
- * already binds `--font-persian` / `--font-latin` to `--font-aria` /
+ * already binds `--font-persian` / `--font-latin` to `--font-abar` /
  * `--font-satoshi`. Renaming either variable silently drops the whole page
  * back to the fallback stack.
  *
@@ -65,14 +65,14 @@ export const satoshi = localFont({
 });
 
 /**
- * The Persian SAFETY NET, no longer the Persian voice — Aria below is.
+ * The Persian SAFETY NET, no longer the Persian voice — Abar below is.
  *
  * Kept in the stack rather than deleted because it is the one face here that is
  * certain to carry the whole Arabic block, and a missing glyph in a Persian
  * headline is a worse failure than an unused `@font-face` rule.
  *
  * `preload: false` is what makes that free: Next still emits the face, but the
- * browser only fetches it if Aria fails to match a glyph. In the normal case
+ * browser only fetches it if Abar fails to match a glyph. In the normal case
  * nothing downloads, so the safety net costs a rule and no bytes.
  */
 export const vazirmatn = Vazirmatn({
@@ -88,60 +88,51 @@ export const vazirmatn = Vazirmatn({
 /**
  * Persian face — the primary editorial voice of the page.
  *
- * Brief §4 says to "self-host Vazirmatn until a final licensed Persian brand
- * typeface is approved". Aria is that typeface, so this is the swap the brief was
- * holding the place for rather than a departure from it. Self-hosted for the same
- * reason Vazirmatn was: the files are served from our own origin and no request
- * leaves for a font host at runtime.
+ * Brief §4 says to "self-host Vazirmatn until a final licensed Persian brand typeface is
+ * approved". Abar is that typeface, so this is the swap the brief was holding the place for.
+ * Self-hosted, like everything else here: the bytes are served from our own origin and no
+ * request leaves for a font host at runtime.
  *
- * FOUR weights, and every one of them is a real face rather than a near miss. The
- * page asks for 800 (eight rules), 700 (five), 600 (one) and the 400 of body copy,
- * and Aria draws all four: usWeightClass 400 / 600 / 700 / 800 read straight from
- * each file's OS/2 table. That is the thing the previous face could not do — it had
- * no 800, so CSS matched upward to Black and every heading rendered a step heavy,
- * and dropping Black to avoid that collapsed the hero and the closing statement onto
- * one weight. Nothing is being approximated here.
+ * THE NO-ENGLISH CUT, and that is a decision about who draws what. Abar ships three variable
+ * files — the full face, one with Persian numerals, and one with no Latin at all. The lens data
+ * has zero Persian strings containing Latin letters and zero Persian digits, both counted rather
+ * than assumed, so the numeral cut buys nothing. The no-English cut is what keeps the existing
+ * arrangement true: Latin that appears inside Persian text falls through to Satoshi, which is
+ * the face meant to draw it. It is also 22KB lighter than the full one.
  *
- * The family ships twelve weights; the eight nothing asks for are not shipped. Aria
- * also has a second face at four of those classes (Normal beside Regular, UltraBold
- * beside ExtraBold, Heavy beside Black) — the conventional member is taken in each
- * case.
- *
- * woff2, converted from the supplied TTFs: 1153KB of TTF became 379KB, which is the
- * difference between four weights being affordable and not.
- *
- * `adjustFontFallback` is left at its default. For `next/font/local` that default
- * is the string `'Arial'` rather than the boolean `true` that the Google loaders
- * above take — same anti-CLS mechanism, different spelling of the option, and
- * passing `true` here would be a type error rather than a silent downgrade.
+ * One variable file covering 400-900 rather than static cuts. The page asks for Persian at 400,
+ * 600, 700 and 800, and a range covers all four exactly — the lesson the Latin swap taught, where
+ * a declared 600 had been quietly rendering as 700 for want of a face to land on.
  */
-export const aria = localFont({
+export const abar = localFont({
   src: [
-    { path: "./fonts/Aria-Regular.woff2", weight: "400", style: "normal" },
-    { path: "./fonts/Aria-SemiBold.woff2", weight: "600", style: "normal" },
-    { path: "./fonts/Aria-Bold.woff2", weight: "700", style: "normal" },
-    { path: "./fonts/Aria-ExtraBold.woff2", weight: "800", style: "normal" },
+    {
+      path: "./fonts/AbarNoEn-VF.woff2",
+      weight: "400 900",
+      style: "normal",
+    },
   ],
   display: "swap",
   preload: true,
-  variable: "--font-aria",
+  variable: "--font-abar",
   /*
-   * Optical size, measured rather than chosen.
+   * Optical size, measured against the face this replaces rather than chosen.
    *
-   * Aria sets about 6.5% smaller per em than Vazirmatn, which every font-size and
-   * line-height in this repo was tuned against. At 100px the same Persian string is
-   * 7.595em wide against 8.1265em, with an ink ascent of 0.648 against 0.6846 — ratios
-   * of 1.070 and 1.057, close enough to each other to be a uniform scale rather than a
-   * difference in shape.
+   * Every font-size and line-height in this repo is tuned against Aria as it rendered — which is
+   * Aria at its own 106.3%. At 100px the same Persian string sets 13.9529em wide in Aria against
+   * 15.555em in Abar, with ink ascents of 0.7611 and 0.845: ratios of 0.897 and 0.9007. Two
+   * measurements that close together describe a uniform scale, not a difference in shape, so a
+   * single number can carry it.
    *
-   * 106.3% is the mean of the two. It also brings the `ch` unit back into line: Aria's
-   * zero is 0.527em against Vazirmatn's 0.562em, a ratio of 1.066 that tracks the text
-   * ratio almost exactly, so adjusting the face fixes the measures at the same time.
-   * (The previous face did NOT behave that way — its zero was 19% out of step with its
-   * own text, which is why every ch measure had to be hand-corrected and then undone.)
+   * 0.89885 x 106.3% = 95.5%. Abar simply draws larger per em than Aria did.
+   *
+   * It also leaves the leading alone, which is the thing a face swap usually breaks: Abar's ink
+   * runs 1.135em ascender to descender, which at this adjustment is 1.0845em against the 1.18
+   * the Persian headings set — and Aria's was 1.0758em. The two faces land within a hundredth of
+   * each other, so `--leading-fa-display` needs no retuning.
    */
-  declarations: [{ prop: "size-adjust", value: "106.3%" }],
+  declarations: [{ prop: "size-adjust", value: "95.5%" }],
 });
 
 /** Every font CSS variable, ready to hang on `<html>`. */
-export const fontVariables = `${satoshi.variable} ${vazirmatn.variable} ${aria.variable}`;
+export const fontVariables = `${satoshi.variable} ${vazirmatn.variable} ${abar.variable}`;

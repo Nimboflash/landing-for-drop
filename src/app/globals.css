@@ -50,6 +50,38 @@
    * Persian wants more room than Latin at the same size, and larger type wants less than small
    * type, which is why display is tight and prose is generous rather than the other way round.
    */
+  /*
+   * Persian runs one step heavier than Latin, because the faces do not agree on what a
+   * weight number means.
+   *
+   * Measured on the built page as STEM WIDTH — the thickness of a vertical stroke, which is
+   * what the eye reads as weight and which, unlike ink coverage, is comparable across two
+   * scripts. Abar's alef against Satoshi's I, per em:
+   *
+   *     400   0.075 / 0.075   1.00
+   *     600   0.095 / 0.120   0.79
+   *     700   0.110 / 0.130   0.85
+   *     800   0.120 / 0.145   0.83
+   *
+   * At 400 they match exactly, which is why body copy needs nothing. Above it Abar is 15-21%
+   * lighter at the same number, and the gap is flat enough across the range that one offset
+   * carries it. Adding 100 brings every pair to about 0.92 — close, without overshooting into
+   * Persian looking blacker than the Latin beside it, which matching stems exactly would do.
+   * Persian is denser horizontally to begin with.
+   */
+  --weight-fa-heading: 800;
+  --weight-fa-display: 900;
+  --weight-en-heading: 700;
+  /*
+   * Tracked Latin support labels — the eyebrow, the section's Latin line, the counts.
+   *
+   * They had run at 400, 600 and 700 in different scenes for the same job. 500 is a real face
+   * in Satoshi's range, sits clear of the 400 of body copy, and does not compete with a heading
+   * — which matters most where one of these sits INSIDE a heading element, as the art section's
+   * Latin line does.
+   */
+  --weight-en-label: 500;
+
   --leading-fa-display: 1.18;
   --leading-fa-prose: 1.75;
   --leading-en-prose: 1.6;
@@ -57,12 +89,12 @@
   /* Families — bound to next/font CSS variables in src/app/layout.tsx */
   --font-latin: var(--font-satoshi), "Helvetica Neue", Arial, sans-serif;
   /*
-   * Aria first — the approved Persian brand face (brief §4). Vazirmatn stays
+   * Abar first — the approved Persian brand face (brief §4). Vazirmatn stays
    * behind it as the glyph safety net and is only fetched if Aria fails to
    * match; Montserrat then covers the Latin fragments that run inline in Persian
    * text, and Tahoma is the last resort with no download at all.
    */
-  --font-persian: var(--font-aria), var(--font-vazirmatn), var(--font-satoshi), Tahoma,
+  --font-persian: var(--font-abar), var(--font-vazirmatn), var(--font-satoshi), Tahoma,
     sans-serif;
 
   /* Layout */
@@ -126,7 +158,7 @@ h4 {
    * 700 is the heading weight now, and 800 is spent deliberately — on the two largest
    * statements and nowhere else.
    */
-  font-weight: 700;
+  font-weight: var(--weight-fa-heading);
   /*
    * Tall enough to hold Aria, which 1.02 was not quite.
    *
@@ -178,6 +210,8 @@ h4 {
 :is(h1, h2, h3, h4):lang(en) {
   line-height: 1.02;
   letter-spacing: -0.015em;
+  /* The other half of the offset above: Latin does not need the extra step. */
+  font-weight: var(--weight-en-heading);
 }
 
 p {

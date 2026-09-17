@@ -47,10 +47,19 @@
   gap: clamp(0.75rem, 2vw, 1.5rem);
 }
 
+/*
+ * Declared, not inherited.
+ *
+ * These are spans inside the h2, so the `:is(h1,h2,h3,h4):lang(en)` rule in globals does not
+ * reach them — it selects Latin heading ELEMENTS, and the Latin here is a run inside a Persian
+ * one. Without a weight of their own they take the Persian display weight, which at label size
+ * and 0.22em of tracking is far more voice than a section's support line wants.
+ */
 .headingEn,
 .headingCount {
   font-family: var(--font-latin);
   font-size: var(--label);
+  font-weight: var(--weight-en-label);
   letter-spacing: 0.22em;
   text-transform: uppercase;
   color: color-mix(in srgb, currentColor 72%, transparent);
@@ -164,7 +173,7 @@
    * support items use to separate themselves. Weight is the tool that is left. 600 is already
    * the page's sub-heading weight (the thesis eyebrow), so this spends nothing new.
    */
-  font-weight: 600;
+  font-weight: 700;
   color: color-mix(in srgb, currentColor var(--art-ink-support), transparent);
 }
 

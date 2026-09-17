@@ -55,7 +55,7 @@
 .label {
   font-family: var(--font-latin);
   font-size: var(--label);
-  font-weight: 600;
+  font-weight: var(--weight-en-label);
   letter-spacing: 0.24em;
   text-transform: uppercase;
   color: color-mix(in srgb, currentColor 74%, transparent);
@@ -106,7 +106,7 @@
   font-family: var(--font-persian);
   font-size: var(--title-lg);
   /* The other place 800 is spent: the hero line, the page's opening voice. */
-  font-weight: 800;
+  font-weight: var(--weight-fa-display);
   /*
    * Set, not inherited: this is a `p`, so the heading rule in globals does not reach it, and
    * dropping the declaration would hand it the 1.6 of body prose. It ran 1.22 against the 1.18

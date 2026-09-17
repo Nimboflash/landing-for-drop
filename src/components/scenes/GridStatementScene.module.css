@@ -105,7 +105,7 @@
   font-family: var(--font-persian);
   font-size: var(--display-lg);
   /* One of the two places 800 is spent: the page's single centred statement. */
-  font-weight: 800;
+  font-weight: var(--weight-fa-display);
   /* Aria's ink is 1.0396em; 1.1 left this 6% of room, which reads cramped in Persian. */
   line-height: 1.18;
   /* Persian, declared two lines up. Cursive script takes no tracking — see globals h1–h4. */
@@ -124,7 +124,7 @@
   margin-inline: auto;
   font-family: var(--font-latin);
   font-size: var(--label);
-  font-weight: 700;
+  font-weight: var(--weight-en-label);
   line-height: 1.5;
   letter-spacing: 0.22em;
   text-indent: 0.22em;

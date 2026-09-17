@@ -59,7 +59,7 @@
 .heading {
   font-family: var(--font-persian);
   font-size: var(--body);
-  font-weight: 700;
+  font-weight: var(--weight-fa-heading);
   color: color-mix(in srgb, currentColor 58%, transparent);
 }
 
