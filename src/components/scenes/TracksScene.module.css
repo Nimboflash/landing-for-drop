@@ -628,77 +628,135 @@
 /* ----------------------------------------------------------------- controls */
 
 /*
- * The listen control.
+ * The listen control, on the cover.
  *
- * A row of its own so it cannot join the caption's centred text flow and read as a fourth line
- * of metadata — it is the one thing in this caption a reader can act on, and it has to look it.
+ * It began as a hairline rectangle under the caption, which read as a caption with a box around
+ * it. Checked against how this is actually drawn — TIDAL, Paramount+, Suno, YouTube Music — and
+ * they agree: the play affordance sits ON the artwork, filled, and it is a circle.
+ *
+ * A circle here is not a break with the corner rule. That rule makes an exception for a form
+ * that is physically round, and this scene is full of them: every case has a disc behind its
+ * plastic, and a play control is the one round convention nobody misreads.
+ *
+ * PRESENT, NOT REVEALED. Every reference fades this in on hover; this page cannot, and the repo
+ * has a test that says so — no feature depends on hover, because a touch screen has none. So it
+ * rests at 0.82 and hover only takes it the rest of the way.
  */
-.listenRow {
-  display: flex;
-  justify-content: center;
-  margin-block-start: 0.85rem;
-}
-
 .listen {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  /* Room for the glyph beside the word, in logical order so RTL places it itself. */
-  gap: 0.55rem;
+  position: absolute;
   /*
-   * 44px of height whatever the type does. Brief §15 asks for real touch targets, and the label
-   * inside this is `--label` type — on its own that is a target about half the size a thumb needs.
+   * PHYSICAL left, not `inset-inline-start`. The track is `dir="rtl"`, where the logical
+   * property resolves to the right edge — so the element was pinned to the right and then
+   * pulled a further half-width left by the translate, landing exactly one width off centre.
+   * Measured: 583 against the disc's 640, and the control is 57 wide.
+   *
+   * Centring a thing on its parent has no direction. Logical properties are for the axes that
+   * do.
    */
-  min-block-size: 44px;
-  padding-inline: 1.15rem;
-  font-family: var(--font-persian);
-  font-size: var(--label);
-  letter-spacing: 0.08em;
+  top: 50%;
+  left: 50%;
+  z-index: 4;
+  display: grid;
+  justify-items: center;
+  gap: 0.6rem;
+  /*
+   * The Z nudge is load-bearing. `.case` is a preserve-3d context, where paint order follows 3D
+   * position and z-index alone decides nothing — without it this sits behind the case body it is
+   * supposed to be on top of.
+   */
+  transform: translate(-50%, -50%) translateZ(2px);
+  /* The list above turns pointer events off for the whole field; the controls opt back in. */
+  pointer-events: auto;
   text-decoration: none;
-  /*
-   * FILLED, not outlined.
-   *
-   * This started as a hairline rectangle with a bare word in it, which read as a caption with
-   * a box around it rather than the one thing in the scene a reader can act on. Every music
-   * service solves it the same way — TIDAL, Apple Music, Artlist and Spotify all make the
-   * listen action a filled shape carrying a play glyph, and none of them outline it.
-   *
-   * What is NOT borrowed is the pill. The repo's corner rule is sharp unless the physical form
-   * requires a circle, and a rounded capsule here would be exactly the generic styling that
-   * rule exists to refuse. Filled and square.
-   */
-  color: var(--drop-ink);
-  border: 1px solid transparent;
-  border-radius: 0;
-  background: var(--drop-off-white);
+  opacity: 0.82;
   transition:
-    background-color 240ms var(--ease-material),
-    border-color 240ms var(--ease-material);
+    opacity 220ms var(--ease-material),
+    scale 220ms var(--ease-material);
 }
 
-/* Brighter, not tinted: §4 reserves orange for light and energy, never for a surface. */
-.listen:hover {
-  background: var(--drop-white);
+.listenDisc {
+  display: grid;
+  place-items: center;
+  /* Comfortably past the 44px minimum at every breakpoint (brief §15). */
+  inline-size: 3.5rem;
+  block-size: 3.5rem;
+  border-radius: 50%;
+  background: var(--drop-off-white);
+  color: var(--drop-ink);
+  /* Reads on a bright cover as well as a dark one. */
+  box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.45);
+  transition: background-color 220ms var(--ease-material);
 }
 
 .listenGlyph {
-  /* Sized from the label rather than fixed, so it tracks --label at every breakpoint. */
-  inline-size: 0.72em;
-  block-size: 0.84em;
-  flex: none;
+  inline-size: 1.05rem;
+  block-size: 1.22rem;
+  /* Optical centring: a triangle's mass sits left of its box. */
+  margin-inline-start: 0.16rem;
+}
+
+.listenWord {
+  font-family: var(--font-latin);
+  font-size: var(--label);
+  font-weight: var(--weight-en-label);
+  letter-spacing: 0.22em;
+  /* The word is decoration over the artwork; the control is named by its aria-label. */
+  color: var(--drop-off-white);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.7);
+  opacity: 0;
+  translate: 0 -0.25rem;
+  transition:
+    opacity 220ms var(--ease-material),
+    translate 220ms var(--ease-material);
+}
+
+/* ------------------------------------------------------------ its states */
+
+.listen:hover,
+.listen:focus-visible {
+  opacity: 1;
+  scale: 1.06;
+}
+
+.listen:hover .listenDisc,
+.listen:focus-visible .listenDisc {
+  background: var(--drop-white);
+}
+
+.listen:hover .listenWord,
+.listen:focus-visible .listenWord {
+  opacity: 1;
+  translate: 0 0;
 }
 
 .listen:focus-visible {
+  outline: none;
+}
+
+/* The ring goes on the disc, so it follows the round shape instead of boxing it. */
+.listen:focus-visible .listenDisc {
   outline: 2px solid var(--drop-orange);
-  outline-offset: 3px;
+  outline-offset: 4px;
+}
+
+/* Pressed: the one state a finger gets, since a finger never hovers. */
+.listen:active {
+  scale: 0.97;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .listen {
+  .listen,
+  .listenDisc,
+  .listenWord {
     transition: none;
   }
-}
 
+  /* Nothing is hover-gated for motion reasons, so the word simply stays. */
+  .listenWord {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
 /* -------------------------------------------------------------- responsive */
 
 /*

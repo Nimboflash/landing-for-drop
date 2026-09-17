@@ -137,7 +137,14 @@ const EXTERNAL_LINK_NOTE = "باز شدن در تب تازه";
  * carries no control strings, and inventing an editorial one would put words in the content's
  * mouth. Persian, because the page is.
  */
-const LISTEN_LABEL = "شنیدن";
+/**
+ * The listen control's label, in Latin.
+ *
+ * Interface copy, like the carousel's other control strings — the lens schema carries none, and
+ * inventing an editorial one would put words in the content's mouth. English rather than
+ * Persian because the thing it opens is, and because it sits against Latin track titles.
+ */
+const LISTEN_LABEL = "LISTEN";
 
 /* ------------------------------------------------------------------- environment */
 
@@ -1014,6 +1021,47 @@ export function TracksScene({
                         </span>
                       </span>
                     </button>
+                    {/*
+                      The way out sits ON the cover, and it is a sibling of the case button
+                      rather than a child of it — an anchor inside a button is invalid, and
+                      nesting two controls would give a keyboard reader one stop that does two
+                      things.
+
+                      Only on the active case: a play control on a case the reader cannot see
+                      the front of is an invitation to click the wrong track. It is present
+                      rather than revealed, because this page has a test that says no feature
+                      depends on hover — hover only strengthens it.
+                    */}
+                    {active && track.sourceUrl ? (
+                      <a
+                        className={styles.listen}
+                        href={track.sourceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        tabIndex={sceneActive ? 0 : -1}
+                        data-track-listen
+                        data-external="true"
+                        aria-label={`${LISTEN_LABEL}: ${track.title} — ${track.artist} (${EXTERNAL_LINK_NOTE})`}
+                      >
+                        <span className={styles.listenDisc}>
+                          {/*
+                            Points right in both directions: a play triangle describes the
+                            direction of playback, not of reading.
+                          */}
+                          <svg
+                            className={styles.listenGlyph}
+                            viewBox="0 0 12 14"
+                            aria-hidden="true"
+                            focusable="false"
+                          >
+                            <path d="M1 1 L11 7 L1 13 Z" fill="currentColor" />
+                          </svg>
+                        </span>
+                        <span className={styles.listenWord} aria-hidden="true">
+                          {LISTEN_LABEL}
+                        </span>
+                      </a>
+                    ) : null}
                   </div>
 
                   {/*
@@ -1058,50 +1106,6 @@ export function TracksScene({
                     >
                       {track.groupTitle.fa}
                     </p>
-                    {/*
-                      A control of its own, rather than leaving the title as the only way out.
-
-                      The title has been a link for as long as a track carried a `sourceUrl`, but
-                      a linked heading is something a reader has to discover; a labelled control
-                      under the caption is something they can see. Same destination, same
-                      external-link contract — new tab, noopener, flagged, and announced as
-                      leaving the site — so the page's one rule about outbound links still holds.
-
-                      Rendered only when the data supplies a destination. Nothing here invents
-                      one, which is also what the accessibility seam asserts.
-                    */}
-                    {track.sourceUrl ? (
-                      <p className={styles.listenRow}>
-                        <a
-                          className={styles.listen}
-                          href={track.sourceUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          tabIndex={sceneActive && active ? 0 : -1}
-                          data-track-listen
-                          data-external="true"
-                          aria-label={`${LISTEN_LABEL}: ${track.title} — ${track.artist} (${EXTERNAL_LINK_NOTE})`}
-                        >
-                          {/*
-                            The glyph, drawn here rather than pulled from an icon set.
-
-                            It points right in both directions: a play triangle is a statement
-                            about the direction of PLAYBACK, not of reading, and every media
-                            control keeps it pointing right under RTL. Its box is square and
-                            aria-hidden — the control is already named by its aria-label.
-                          */}
-                          <svg
-                            className={styles.listenGlyph}
-                            viewBox="0 0 12 14"
-                            aria-hidden="true"
-                            focusable="false"
-                          >
-                            <path d="M1 1 L11 7 L1 13 Z" fill="currentColor" />
-                          </svg>
-                          {LISTEN_LABEL}
-                        </a>
-                      </p>
-                    ) : null}
                   </div>
                 </li>
               );
