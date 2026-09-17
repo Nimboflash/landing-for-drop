@@ -643,6 +643,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  /* Room for the glyph beside the word, in logical order so RTL places it itself. */
+  gap: 0.55rem;
   /*
    * 44px of height whatever the type does. Brief §15 asks for real touch targets, and the label
    * inside this is `--label` type — on its own that is a target about half the size a thumb needs.
@@ -653,19 +655,37 @@
   font-size: var(--label);
   letter-spacing: 0.08em;
   text-decoration: none;
-  color: var(--drop-off-white);
-  /* Sharp corners: the hard rule, and the case system it sits under keeps them too. */
-  border: 1px solid rgba(255, 255, 255, 0.38);
+  /*
+   * FILLED, not outlined.
+   *
+   * This started as a hairline rectangle with a bare word in it, which read as a caption with
+   * a box around it rather than the one thing in the scene a reader can act on. Every music
+   * service solves it the same way — TIDAL, Apple Music, Artlist and Spotify all make the
+   * listen action a filled shape carrying a play glyph, and none of them outline it.
+   *
+   * What is NOT borrowed is the pill. The repo's corner rule is sharp unless the physical form
+   * requires a circle, and a rounded capsule here would be exactly the generic styling that
+   * rule exists to refuse. Filled and square.
+   */
+  color: var(--drop-ink);
+  border: 1px solid transparent;
   border-radius: 0;
-  background: rgba(0, 0, 0, 0.35);
+  background: var(--drop-off-white);
   transition:
     background-color 240ms var(--ease-material),
     border-color 240ms var(--ease-material);
 }
 
+/* Brighter, not tinted: §4 reserves orange for light and energy, never for a surface. */
 .listen:hover {
-  background: rgba(255, 255, 255, 0.14);
-  border-color: rgba(255, 255, 255, 0.72);
+  background: var(--drop-white);
+}
+
+.listenGlyph {
+  /* Sized from the label rather than fixed, so it tracks --label at every breakpoint. */
+  inline-size: 0.72em;
+  block-size: 0.84em;
+  flex: none;
 }
 
 .listen:focus-visible {

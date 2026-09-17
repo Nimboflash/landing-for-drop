@@ -1082,6 +1082,22 @@ export function TracksScene({
                           data-external="true"
                           aria-label={`${LISTEN_LABEL}: ${track.title} — ${track.artist} (${EXTERNAL_LINK_NOTE})`}
                         >
+                          {/*
+                            The glyph, drawn here rather than pulled from an icon set.
+
+                            It points right in both directions: a play triangle is a statement
+                            about the direction of PLAYBACK, not of reading, and every media
+                            control keeps it pointing right under RTL. Its box is square and
+                            aria-hidden — the control is already named by its aria-label.
+                          */}
+                          <svg
+                            className={styles.listenGlyph}
+                            viewBox="0 0 12 14"
+                            aria-hidden="true"
+                            focusable="false"
+                          >
+                            <path d="M1 1 L11 7 L1 13 Z" fill="currentColor" />
+                          </svg>
                           {LISTEN_LABEL}
                         </a>
                       </p>
