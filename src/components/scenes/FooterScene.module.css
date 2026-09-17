@@ -253,7 +253,7 @@
   font-size: var(--label);
   /*
    * Tracking lives on .ctaEn, not here. This box holds BOTH halves of the label — the Persian
-   * `به دراپ بیا` and the Latin `VISIT DROP` — so tracking set on the container reached the
+   * and the Latin one the lens supplies — so tracking set on the container reached the
    * Persian one too and pulled its joined letters apart. Same split .statement/.statementEn
    * already uses above.
    */

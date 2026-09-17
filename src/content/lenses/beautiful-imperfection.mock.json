@@ -713,8 +713,8 @@
     },
     "cta": {
       "label": {
-        "fa": "به دراپ بیا",
-        "en": "VISIT DROP"
+        "fa": "مشاهده منو",
+        "en": "VIEW MENU"
       },
       "href": "",
       "enabled": false
