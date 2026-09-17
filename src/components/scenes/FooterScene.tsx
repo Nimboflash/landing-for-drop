@@ -34,6 +34,30 @@
  * width and the solid form is then subtracted, leaving a hairline ring hugging the *union's*
  * outside. That is the drawn letter's true contour, at any size, with no boolean-path library.
  *
+ * ## A revealed overlay, not the last block of the page
+ *
+ * The footer is not reached, it is UNCOVERED. Its section underlaps the art pieces by a viewport
+ * (`scene-budgets.ts`, `SceneSection`), so by the time the reveal starts the scene is already
+ * parked across the screen, BEHIND the scene above it. What then happens is one thing in two
+ * halves: the sheet — the surface, its two curved top corners and the rim light along them —
+ * rises out of the bottom of the frame, while everything printed on it is counter-translated by
+ * exactly the same amount and so does not move at all. The reader sees a stationary footer being
+ * uncovered by a rising edge, with the art pieces sliding away over the top of it, rather than a
+ * block of content sliding up into view.
+ *
+ * Both transforms are pure functions of the same reducer value, which is what makes scrolling back
+ * up undo it exactly: the sheet goes back down, the content stays where it always was.
+ *
+ * ## The curved corners are a recorded departure from a hard rule
+ *
+ * CLAUDE.md: "Sharp corners on the logo and content-card system (`border-radius: 0` on cards) …
+ * No generic rounded SaaS styling." The two TOP corners of the sheet are rounded anyway, on an
+ * explicit request, and that is a DELIBERATE DEPARTURE recorded here rather than slipped in. It is
+ * narrow on purpose: the curve is what makes the sheet read as a surface the page above is lying
+ * over, it is on the footer's own surface rather than on the card system the rule names, and
+ * nothing else in this scene rounds — the CTA slot is still a sharp box and the only circle is
+ * still the O.
+ *
  * ## This scene decides nothing
  *
  * No ScrollTrigger, no progress of its own, no background mode: the scene-state reducer already
@@ -54,6 +78,10 @@
  * the page seam can assert the reveal advances and rewinds without reading a computed style),
  * `data-motion` (`"scrubbed"` / `"static"`), and `data-footer-wordmark` on the outline stage.
  *
+ * Added by the overlay reveal: `data-sheet-percent`, how far the sheet has risen, 0 (still below
+ * the frame) to 100 (fully uncovered). Published for the same reason the reveal is — so the page
+ * seam can watch the uncovering advance and rewind without reading a transform.
+ *
  * ## Disabled means non-interactive
  *
  * A disabled slot renders as text, never as a dead link, and never as a pill copied from the
@@ -63,9 +91,15 @@
  * ## Reduced motion and no-JavaScript
  *
  * Reduced motion gets a static outline reveal: fully drawn, no wipe, no drift (the shader supplies
- * its own static ribbon). Nothing is ever hidden by progress — every string is server-rendered and
- * stays in the accessibility tree at every reveal value, so a JavaScript-disabled render reads the
- * complete footer with the outline already faintly present.
+ * its own static ribbon), and the sheet is simply already up — `SceneSection` drops the underlap
+ * to match, so the scene goes back to following the one before it. Nothing is ever hidden by
+ * progress: every string is server-rendered and stays in the accessibility tree at every reveal
+ * value.
+ *
+ * With scripting OFF the sheet is the one thing that could hide content — the server renders the
+ * page at reveal 0, which is the sheet still below the frame, and no reducer will ever move it. So
+ * a scoped `<noscript>` rule settles it, and a JavaScript-disabled render reads the complete
+ * footer with the sheet up and the outline already faintly present.
  */
 
 import { useId, type CSSProperties, type ReactNode } from "react";
@@ -112,11 +146,34 @@ const OUTLINE_EDGE_FULL_PERCENT = 122;
 /** How far the outline settles upward across the reveal, in small viewport heights. */
 const OUTLINE_LIFT_SVH = 1.8;
 
+/**
+ * The share of the reveal the sheet takes to rise, leaving the rest of the scene's window as a
+ * settled footer to stop on.
+ *
+ * Not a feel value: it is what keeps the edge moving at about the speed of the page. The footer's
+ * window is its budget minus a viewport (220 - 100 = 120vh at full scale, `scene-budgets.ts`), and
+ * the sheet has one viewport of its own height to travel — so 0.7 of 120vh is 84vh of scroll for
+ * 95-ish vh of sheet, near enough 1:1 that the edge reads as the page moving rather than as an
+ * animation triggered by it. Retune the budget and retune this with it.
+ */
+const SHEET_RISES_BY = 0.7;
+
 /** Content opacity at footer progress 0. A settle, never a hide — the text is always readable. */
 const CONTENT_OPACITY_FLOOR = 0.72;
 
 /** How far the closing block and the metadata row settle, in small viewport heights. */
 const CONTENT_LIFT_SVH = 1.2;
+
+/**
+ * Settles the sheet when scripting is off, scoped to this scene.
+ *
+ * Everything else here floors above zero or renders at its settled default, so this is the only
+ * value that can cost a reader content: with no JavaScript the reveal is frozen at 0, which is the
+ * sheet still below the frame with the whole footer inside it. Raw markup rather than a <style>
+ * child for the same reason the loader's guard is: React would make a real DOM node of it, and a
+ * real <style> node is a live stylesheet whether scripting is on or not.
+ */
+const NOSCRIPT_SETTLE_SHEET = '<style>[data-footer]{--footer-curtain:0!important}</style>';
 
 /* -------------------------------------------------------------------- pure */
 
@@ -289,6 +346,7 @@ export interface FooterSceneProps {
 
 /** The custom properties the stylesheet reads. Every one of them is reducer output, eased. */
 type FooterStyle = CSSProperties & {
+  "--footer-curtain": string;
   "--footer-wordmark-aspect": string;
   "--footer-horizon-settled": string;
   "--footer-outline-strength": string;
@@ -323,7 +381,19 @@ export function FooterScene({ footer, footerReveal, progress, reducedMotion }: F
 
   const settled = reducedMotion ? 1 : ease(clamp01(progress));
 
+  /**
+   * How much of the sheet is still below the frame, 1 (all of it) to 0 (up, at rest). The
+   * stylesheet turns it into one distance and applies it twice — down the sheet, up the content —
+   * so the surface rises and the footer printed on it stands still.
+   *
+   * Reduced motion: already up. There is no uncovering to simplify, and `SceneSection` drops the
+   * underlap in the same media query so the scene is not sitting under its predecessor.
+   */
+  const sheetUp = reducedMotion ? 1 : ease(clamp01(reveal / SHEET_RISES_BY));
+  const curtain = 1 - sheetUp;
+
   const style: FooterStyle = {
+    "--footer-curtain": curtain.toFixed(4),
     "--footer-wordmark-aspect": WORDMARK_ASPECT.toFixed(4),
     "--footer-horizon-settled": SETTLED_HORIZON.toFixed(4),
     "--footer-outline-strength": strength.toFixed(3),
@@ -354,35 +424,45 @@ export function FooterScene({ footer, footerReveal, progress, reducedMotion }: F
       style={style}
       data-footer
       data-reveal-percent={Math.round(reveal * 100)}
+      data-sheet-percent={Math.round(sheetUp * 100)}
       data-motion={reducedMotion ? "static" : "scrubbed"}
     >
+      <noscript dangerouslySetInnerHTML={{ __html: NOSCRIPT_SETTLE_SHEET }} />
       {/*
-        Decorative: the giant word is the brand's own name repeated as artwork, and the persistent
-        header already carries the DROP mark with an accessible name. Nothing is announced twice,
-        and no content lives only inside it.
+        Everything printed on the sheet, counter-translated by the sheet's own travel so that the
+        surface rises and this does not move. One wrapper rather than a transform per block: they
+        all have to move by exactly the same amount as each other, and as the sheet, or the reveal
+        stops being an uncovering.
       */}
-      <div className={styles.wordmarkStage} data-footer-wordmark aria-hidden="true">
-        <div className={styles.wordmark}>
-          <OutlineWordmark className={styles.outline} />
-          <OutlineWordmark className={`${styles.outline} ${styles.outlineLit}`} />
+      <div className={styles.stationary}>
+        {/*
+          Decorative: the giant word is the brand's own name repeated as artwork, and the persistent
+          header already carries the DROP mark with an accessible name. Nothing is announced twice,
+          and no content lives only inside it.
+        */}
+        <div className={styles.wordmarkStage} data-footer-wordmark aria-hidden="true">
+          <div className={styles.wordmark}>
+            <OutlineWordmark className={styles.outline} />
+            <OutlineWordmark className={`${styles.outline} ${styles.outlineLit}`} />
+          </div>
         </div>
-      </div>
 
-      <div className={styles.closing}>
-        <p className={styles.statement} dir="rtl" data-footer-statement>
-          {footer.statement.fa}
-        </p>
-        <p className={styles.statementEn} data-footer-statement-en>
-          <Latin>{englishOr(footer.statement)}</Latin>
-        </p>
-        {cta ? <FooterCta cta={cta} /> : null}
-      </div>
+        <div className={styles.closing}>
+          <p className={styles.statement} dir="rtl" data-footer-statement>
+            {footer.statement.fa}
+          </p>
+          <p className={styles.statementEn} data-footer-statement-en>
+            <Latin>{englishOr(footer.statement)}</Latin>
+          </p>
+          {cta ? <FooterCta cta={cta} /> : null}
+        </div>
 
-      <ul className={styles.links} dir="ltr" data-footer-links>
-        {footer.links.map((link) => (
-          <FooterSlot key={link.label} link={link} />
-        ))}
-      </ul>
+        <ul className={styles.links} dir="ltr" data-footer-links>
+          {footer.links.map((link) => (
+            <FooterSlot key={link.label} link={link} />
+          ))}
+        </ul>
+      </div>
     </footer>
   );
 }

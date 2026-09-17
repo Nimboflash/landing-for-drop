@@ -4,6 +4,13 @@
 
 .scene {
   position: relative;
+  /*
+   * Every scene sits one layer above the shared canvas (which is a positioned box at z-index 0 in
+   * the shell's isolated stacking context) so that an OVERLAY scene can be put BELOW its
+   * neighbours at 0 without falling behind the canvas. Sections never overlap except where an
+   * overlay scene underlaps the one before it, so this changes nothing for the other nine.
+   */
+  z-index: 1;
   display: block;
   /*
    * The budget arrives unitless so it can be scaled per breakpoint. The floor keeps a pinned
@@ -45,6 +52,36 @@
   padding-block-start: calc(var(--header-height) + 2rem + 30svh);
 }
 
+/* ---------------------------------------------------------------- overlay */
+
+/*
+ * An overlay scene is REVEALED from behind the scene before it (see SceneSection.tsx).
+ *
+ * Three rules do all of it, and none of them is an animation:
+ *
+ * 1. the section is pulled up under its predecessor by exactly one viewport, so its sticky stage
+ *    is already parked at the top of the screen — and its own trigger window already running —
+ *    while that predecessor's last screen is still leaving. The amount is fixed by the hand-over
+ *    geometry rather than chosen; `scene-budgets.ts` says why it must stay exactly one viewport;
+ * 2. it paints BELOW the other sections, so the scene above scrolls away OVER it rather than
+ *    under it — which is the whole point of the arrangement;
+ * 3. its stage gives up the shared padding and never takes a pointer, because the scene paints
+ *    its own edge-to-edge surface inside it and that surface, not this box, is what the reader
+ *    touches. The stage still covers the viewport while the scene is only half revealed, and a
+ *    full-viewport box that swallowed clicks and text selection would take them from the scene
+ *    still leaving above it.
+ */
+.overlay {
+  /* The amount is `SCENE_UNDERLAP_VH`, handed down by the component; never restated here. */
+  margin-block-start: calc(var(--scene-underlap, 100) * -1svh);
+  z-index: 0;
+}
+
+.overlay > .viewport {
+  padding: 0;
+  pointer-events: none;
+}
+
 .viewport {
   display: grid;
   align-content: center;
@@ -83,5 +120,15 @@
 @media (prefers-reduced-motion: reduce) {
   .scene {
     --scene-scale: 0.5;
+  }
+
+  /*
+   * Reduced motion gets a real path, not a degraded one: the overlay arrangement is simply off,
+   * and the scene follows the one before it like every other scene. It has to be off rather than
+   * merely still — an overlay scene renders fully revealed under reduced motion, and a revealed
+   * surface underlapping the previous scene would have that scene's content painting across it.
+   */
+  .overlay {
+    margin-block-start: 0;
   }
 }

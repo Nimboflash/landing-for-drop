@@ -26,7 +26,58 @@
  * | `--footer-content-opacity` / `--footer-content-lift` | the closing block and metadata settle |
  */
 
+/*
+ * THE SHEET.
+ *
+ * The footer is an overlay scene: its section already underlaps the one above it by a viewport
+ * (SceneSection.module.css), so by the time the reveal starts this box is parked across the
+ * screen, behind the art pieces. The reveal itself is these two transforms, and they are the
+ * whole of it.
+ *
+ * `--footer-curtain` is 1 while the sheet is still below the frame and 0 once it is fully up;
+ * FooterScene writes it from the reducer. The sheet translates by that fraction of its own
+ * height, and `.stationary` translates back by exactly the same amount — so the surface rises
+ * and everything printed on it does not move at all. That is what makes it read as an
+ * uncovering rather than a block sliding into view, and it is why scrolling back up undoes it
+ * exactly: both are pure functions of one value, with nothing to unwind.
+ */
 .footer {
+  /*
+   * ONE VIEWPORT, in an absolute unit — not a percentage of this box.
+   *
+   * The travel has to be the same NUMBER here and on `.stationary`, and a percentage is a
+   * percentage of whichever box it is written on. Measured mid-reveal: the sheet is 562px tall
+   * and the wrapper 219px, so the same 46.38% was +261px against -102px and the cancellation
+   * came up 159px short — the content drifted while it was supposed to be standing still.
+   *
+   * A viewport is also the right distance on its own terms: the section underlaps the one
+   * above by exactly `SCENE_UNDERLAP_VH`, so one viewport of travel is what carries the sheet
+   * from below the frame to across it.
+   */
+  translate: 0 calc(var(--footer-curtain, 1) * 100svh);
+  /*
+   * THE CURVED TOP CORNERS ARE A RECORDED DEPARTURE FROM A HARD RULE.
+   *
+   * CLAUDE.md: "Sharp corners on the logo and content-card system (border-radius: 0 on cards)
+   * … No generic rounded SaaS styling." These two corners are rounded anyway, on an explicit
+   * request, and this comment is the record rather than a silence. It is deliberately narrow:
+   * the curve is what makes this read as a surface the page above is lying over, it is on the
+   * footer's own surface rather than on the card system the rule names, and nothing else in the
+   * scene rounds — the CTA slot is still a sharp box and the only circle is still the O.
+   */
+  border-start-start-radius: var(--footer-sheet-radius);
+  border-start-end-radius: var(--footer-sheet-radius);
+  /* The surface has to be opaque, or the scene it is covering shows through the reveal. */
+  background: var(--drop-black);
+  overflow: hidden;
+  /*
+   * The rim light along the curved edge — the sheet catching the light of the scene it is
+   * rising past. It is an inset ring rather than a border so it follows the radius exactly and
+   * takes no layout space.
+   */
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+
+  --footer-sheet-radius: clamp(1.25rem, 3.2vw, 2.75rem);
   --footer-wordmark-aspect: 4.472;
   --footer-horizon-settled: 0.38;
   --footer-outline-strength: 1;
@@ -338,5 +389,44 @@
 @media (prefers-reduced-motion: reduce) {
   .outlineLit {
     filter: none;
+  }
+}
+
+/*
+ * Everything printed on the sheet, held still while the sheet moves under it.
+ *
+ * The exact negation of the sheet's own travel, from the same variable — one wrapper rather
+ * than a transform per block, because they all have to move by exactly the same amount as each
+ * other and as the sheet, or the reveal stops being an uncovering and becomes a drift.
+ */
+.stationary {
+  position: relative;
+  z-index: 1;
+  display: contents;
+}
+
+/*
+ * `display: contents` would drop the transform with the box, so the wrapper only becomes a box
+ * while there is travel to cancel. At rest — reveal finished, or reduced motion, or no
+ * scripting — it goes back to being nothing, and the layout is exactly what it was before the
+ * overlay existed.
+ */
+.footer[data-sheet-percent]:not([data-sheet-percent="100"]) .stationary {
+  display: block;
+  /* The exact negation of the sheet's travel, in the same absolute unit — see the note there. */
+  translate: 0 calc(var(--footer-curtain, 1) * -100svh);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /*
+   * A real path, not a degraded one: the sheet is simply already up and the content is where it
+   * always was. Nothing translates, so there is nothing to collapse.
+   */
+  .footer {
+    translate: none;
+  }
+
+  .footer .stationary {
+    display: contents;
   }
 }
