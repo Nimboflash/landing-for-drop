@@ -43,18 +43,27 @@
  */
 .footer {
   /*
-   * ONE VIEWPORT, in an absolute unit — not a percentage of this box.
+   * THE SHEET DOES NOT TRAVEL, and removing that is the fix rather than a simplification.
    *
-   * The travel has to be the same NUMBER here and on `.stationary`, and a percentage is a
-   * percentage of whichever box it is written on. Measured mid-reveal: the sheet is 562px tall
-   * and the wrapper 219px, so the same 46.38% was +261px against -102px and the cancellation
-   * came up 159px short — the content drifted while it was supposed to be standing still.
+   * It used to translate by the curtain and the content counter-translate by the same amount.
+   * That double-counts: the overlay arrangement ALREADY performs the reveal — the section
+   * underlaps the one above it and paints beneath it, so the scene above scrolls away over a
+   * footer that was never moving. Translating on top of that put the surface and the words on
+   * opposite sides of the frame. Measured on a 390x844 phone at 34% revealed: the sheet's top
+   * edge at 654 with the closing statement already drawn at 101, outside and above it.
    *
-   * A viewport is also the right distance on its own terms: the section underlaps the one
-   * above by exactly `SCENE_UNDERLAP_VH`, so one viewport of travel is what carries the sheet
-   * from below the frame to across it.
+   * So the reveal is the section geometry, and this box only has to be a surface.
    */
-  translate: 0 calc(var(--footer-curtain, 1) * 100svh);
+  /*
+   * Fills its stage, and `100%` rather than `100svh` for a measured reason.
+   *
+   * The stage above is already exactly the viewport — sticky, and sized by the scene system.
+   * `svh` is the viewport with the browser's UI EXPANDED, which is not the same number: on a
+   * 390x844 phone the stage measured 844px while `100svh` resolved to 658.32px, and the sheet
+   * sat 92px down with 94px of nothing under it — the floating panel that was reported. A
+   * percentage of the stage cannot drift from the stage.
+   */
+  block-size: 100%;
   /*
    * THE CURVED TOP CORNERS ARE A RECORDED DEPARTURE FROM A HARD RULE.
    *
@@ -67,8 +76,18 @@
    */
   border-start-start-radius: var(--footer-sheet-radius);
   border-start-end-radius: var(--footer-sheet-radius);
-  /* The surface has to be opaque, or the scene it is covering shows through the reveal. */
-  background: var(--drop-black);
+  /*
+   * TRANSLUCENT, not opaque — the light is the point of this scene.
+   *
+   * This was `--drop-black`, which covered the shared canvas completely: `footerLight` is
+   * painted behind everything, so an opaque surface over it hides the whole horizon. That is
+   * what the reported missing animation was. Verified by reading the canvas's own mode at the
+   * same moment: `footerLight` was live and running the entire time it could not be seen.
+   *
+   * A tint still defines the sheet — it darkens what is behind the curve relative to what is
+   * outside it — while letting the horizon through.
+   */
+  background: rgba(0, 0, 0, 0.42);
   overflow: hidden;
   /*
    * The rim light along the curved edge — the sheet catching the light of the scene it is
@@ -152,6 +171,13 @@
    * Tall enough to fill the stage almost exactly, which is what keeps `--footer-stage-slack`
    * small, and short enough that the stage's own padding still fits inside one viewport — a
    * pinned scene that overflows its sticky child loses its bottom edge off-screen.
+   */
+  /*
+   * 78svh was the right floor while this was the last BLOCK of the page — tall enough to hold
+   * the composition, short enough to leave the stage's padding inside one viewport. As a
+   * surface it is the wrong shape: the stage stretches it now, and a floor this close to the
+   * frame only risks a seam if the two disagree. Kept as a floor for the case where the stage
+   * is shorter than the composition needs.
    */
   min-block-size: 78svh;
 }
@@ -393,40 +419,13 @@
 }
 
 /*
- * Everything printed on the sheet, held still while the sheet moves under it.
+ * The wrapper is a passthrough now.
  *
- * The exact negation of the sheet's own travel, from the same variable — one wrapper rather
- * than a transform per block, because they all have to move by exactly the same amount as each
- * other and as the sheet, or the reveal stops being an uncovering and becomes a drift.
+ * It existed to counter-translate the sheet's travel. The sheet does not travel, so there is
+ * nothing to cancel and a box here would only add one. Kept as a node because the component
+ * renders it and because it is where a future per-block treatment would hang.
  */
 .stationary {
-  position: relative;
-  z-index: 1;
   display: contents;
 }
-
-/*
- * `display: contents` would drop the transform with the box, so the wrapper only becomes a box
- * while there is travel to cancel. At rest — reveal finished, or reduced motion, or no
- * scripting — it goes back to being nothing, and the layout is exactly what it was before the
- * overlay existed.
- */
-.footer[data-sheet-percent]:not([data-sheet-percent="100"]) .stationary {
-  display: block;
-  /* The exact negation of the sheet's travel, in the same absolute unit — see the note there. */
-  translate: 0 calc(var(--footer-curtain, 1) * -100svh);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  /*
-   * A real path, not a degraded one: the sheet is simply already up and the content is where it
-   * always was. Nothing translates, so there is nothing to collapse.
-   */
-  .footer {
-    translate: none;
-  }
-
-  .footer .stationary {
-    display: contents;
-  }
-}
+/* Reduced motion needs no rule here: nothing in this scene translates any more. */

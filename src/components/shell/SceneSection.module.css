@@ -80,6 +80,17 @@
 .overlay > .viewport {
   padding: 0;
   pointer-events: none;
+  /*
+   * STRETCHED, not centred.
+   *
+   * The stage centres its rows for every other scene, which is right when the scene is a block
+   * of content floating in a viewport of air. An overlay scene is not that: it paints its own
+   * edge-to-edge surface, and a centred one leaves a band of the scene BEHIND it showing above
+   * and below — measured on a 390x844 phone as a 658px sheet with 93px of the art pieces
+   * visible top and bottom, which reads as a floating panel rather than a surface the page is
+   * lying on.
+   */
+  align-content: stretch;
 }
 
 .viewport {
