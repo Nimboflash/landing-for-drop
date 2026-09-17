@@ -18,12 +18,13 @@
  * "Avoid layout shift after fonts load").
  *
  * DO NOT ADD A `fallback` ARRAY HERE. Verified against Next 16.3.2 + Turbopack
- * by building both ways: passing `fallback` makes the emitted variable
- * `"Montserrat", Helvetica Neue, Arial, sans-serif` and drops the
- * `@font-face { font-family: "Montserrat Fallback"; size-adjust: … }` rule
+ * by building both ways, on the Google loader that Vazirmatn still uses:
+ * passing `fallback` makes the emitted variable
+ * `"Vazirmatn", Tahoma, sans-serif` and drops the
+ * `@font-face { font-family: "Vazirmatn Fallback"; size-adjust: … }` rule
  * entirely — i.e. it silently disables `adjustFontFallback` and with it the
  * whole anti-CLS mechanism. Without it the variable is
- * `"Montserrat", "Montserrat Fallback"` and the metric-override face is
+ * `"Vazirmatn", "Vazirmatn Fallback"` and the metric-override face is
  * emitted. Plain-family fallbacks are not lost: `globals.css` already appends
  * them in `--font-latin` (Helvetica Neue, Arial, sans-serif) and
  * `--font-persian` (Tahoma, sans-serif), which is where that stack belongs.
