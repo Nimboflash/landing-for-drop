@@ -84,8 +84,7 @@
  * `data-in-field` (inside the painted coverflow positions) and `aria-current` on the active one.
  * Inside: `data-track-title`, `data-track-artist`, `data-track-group` (with `data-track-period`),
  * `data-track-artwork` (`asset` / `placeholder` — rights verdict, or a failed load) and
- * `data-track-source` on
- * an external link. Playwright asserts
+ * `data-track-listen` on the outbound control. Playwright asserts
  * these attributes and text only — never transforms, opacity, or computed styles.
  */
 
@@ -1029,30 +1028,20 @@ export function TracksScene({
                     dir="rtl"
                     {...(active ? {} : { inert: true, "aria-hidden": true })}
                   >
+                    {/*
+                      The title is a title, not a second way out.
+
+                      It used to become an external link whenever the track carried a
+                      `sourceUrl`, which no track in the lens did — so that branch had never
+                      once rendered. Filling the field in lit it up, and the scene then offered
+                      the same destination twice: an underlined heading and the control below
+                      it. Two adjacent links to one URL is a thing a screen reader reads out
+                      twice, and the rule the page holds elsewhere is one clear way out.
+                    */}
                     <p className={styles.title}>
-                      {track.sourceUrl ? (
-                        <a
-                          className={styles.sourceLink}
-                          href={track.sourceUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          tabIndex={sceneActive && active ? 0 : -1}
-                          data-track-source
-                          data-external="true"
-                        >
-                          <span data-track-title lang="en" dir="ltr">
-                            {track.title}
-                          </span>
-                          <span className="visually-hidden">
-                            {" "}
-                            ({EXTERNAL_LINK_NOTE})
-                          </span>
-                        </a>
-                      ) : (
-                        <span data-track-title lang="en" dir="ltr">
-                          {track.title}
-                        </span>
-                      )}
+                      <span data-track-title lang="en" dir="ltr">
+                        {track.title}
+                      </span>
                     </p>
                     <p
                       className={styles.artist}
