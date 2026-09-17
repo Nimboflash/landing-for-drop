@@ -55,14 +55,14 @@
   --leading-en-prose: 1.6;
 
   /* Families — bound to next/font CSS variables in src/app/layout.tsx */
-  --font-latin: var(--font-montserrat), "Helvetica Neue", Arial, sans-serif;
+  --font-latin: var(--font-satoshi), "Helvetica Neue", Arial, sans-serif;
   /*
    * Aria first — the approved Persian brand face (brief §4). Vazirmatn stays
    * behind it as the glyph safety net and is only fetched if Aria fails to
    * match; Montserrat then covers the Latin fragments that run inline in Persian
    * text, and Tahoma is the last resort with no download at all.
    */
-  --font-persian: var(--font-aria), var(--font-vazirmatn), var(--font-montserrat), Tahoma,
+  --font-persian: var(--font-aria), var(--font-vazirmatn), var(--font-satoshi), Tahoma,
     sans-serif;
 
   /* Layout */

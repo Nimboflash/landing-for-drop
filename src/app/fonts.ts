@@ -1,14 +1,14 @@
 /**
  * Typefaces for the DROP Immersive Weekly Lens (brief §4, "Typography").
  *
- * Montserrat and Vazirmatn come through `next/font/google`, which downloads the
- * font files at build time and serves them from our own origin; Aria is a
- * licensed local face loaded through `next/font/local` from `./fonts`. Either
- * way the bytes are ours and no request leaves for a font host at runtime.
+ * Vazirmatn comes through `next/font/google`, which downloads the font files at
+ * build time and serves them from our own origin; Satoshi and Aria are local
+ * faces loaded through `next/font/local` from `./fonts`. Either way the bytes
+ * are ours and no request leaves for a font host at runtime.
  *
  * The exported CSS variable names are load-bearing: `src/app/globals.css`
- * already binds `--font-persian` / `--font-latin` to `--font-vazirmatn` /
- * `--font-montserrat`. Renaming either variable silently drops the whole page
+ * already binds `--font-persian` / `--font-latin` to `--font-aria` /
+ * `--font-satoshi`. Renaming either variable silently drops the whole page
  * back to the fallback stack.
  *
  * `adjustFontFallback: true` makes Next generate a metric-adjusted local
@@ -29,22 +29,39 @@
  * `--font-persian` (Tahoma, sans-serif), which is where that stack belongs.
  */
 
-import { Montserrat, Vazirmatn } from "next/font/google";
+import { Vazirmatn } from "next/font/google";
 import localFont from "next/font/local";
 
 /**
- * Latin display and UI face. ExtraBold (800) and Bold (700) carry display type;
- * Regular (400) carries Latin body copy. Static instances rather than the
- * variable axis, so the three weights ship exactly as designed.
+ * Latin display and UI face.
+ *
+ * Satoshi, self-hosted from `./fonts` under the ITF Free Font License, which permits
+ * self-hosting and commercial use. `Satoshi-LICENSE.txt` ships beside the file.
+ *
+ * THE VARIABLE CUT, not static instances — a deliberate reversal of what Montserrat did here,
+ * and the reason is a bug that swap exposed. The page asks for Latin at 400, 600 and 700.
+ * Montserrat was loaded at 400/700/800, so the 600 on the thesis eyebrow had no face to land
+ * on: CSS weight matching takes the first weight at or above 600 and it was rendering at 700.
+ * Satoshi's static cuts are 300/400/500/700/900 and would have missed it the same way. One
+ * variable file covers the range continuously, so a declared 600 is a 600 — and it is 42KB
+ * against the five static cuts it replaces.
+ *
+ * `adjustFontFallback: "Arial"` for a LOCAL font, where the Google loader takes a boolean:
+ * the local signature is `'Arial' | 'Times New Roman' | false`, and passing `true` is a type
+ * error rather than a no-op.
  */
-export const montserrat = Montserrat({
-  subsets: ["latin"],
-  weight: ["400", "700", "800"],
-  style: ["normal"],
+export const satoshi = localFont({
+  src: [
+    {
+      path: "./fonts/Satoshi-Variable.woff2",
+      weight: "300 900",
+      style: "normal",
+    },
+  ],
   display: "swap",
   preload: true,
-  adjustFontFallback: true,
-  variable: "--font-montserrat",
+  adjustFontFallback: "Arial",
+  variable: "--font-satoshi",
 });
 
 /**
@@ -127,4 +144,4 @@ export const aria = localFont({
 });
 
 /** Every font CSS variable, ready to hang on `<html>`. */
-export const fontVariables = `${montserrat.variable} ${vazirmatn.variable} ${aria.variable}`;
+export const fontVariables = `${satoshi.variable} ${vazirmatn.variable} ${aria.variable}`;
