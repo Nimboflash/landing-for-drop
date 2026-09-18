@@ -30,9 +30,21 @@
    * roughly twice as quick and the band where both are legible is correspondingly narrow.
    */
   --drop-handover: calc(
-    var(--drop-argument-reveal) * var(--drop-argument-reveal) * var(--drop-argument-reveal) *
-      (var(--drop-argument-reveal) * (var(--drop-argument-reveal) * 6 - 15) + 10)
+    var(--drop-argument-reveal) * var(--drop-argument-reveal) *
+      var(--drop-argument-reveal) *
+      (
+        var(--drop-argument-reveal) * (var(--drop-argument-reveal) * 6 - 15) +
+          10
+      )
   );
+  /*
+   * How far out of focus a layer goes at the far end of its own ramp.
+   *
+   * 9px is the swap's ENTER_BLUR_PX, so the closing beat defocuses by the same amount the message
+   * swaps do and the scene has one softness rather than two. Declared as a token so both halves
+   * read from one number and cannot drift apart.
+   */
+  --drop-handover-softness: 9px;
 
   display: grid;
   justify-items: center;
@@ -263,18 +275,45 @@
  * at half strength, they are 4svh apart rather than on the same pixels, which is what keeps a
  * cross-fade from reading as two texts printed over each other.
  */
+/*
+ * ...and they are pulled apart in FOCUS, because they cannot be pulled apart in space.
+ *
+ * The separation above is the right instinct and the wrong magnitude. At the midpoint each layer
+ * has travelled half of its 8svh, so they sit 4svh apart — measured on a 390x844 phone that is
+ * -25.4px against +32.2px, a 52px gap between two blocks 363px tall. 305px of them still overlap.
+ * Making the gap big enough to matter would need eight times the travel, which throws both off
+ * the composition.
+ *
+ * So the outgoing layer defocuses as it recedes and the incoming resolves as it arrives. Both are
+ * still PRESENT at the crossing — that is what keeps the frame from going empty, the failure the
+ * exclusive-halves attempt above ran into — but only one of them is ever READABLE, which is the
+ * thing the reader actually complained about. Blurred large type at half strength reads as light
+ * behind the sentence, not as a competing sentence.
+ *
+ * This is the scene's own vocabulary, not a new idea: message-to-message swaps already enter from
+ * ENTER_BLUR_PX and leave into EXIT_BLUR_PX. The closing beat was the one hand-over doing it with
+ * opacity alone.
+ *
+ * Reduced motion needs no exception. It steps the reveal between 0 and 1 rather than scrubbing,
+ * so the handover is only ever an endpoint and both blurs evaluate to zero on their own.
+ */
 .thesis[data-presentation="stage"] .messages {
   opacity: calc(1 - var(--drop-handover));
   translate: 0 calc(var(--drop-handover) * -8svh);
+  filter: blur(calc(var(--drop-handover) * var(--drop-handover-softness)));
 }
 
 .thesis[data-presentation="stage"] .argument {
   opacity: var(--drop-handover);
   translate: 0 calc((1 - var(--drop-handover)) * 8svh);
+  filter: blur(
+    calc((1 - var(--drop-handover)) * var(--drop-handover-softness))
+  );
 }
 
 .thesis[data-presentation="stage"] .statement {
-  translate: 0 calc((1 - var(--drop-argument-reveal)) * var(--drop-statement-lift, 2svh));
+  translate: 0
+    calc((1 - var(--drop-argument-reveal)) * var(--drop-statement-lift, 2svh));
 }
 
 .thesis[data-presentation="stage"] .identity {

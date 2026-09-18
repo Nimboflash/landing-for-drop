@@ -83,6 +83,19 @@
   --weight-en-label: 500;
 
   --leading-fa-display: 1.18;
+  /*
+   * A Persian TITLE that wraps inside a tight box — the case between display and prose.
+   *
+   * Abar's ink at heading weights runs taller than its line box: measured on a menu card, a
+   * two-line name at weight 700 / 15.7px put 21.7px of ink into a 19.6px box, so consecutive
+   * lines touched, and the card clips with `overflow: hidden` so the collision had nowhere to
+   * go. Display leading (1.18) is tighter still, and prose leading (1.75) is far too airy for a
+   * name on a card.
+   *
+   * 1.4 clears the measured ink (1.384) with a little room for a longer name carrying more
+   * diacritics. Latin titles read fine at it too, so a bilingual field needs no second value.
+   */
+  --leading-fa-title: 1.4;
   --leading-fa-prose: 1.75;
   --leading-en-prose: 1.6;
 
@@ -95,7 +108,8 @@
    * text — the reason the no-English cut of Abar is the one shipped — and Tahoma
    * is the last resort with no download at all.
    */
-  --font-persian: var(--font-abar), var(--font-vazirmatn), var(--font-satoshi), Tahoma,
+  --font-persian:
+    var(--font-abar), var(--font-vazirmatn), var(--font-satoshi), Tahoma,
     sans-serif;
 
   /* Layout */

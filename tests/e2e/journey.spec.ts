@@ -248,6 +248,9 @@ async function scrollIntoScene(
  * reading the journey. `data-drop-loader` on the document element is the loader's own published
  * marker — an attribute, like everything else this file reads.
  */
+/** Long enough for one animation frame to land between two scroll reads. */
+const SCROLL_REST_SAMPLE_MS = 120;
+
 async function waitPastLoader(page: Page): Promise<void> {
   await expect
     .poll(
@@ -261,11 +264,46 @@ async function waitPastLoader(page: Page): Promise<void> {
   await expect(page.locator("[data-loader-overlay]")).toHaveCount(0);
 }
 
-/** Open a lens route and wait for the loader to let go. */
+/**
+ * Open a lens route, wait for the loader to let go, and start from a DEFINED position.
+ *
+ * `waitPastLoader` returns at the exact moment the shell begins carrying the page into the first
+ * readable scene, so every test in this file used to start while that carry was still in flight
+ * and read whatever position it happened to catch. It showed up as `initial.scrollY` being 0 on
+ * one route and 850 on its sibling in the same run — a coin flip, not a contract.
+ *
+ * So the carry is waited out rather than raced, and the page is then taken back to the top, which
+ * is where a walk of the journey begins. The carry yields to a scroll it did not perform, by
+ * design, so this hands the document over cleanly rather than fighting it.
+ */
 async function openJourney(page: Page, route: string): Promise<void> {
   const response = await page.goto(route);
   expect(response?.status(), `${route} must be served`).toBe(200);
   await waitPastLoader(page);
+
+  /*
+   * Asked for on EVERY attempt, not once before a wait.
+   *
+   * A single `scrollTo` can be undone: Lenis rewrites the scroll position from its own animated
+   * value while a tween is running, so a write that lands mid-carry is simply overwritten on the
+   * next tick and the page stays where the carry left it. Observed under full-suite parallelism,
+   * where the carry runs long: the document sat at 864 and never moved. Re-asserting the position
+   * each time round means the loop cannot lose to a single dropped write — the first attempt after
+   * the carry settles is adopted, because Lenis takes a native scroll whenever it is idle.
+   */
+  await expect
+    .poll(
+      async () => {
+        await page.evaluate(() => window.scrollTo(0, 0));
+        await page.waitForTimeout(SCROLL_REST_SAMPLE_MS);
+        return page.evaluate(() => Math.round(window.scrollY));
+      },
+      {
+        timeout: LOADER_SETTLE_TIMEOUT_MS,
+        message: "the page would not return to the top",
+      },
+    )
+    .toBe(0);
 }
 
 type Walk = {

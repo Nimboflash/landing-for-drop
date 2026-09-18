@@ -174,7 +174,11 @@
    */
   --card-perspective: calc(var(--card-width) * 3.3);
 
-  transform: translate3d(0, calc((1 - var(--deck-arrival, 1)) * var(--deck-rise)), 0)
+  transform: translate3d(
+      0,
+      calc((1 - var(--deck-arrival, 1)) * var(--deck-rise)),
+      0
+    )
     scale(calc(0.92 + 0.08 * var(--deck-arrival, 1)));
 }
 
@@ -219,7 +223,10 @@
   --flip-span: calc(1 + var(--flip-stagger) * (var(--deck-count) - 1));
   --flip-t: clamp(
     0,
-    calc(var(--phase-flip, 1) * var(--flip-span) - var(--card-index) * var(--flip-stagger)),
+    calc(
+      var(--phase-flip, 1) * var(--flip-span) - var(--card-index) *
+        var(--flip-stagger)
+    ),
     1
   );
   /*
@@ -279,7 +286,8 @@
    * (57.3 deg per radian) because the cap below is far larger than the few degrees this drifts.
    */
   --view-shift: calc(
-    57.3 * var(--card-centred) * (var(--deck-count) - 1) * 0.3212 * var(--phase-spread, 1)
+    57.3 * var(--card-centred) * (var(--deck-count) - 1) * 0.3212 *
+      var(--phase-spread, 1)
   );
   --edge-on: calc(90 - var(--view-shift));
   /* How far the card must stay clear of its own vanishing point, in degrees. */
@@ -315,13 +323,19 @@
    * deck reads as one continuous move: still fanning as the spread starts, still spreading as the
    * first card turns.
    */
-  --spread-x: calc(var(--card-centred) * var(--spread-span) * var(--phase-spread, 1));
-  --stack-x: calc(var(--card-centred) * var(--card-width) * 0.05 * (1 - var(--phase-spread, 1)));
+  --spread-x: calc(
+    var(--card-centred) * var(--spread-span) * var(--phase-spread, 1)
+  );
+  --stack-x: calc(
+    var(--card-centred) * var(--card-width) * 0.05 *
+      (1 - var(--phase-spread, 1))
+  );
   --travel-x: calc(var(--spread-x) + var(--stack-x));
 
   --rise-y: calc((1 - var(--phase-stack, 1)) * var(--stack-rise));
   --arc-y: calc(
-    var(--card-centred) * var(--card-centred) * var(--card-height) * 0.12 * var(--phase-fan, 1)
+    var(--card-centred) * var(--card-centred) * var(--card-height) * 0.12 *
+      var(--phase-fan, 1)
   );
   --travel-y: calc(var(--rise-y) + var(--arc-y));
 
@@ -330,7 +344,9 @@
     var(--card-centred) * var(--fan-angle) * var(--phase-fan, 1) *
       (1 - 0.55 * var(--phase-spread, 1))
   );
-  --recede: calc(var(--card-index) * var(--stack-depth) * (1 - var(--phase-spread, 1)));
+  --recede: calc(
+    var(--card-index) * var(--stack-depth) * (1 - var(--phase-spread, 1))
+  );
   --card-scale: calc(0.94 + 0.06 * var(--phase-stack, 1));
   /*
    * Which face is turned toward the reader, as a HARD 0/1 step at the half-turn: below 90° the
@@ -385,9 +401,10 @@
    * from the card's own centre rather than from a shared origin it has moved away from.
    */
   transform: perspective(var(--card-perspective))
-    translate3d(var(--travel-x), var(--travel-y), var(--recede)) scale(var(--card-scale))
-    rotateX(calc(var(--deck-tilt-x, 0) * 1deg)) rotateY(calc(var(--deck-tilt-y, 0) * 1deg))
-    rotate(var(--fan-rotate)) rotateY(calc(var(--card-flip, 180) * 1deg));
+    translate3d(var(--travel-x), var(--travel-y), var(--recede))
+    scale(var(--card-scale)) rotateX(calc(var(--deck-tilt-x, 0) * 1deg))
+    rotateY(calc(var(--deck-tilt-y, 0) * 1deg)) rotate(var(--fan-rotate))
+    rotateY(calc(var(--card-flip, 180) * 1deg));
 }
 
 /* ------------------------------------------------------------------ faces */
@@ -430,7 +447,8 @@
    */
   box-shadow:
     inset 0 0 0 1px color-mix(in srgb, var(--drop-white) 16%, transparent),
-    0 1.2rem 2.6rem -1.4rem color-mix(in srgb, var(--drop-black) 75%, transparent);
+    0 1.2rem 2.6rem -1.4rem
+      color-mix(in srgb, var(--drop-black) 75%, transparent);
 }
 
 /* Brief §7.3: pure/near black, one centred white DROP primary logo, no additional copy. */
@@ -534,7 +552,8 @@
 .name {
   font-size: var(--body);
   font-weight: 700;
-  line-height: 1.25;
+  /* Persian names wrap here and the card clips, so the ink has to fit the box. */
+  line-height: var(--leading-fa-title);
   color: var(--drop-off-white);
 }
 
@@ -653,7 +672,8 @@
     --fan-rotate: 0deg;
     --recede: 0px;
     --travel-y: calc(
-      (var(--card-index) - var(--column-position, 0)) * var(--column-step) + var(--rise-y)
+      (var(--card-index) - var(--column-position, 0)) * var(--column-step) +
+        var(--rise-y)
     );
     /*
      * The card on the stage and its immediate neighbours are present; anything further than one
@@ -663,8 +683,94 @@
       calc(var(--card-index) - var(--column-position, 0)),
       calc(var(--column-position, 0) - var(--card-index))
     );
-    opacity: clamp(0, calc((1.8 - var(--column-distance)) * var(--phase-stack, 1)), 1);
+    opacity: clamp(
+      0,
+      calc((1.8 - var(--column-distance)) * var(--phase-stack, 1)),
+      1
+    );
     z-index: calc(100 - var(--column-distance) * 10);
+  }
+}
+
+/*
+ * PHONE: the card comes over BEFORE it reaches the frame.
+ *
+ * The turn is deck-wide everywhere else — one shared window (`--phase-flip`, 0.52 -> 0.78 of the
+ * scene) that every card carves its own slice out of by index. On a wide stage that is right:
+ * all four cards are on screen together for the whole scene, so a window sweeping across them is
+ * a hand being turned over in front of the reader.
+ *
+ * On a phone there is no hand. The layout above is a CONVEYOR — one card on the stage, the next
+ * queued below — so the card the reader is looking at is not the card the deck-wide window is
+ * turning. Measured at 390x844 before this rule: the fronts appeared at scene progress 0.61,
+ * 0.64, 0.67 and 0.70, while the cards reached the stage at 0.12, 0.42, 0.60 and 0.90. Card 0
+ * had travelled 1186px off the top of the frame by the time its front was painted; cards 1 and 2
+ * spent their whole time on the stage face-down. Every card entered the viewport showing its
+ * BACK — which is also the disagreement between state and paint: `data-flipped` goes true at the
+ * card's own band (0.20 / 0.40 / 0.60 / 0.80 for four cards) while this stylesheet went on
+ * painting the back for up to four tenths of the scene afterwards.
+ *
+ * So on a phone the turn is keyed to THIS CARD'S OWN ARRIVAL instead of to the deck's window.
+ * `--column-position` is how many steps the conveyor has run, so `--card-index` minus it is how
+ * far below the stage this card still is, and the turn is spent on the last stretch of that
+ * journey. It finishes while the card is still further out than the fade above starts, so the
+ * card is face-up in every frame it is painted in and the reader meets the item, never the logo.
+ *
+ * Nothing here is a second source of truth. It is the same scrub the travel is derived from,
+ * read one card at a time, so the deck stays a pure function of scroll: reverse scrolling
+ * un-turns each card on exactly the stretch it turned on, and the deck reconstructs itself in
+ * the mirror of the order it opened.
+ *
+ * WHY THE CONVEYOR GATE. With scripting off nothing writes `--column-position` and the deck is
+ * the plain centred grid at the bottom of this file; under reduced motion the component removes
+ * both that attribute and that property. Either way this rule must not apply, or a resting deck
+ * would be sorted into face-up and face-down by index. Gated on the attribute, both paths keep
+ * the base rule's `var(--phase-flip, 1)` — the fallback that means "arrived, and face-up". The
+ * `99` below says the same thing a second time, for any frame that has one without the other.
+ */
+/*
+ * MATCHED TO THE LAYOUT IT FIXES, not to the phone band.
+ *
+ * The defect belongs to the vertical conveyor, and the conveyor starts at 899px — the same
+ * boundary as the narrow layout above. Gating this at the §15 phone band instead would leave
+ * 768-899px running that conveyor with the deck-wide flip window, which is exactly the bug, just
+ * on a tablet. Desktop is 900px and up, keeps `--phase-flip`, and is not referenced here at all.
+ */
+@media (max-width: 899px) {
+  .deck {
+    /*
+     * How far below the stage, in conveyor steps, the card has finished coming over.
+     *
+     * The rule above fades a card in from 1.8 steps out (`1.8 - --column-distance`), so 1.8 is
+     * the first moment a card has any paint at all. Finishing at 1.9 puts the whole turn — its
+     * edge-on frame included — outside the band where anything is drawn.
+     */
+    --flip-clear: 1.9;
+    /*
+     * How much conveyor travel the turn itself takes. Under one step, so the card turns as part
+     * of its own approach rather than across the whole queue behind it.
+     */
+    --flip-turn-steps: 0.7;
+  }
+
+  .deck[data-deck-conveyor="on"] .card {
+    /*
+     * 0 while the card is more than `clear + turn` steps out, 1 from `clear` steps in. A card
+     * already inside that distance when the conveyor starts — the first two of a four-item
+     * lens — is simply face-up from the outset, which is the honest answer on a layout that has
+     * the next card in frame from the first pixel of the deck's rise.
+     */
+    --flip-t: clamp(
+      0,
+      calc(
+        (
+            var(--column-position, 99) - var(--card-index) + var(--flip-clear) +
+              var(--flip-turn-steps)
+          ) /
+          var(--flip-turn-steps)
+      ),
+      1
+    );
   }
 }
 

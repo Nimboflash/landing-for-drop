@@ -230,7 +230,9 @@
   perspective: 900px;
   pointer-events: none;
 
-  transform: translateX(calc(var(--track-travel, 0) * var(--case-step) + var(--drop-tracks-drag)))
+  transform: translateX(
+      calc(var(--track-travel, 0) * var(--case-step) + var(--drop-tracks-drag))
+    )
     translateZ(calc(var(--track-depth, 0) * var(--case-depth-step)))
     rotateY(calc(var(--track-travel, 0) * var(--case-turn-step)))
     scale(calc(1 - var(--track-depth, 0) * var(--case-scale-step)));
@@ -345,7 +347,11 @@
       rgba(255, 255, 255, 0.02) 71%,
       rgba(255, 255, 255, 0.14) 100%
     ),
-    linear-gradient(0deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.045));
+    linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.045),
+      rgba(255, 255, 255, 0.045)
+    );
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.36),
     inset 0 -1px 0 rgba(255, 255, 255, 0.16),
@@ -656,9 +662,15 @@
   top: 50%;
   left: 50%;
   z-index: 4;
-  display: grid;
-  justify-items: center;
-  gap: 0.6rem;
+  /*
+   * The DISC is the box, and the word hangs off it.
+   *
+   * This was a grid holding both, so the label still took its row while invisible: the anchor
+   * measured 86px tall against a 56px disc, the anchor was centred, and the circle a reader
+   * actually sees sat 15px high of the artwork's middle. Centring is only as good as the box
+   * being centred, and that box has to be the visible one.
+   */
+  display: block;
   /*
    * The Z nudge is load-bearing. `.case` is a preserve-3d context, where paint order follows 3D
    * position and z-index alone decides nothing — without it this sits behind the case body it is
@@ -678,14 +690,30 @@
   display: grid;
   place-items: center;
   /* Comfortably past the 44px minimum at every breakpoint (brief §15). */
-  inline-size: 3.5rem;
-  block-size: 3.5rem;
+  inline-size: 4rem;
+  block-size: 4rem;
   border-radius: 50%;
-  background: var(--drop-off-white);
-  color: var(--drop-ink);
-  /* Reads on a bright cover as well as a dark one. */
-  box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.45);
-  transition: background-color 220ms var(--ease-material);
+  /*
+   * GLASS OVER THE ARTWORK, not a sticker on top of it.
+   *
+   * A flat white puck reads as something pasted over the cover, and it fights art that is
+   * already the brightest thing in the scene. A dark translucent disc with the cover blurred
+   * behind it sits IN the image instead: the artwork stays visible through the control, and
+   * the white glyph and hairline are the only opaque marks.
+   *
+   * The blur is progressive enhancement — where `backdrop-filter` is unsupported the tint
+   * alone still carries the shape, which is why the background is a real colour and not a
+   * transparent placeholder for the filter.
+   */
+  background: rgba(10, 10, 10, 0.42);
+  -webkit-backdrop-filter: blur(10px) saturate(1.1);
+  backdrop-filter: blur(10px) saturate(1.1);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  color: var(--drop-off-white);
+  box-shadow: 0 0.5rem 1.75rem rgba(0, 0, 0, 0.5);
+  transition:
+    background-color 220ms var(--ease-material),
+    border-color 220ms var(--ease-material);
 }
 
 .listenGlyph {
@@ -696,6 +724,15 @@
 }
 
 .listenWord {
+  /*
+   * Hung under the disc rather than laid out beside it, so it can never move the circle. An
+   * invisible row is still a row.
+   */
+  position: absolute;
+  /* Physical, for the same reason the disc is: the track is RTL. */
+  top: calc(100% + 0.7rem);
+  left: 50%;
+  width: max-content;
   font-family: var(--font-latin);
   font-size: var(--label);
   font-weight: var(--weight-en-label);
@@ -704,7 +741,7 @@
   color: var(--drop-off-white);
   text-shadow: 0 1px 6px rgba(0, 0, 0, 0.7);
   opacity: 0;
-  translate: 0 -0.25rem;
+  translate: -50% -0.25rem;
   transition:
     opacity 220ms var(--ease-material),
     translate 220ms var(--ease-material);
@@ -720,13 +757,14 @@
 
 .listen:hover .listenDisc,
 .listen:focus-visible .listenDisc {
-  background: var(--drop-white);
+  background: rgba(10, 10, 10, 0.62);
+  border-color: var(--drop-white);
 }
 
 .listen:hover .listenWord,
 .listen:focus-visible .listenWord {
   opacity: 1;
-  translate: 0 0;
+  translate: -50% 0;
 }
 
 .listen:focus-visible {
@@ -754,7 +792,7 @@
   /* Nothing is hover-gated for motion reasons, so the word simply stays. */
   .listenWord {
     opacity: 1;
-    translate: 0 0;
+    translate: -50% 0;
   }
 }
 /* -------------------------------------------------------------- responsive */
@@ -787,7 +825,6 @@
      */
     --caption-block: 11.25rem;
   }
-
 
   .caption {
     top: calc(var(--case-height) + 4.4rem);

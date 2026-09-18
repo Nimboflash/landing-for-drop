@@ -72,7 +72,12 @@ const REVEAL_DURATION_S = 0.8;
 const REVEAL_ABORT_PX = 8;
 
 /** Reader input that cancels a pending reveal outright. */
-const REVEAL_CANCEL_EVENTS = ["wheel", "touchstart", "keydown", "pointerdown"] as const;
+const REVEAL_CANCEL_EVENTS = [
+  "wheel",
+  "touchstart",
+  "keydown",
+  "pointerdown",
+] as const;
 
 /**
  * How far the document may sit from where the carry believes it is before the carry gives up.
@@ -81,6 +86,25 @@ const REVEAL_CANCEL_EVENTS = ["wheel", "touchstart", "keydown", "pointerdown"] a
  * tolerance, not an equality.
  */
 const REVEAL_FOREIGN_SCROLL_PX = 24;
+
+/**
+ * How many of the carry's own recent positions a scroll report is allowed to be reporting.
+ *
+ * The tolerance above compares the document against where the carry is RIGHT NOW, which assumes
+ * the browser reports scroll the instant it applies it. iOS Safari does not: measured on an
+ * iPhone 17, the carry started, moved 219px and then cancelled itself and never moved again — the
+ * reader was left on a blank screen with the first line of text 607px below the fold. Nobody had
+ * touched anything. The carry covers ~1070px/s, so a scroll report only 25ms stale already reads
+ * as 27px of divergence, and the guard meant to catch SOMEBODY ELSE moving the page was catching
+ * the carry's own motion arriving late.
+ *
+ * So the document is checked against the positions the carry has recently HELD, not only its
+ * newest one. Eight samples is roughly 130ms of history at a frame per scroll event — comfortably
+ * past iOS's lag, and still nowhere near the reach of a real foreign scroll, which lands at a
+ * position this tween was never heading for (a restored offset, a deep link, a test harness) and
+ * is therefore outside the whole trail rather than behind its tip.
+ */
+const REVEAL_TRAIL_SAMPLES = 8;
 
 /** Keys that scroll a document, which the loader lock must hold along with wheel and touch. */
 const SCROLLING_KEYS = new Set([
@@ -224,9 +248,18 @@ export function SmoothScrollProvider({
     if (window.scrollY > REVEAL_ABORT_PX) return;
 
     let settled = false;
+
+    /* Where the carry has been, newest last — see REVEAL_TRAIL_SAMPLES. */
+    const trail: number[] = [];
+    const remember = (value: number) => {
+      trail.push(value);
+      if (trail.length > REVEAL_TRAIL_SAMPLES) trail.shift();
+    };
+
     const teardown = () => {
       window.clearTimeout(timer);
-      for (const type of REVEAL_CANCEL_EVENTS) window.removeEventListener(type, cancel);
+      for (const type of REVEAL_CANCEL_EVENTS)
+        window.removeEventListener(type, cancel);
       window.removeEventListener("scroll", onForeignScroll);
     };
 
@@ -256,6 +289,8 @@ export function SmoothScrollProvider({
         teardown();
         return;
       }
+      /* The first report after the tween starts can still be describing the old position. */
+      remember(lenis.animatedScroll);
       lenis.scrollTo(target, {
         duration: REVEAL_DURATION_S,
         immediate: reducedMotion,
@@ -288,7 +323,13 @@ export function SmoothScrollProvider({
      */
     const onForeignScroll = () => {
       if (settled) return;
-      if (Math.abs(window.scrollY - lenis.animatedScroll) > REVEAL_FOREIGN_SCROLL_PX) cancel();
+      remember(lenis.animatedScroll);
+      const here = window.scrollY;
+      /* Ours if it matches ANY position the carry has recently held — see REVEAL_TRAIL_SAMPLES. */
+      const ours = trail.some(
+        (at) => Math.abs(here - at) <= REVEAL_FOREIGN_SCROLL_PX,
+      );
+      if (!ours) cancel();
     };
     window.addEventListener("scroll", onForeignScroll, { passive: true });
 
