@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 
 import { getCurrentLens } from "@/content";
@@ -25,6 +25,25 @@ const SKIP_LINK_LABEL = "پرش به محتوای اصلی";
  * deliberate: it types identically whether the content module resolves the
  * current lens synchronously or asynchronously.
  */
+/**
+ * What Safari paints its own chrome with.
+ *
+ * iOS tints the address bar and the toolbar from `theme-color`, and with none set it falls back
+ * to something light — so on a phone the page ended at a white bar under a black composition,
+ * with a hard seam across the bottom of every screen.
+ *
+ * Black rather than the `--drop-off-white` that `html, body` carry, because off-white is the
+ * ground UNDER the scenes and the reader never sees it: every scene paints the brand's black over
+ * it, top to bottom, and the footer ends on it too. The chrome should agree with what is on
+ * screen, not with what is behind it.
+ *
+ * Declared as `viewport`, not inside `generateMetadata` — Next moved `themeColor` out of Metadata
+ * and warns if it is returned from there (node_modules/next/dist/lib/metadata/resolve-metadata.js).
+ */
+export const viewport: Viewport = {
+  themeColor: "#000000",
+};
+
 export async function generateMetadata(): Promise<Metadata> {
   const lens = await getCurrentLens();
 

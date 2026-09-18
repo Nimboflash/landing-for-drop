@@ -141,12 +141,31 @@ html {
   scroll-behavior: auto;
 }
 
+/*
+ * THE DOCUMENT'S OWN GROUND IS BLACK, because that is what the page is.
+ *
+ * It was off-white with dark ink, and nothing ever painted over it in the places that actually
+ * show: the shared WebGL canvas and the scene grounds cover the composition, but not the strip
+ * behind iOS Safari's toolbar, and not the rubber-band overscroll at either end. So a black page
+ * ended in a white bar on a phone, with a hard seam across the bottom of every screen.
+ *
+ * It was also hiding the no-JavaScript page completely. Rendered with scripting off, the ground
+ * stayed off-white while the text kept the colour the scenes give it — measured at
+ * `color(srgb 0.949 0.949 0.949 / 0.74)`, near-white at 74% — so every line was white on white.
+ * The markup was all there, which is why `all meaningful text is server-rendered with JavaScript
+ * disabled` passed: it reads the DOM, not the paint. Black makes that page readable for the first
+ * time rather than merely present.
+ *
+ * The default ink turns over with it. Scenes that need dark text still ask for it themselves —
+ * `.page[data-contrast="dark"]` in ImmersiveLensPage.module.css — so this only decides what
+ * anything OUTSIDE a scene inherits, and outside a scene the ground is now black.
+ */
 html,
 body {
   margin: 0;
   padding: 0;
-  background: var(--drop-off-white);
-  color: var(--drop-ink);
+  background: var(--drop-black);
+  color: var(--drop-off-white);
 }
 
 body {
