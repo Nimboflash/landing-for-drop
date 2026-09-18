@@ -113,7 +113,8 @@ const TILT_FOLLOW_S = 0.7;
 const TILT_RELEASE_S = 1.1;
 
 /** The desktop pointer the tilt is for. Never a hover dependency — the tilt reveals nothing. */
-const FINE_POINTER_QUERY = "(hover: hover) and (pointer: fine) and (min-width: 1024px)";
+const FINE_POINTER_QUERY =
+  "(hover: hover) and (pointer: fine) and (min-width: 1024px)";
 
 /**
  * The environment the media-rights check is made in.
@@ -156,7 +157,11 @@ export function deckEntrySpan(itemCount: number): number {
 }
 
 /** How far the stack has arrived: 0 below the viewport, 1 fully risen. */
-export function deckArrival(progress: number, flippedCards: number, count: number): number {
+export function deckArrival(
+  progress: number,
+  flippedCards: number,
+  count: number,
+): number {
   // A card can only be face-up after the entry band, so the deck is certainly in place by then.
   if (flippedCards > 0) return 1;
   const rise = deckEntrySpan(count) * RISE_SPAN_OF_ENTRY;
@@ -243,7 +248,10 @@ function smoothstep(value: number): number {
  * these five numbers and the stylesheet composes every card's transform from them and the card's
  * own index. Nothing here knows how many cards there are.
  */
-export function deckPhaseAmount(progress: number, phase: DeckChoreographyPhase): number {
+export function deckPhaseAmount(
+  progress: number,
+  phase: DeckChoreographyPhase,
+): number {
   const { from, to } = PHASE_WINDOWS[phase];
   if (to <= from) return clamp01(progress) >= to ? 1 : 0;
   return smoothstep((clamp01(progress) - from) / (to - from));
@@ -257,15 +265,61 @@ export function deckPhaseAmount(progress: number, phase: DeckChoreographyPhase):
  * progress, so the two layouts are the same scrub expressed on different axes — and neither can
  * drift from the flip, which is keyed off the same progress too.
  */
+/**
+ * Where the belt stops, leaving the last card its own moment on the stage.
+ *
+ * Running to a flat 1 landed the final card exactly as the scene ended: solid for five samples
+ * of forty-one against nine or ten for every other card, and still drifting when the hand-over
+ * took the frame. Stopping at 0.94 buys it about 80px of scroll centred and still — a beat, not
+ * the stall the old `hold.to` ending produced, which sat for a tenth of the scene with a ghost
+ * card behind it. What makes the difference is not the length of the pause but what is under it.
+ */
+const COLUMN_LANDING = 0.94;
+
 export function deckColumnPosition(progress: number, count: number): number {
   if (count <= 1) return 0;
-  const span = PHASE_WINDOWS.hold.to - PHASE_WINDOWS.stack.from;
-  const through = clamp01((clamp01(progress) - PHASE_WINDOWS.stack.from) / span);
-  return smoothstep(through) * (count - 1);
+  /*
+   * LINEAR, and all the way to the end of the scene. Both halves of that were wrong.
+   *
+   * It was `smoothstep(through) * (count - 1)` over `stack.from -> hold.to`, and an ease is the
+   * one thing a conveyor must not have. Smoothstep's mid-slope is 1.875x linear, so the middle
+   * of the run raced and both ends stalled: measured at 390x844, a card crossed from invisible
+   * to solid in 74px of scroll while travelling 370px, and then the last tenth of the scene
+   * moved nothing at all, because the curve had flattened to zero slope. A belt that speeds up
+   * in the middle and stops before the end is not a belt.
+   *
+   * `hold.to` is 0.9, so the run also ended a tenth of the scene early — on a phone that is 74px
+   * of scroll with the deck frozen and the reader still moving. The deck-wide phases legitimately
+   * finish at 0.9; the conveyor is not one of them, and it should use every pixel the scene has.
+   * Ending at 1 also spends that tenth on travel, which is 13% more scroll for the same distance.
+   *
+   * Desktop is untouched by both: `--column-position` is read only inside
+   * `@media (max-width: 899px)` in MenuDeckScene.module.css, and nowhere else in the codebase.
+   *
+   * AND IT STARTS WHERE THE RISE ENDS, not where it begins.
+   *
+   * It used to start at `stack.from`, so the belt was already carrying cards away while the deck
+   * was still arriving. The first card paid for that: it crossed the centre of the frame at scene
+   * progress 0.146, where the stack fade had only reached 32% — the one card the reader meets
+   * first was centred while still translucent, and solid only once it had gone 203px past. There
+   * was no moment when it was both in place and fully there.
+   *
+   * Starting at `stack.to` gives the first card the whole rise to arrive in and hold: 0.12 to 0.28
+   * of the scene, about 216px of scroll on a phone, centred and solid, before anything moves. The
+   * belt is 18% shorter for it, which is the trade — and a first card that is actually looked at
+   * is worth more than 18% more belt.
+   */
+  const span = COLUMN_LANDING - PHASE_WINDOWS.stack.to;
+  const through = clamp01((clamp01(progress) - PHASE_WINDOWS.stack.to) / span);
+  return through * (count - 1);
 }
 
 /** How far the fan has opened out of the compressed stack: 0 compressed, 1 fanned. */
-export function deckFan(progress: number, flippedCards: number, count: number): number {
+export function deckFan(
+  progress: number,
+  flippedCards: number,
+  count: number,
+): number {
   if (flippedCards > 0) return 1;
   const entry = deckEntrySpan(count);
   const start = entry * FAN_START_OF_ENTRY;
@@ -275,9 +329,14 @@ export function deckFan(progress: number, flippedCards: number, count: number): 
 }
 
 /** Where the deck stands in its choreography. Reflected as `data-deck-phase`. */
-export type DeckPhase = "below" | "rising" | "fanned" | "revealing" | "revealed";
+export type DeckPhase =
+  "below" | "rising" | "fanned" | "revealing" | "revealed";
 
-export function deckPhase(arrival: number, flippedCards: number, count: number): DeckPhase {
+export function deckPhase(
+  arrival: number,
+  flippedCards: number,
+  count: number,
+): DeckPhase {
   if (count > 0 && flippedCards >= count) return "revealed";
   if (flippedCards > 0) return "revealing";
   if (arrival >= 1) return "fanned";
@@ -387,7 +446,8 @@ export function MenuDeckScene({
     if (!deck) return;
     if (reducedMotion) {
       delete deck.dataset.deckConveyor;
-      for (const property of SCRUBBED_PROPERTIES) deck.style.removeProperty(property);
+      for (const property of SCRUBBED_PROPERTIES)
+        deck.style.removeProperty(property);
       headingRef.current?.style.removeProperty("--phase-stack");
       return;
     }
@@ -411,8 +471,20 @@ export function MenuDeckScene({
     deck.style.setProperty("--phase-flip", flipAmount.toFixed(4));
     deck.style.setProperty("--column-position", columnPosition.toFixed(4));
     // The heading yields as the stack gathers, and is a sibling so it cannot inherit this.
-    headingRef.current?.style.setProperty("--phase-stack", stackAmount.toFixed(4));
-  }, [arrival, fan, stackAmount, fanAmount, spreadAmount, flipAmount, columnPosition, reducedMotion]);
+    headingRef.current?.style.setProperty(
+      "--phase-stack",
+      stackAmount.toFixed(4),
+    );
+  }, [
+    arrival,
+    fan,
+    stackAmount,
+    fanAmount,
+    spreadAmount,
+    flipAmount,
+    columnPosition,
+    reducedMotion,
+  ]);
 
   /**
    * The flip, driven by `flippedCards`.
@@ -477,7 +549,11 @@ export function MenuDeckScene({
     const context = contextRef.current;
     if (!deck || !context) return;
     if (reducedMotion || count === 0 || flipped < count) return;
-    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+    if (
+      typeof window === "undefined" ||
+      typeof window.matchMedia !== "function"
+    )
+      return;
     if (!window.matchMedia(FINE_POINTER_QUERY).matches) return;
 
     const setTilt = (x: number, y: number, duration: number): void => {
@@ -498,8 +574,12 @@ export function MenuDeckScene({
       // -0.5 … +0.5 across the deck, doubled to -1 … +1 and clamped: a fanned card reaches
       // outside the deck's own box, so a pointer on its far corner parks the tilt at its limit
       // instead of running off with it.
-      const x = clampUnit(((event.clientX - bounds.left) / bounds.width - 0.5) * 2);
-      const y = clampUnit(((event.clientY - bounds.top) / bounds.height - 0.5) * 2);
+      const x = clampUnit(
+        ((event.clientX - bounds.left) / bounds.width - 0.5) * 2,
+      );
+      const y = clampUnit(
+        ((event.clientY - bounds.top) / bounds.height - 0.5) * 2,
+      );
       // Pointer below centre tips the deck's near edge toward the reader: rotateX follows -y.
       setTilt(-y * TILT_MAX_DEG, x * TILT_MAX_DEG, TILT_FOLLOW_S);
     };
@@ -533,7 +613,11 @@ export function MenuDeckScene({
 
   return (
     <>
-      <h2 ref={headingRef} className={styles.heading} data-section-heading="menu">
+      <h2
+        ref={headingRef}
+        className={styles.heading}
+        data-section-heading="menu"
+      >
         {heading.fa}
       </h2>
 
@@ -576,18 +660,37 @@ export function MenuDeckScene({
                 data-flipped={faceUp}
                 data-card-face={presentedFace}
                 // The deck's newest reveal: the card the reader is being shown right now.
-                aria-current={faceUp && index === flipped - 1 ? "true" : undefined}
+                aria-current={
+                  faceUp && index === flipped - 1 ? "true" : undefined
+                }
               >
                 {/*
                   Card back (brief §7.3): near-black, one centred white DROP primary logo, no
                   other copy, sharp corners. Decorative — the front carries the item.
                 */}
-                <div className={`${styles.face} ${styles.back}`} aria-hidden="true">
-                  <DropPrimaryLogo className={styles.backLogo} variant="light" />
+                <div
+                  className={`${styles.face} ${styles.back}`}
+                  aria-hidden="true"
+                >
+                  <DropPrimaryLogo
+                    className={styles.backLogo}
+                    variant="light"
+                  />
                 </div>
 
                 <div className={`${styles.face} ${styles.front}`}>
-                  <MenuCardImage item={item} environment={PAINT_ENVIRONMENT} />
+                  <MenuCardImage
+                    item={item}
+                    environment={PAINT_ENVIRONMENT}
+                    /*
+                     * The first card is the phone's Largest Contentful Paint, so it may not
+                     * wait to be scrolled to. Next flagged it by name. On a 91vw card that
+                     * arrives inside the first screen of the scene, lazy is a visible pop —
+                     * the composition lands and the picture turns up afterwards. Only the
+                     * first: the rest genuinely are below the fold.
+                     */
+                    priority={index === 0}
+                  />
                   <div className={styles.meta} dir="rtl">
                     <p className={styles.name} data-menu-name>
                       {item.name.fa}
@@ -635,9 +738,11 @@ export function MenuDeckScene({
 function MenuCardImage({
   item,
   environment,
+  priority = false,
 }: {
   item: MenuItem;
   environment: RuntimeEnvironment;
+  priority?: boolean;
 }) {
   const asset = item.image;
   const alt = asset.alt.fa;
@@ -663,7 +768,17 @@ function MenuCardImage({
         alt={alt}
         width={asset.width}
         height={asset.height}
-        sizes="(max-width: 767px) 50vw, 22vw"
+        priority={priority}
+        /*
+         * 91vw below 900px, because that is what the card actually is.
+         *
+         * This said 50vw at a 767px breakpoint and neither number described the layout: the
+         * conveyor starts at 899px, not 767, and on it one card is `min(91vw, 78svh*5/7)` —
+         * the design's own figure for a card filling most of the frame. Telling the browser
+         * 50vw made it pick a candidate around half the resolution the card is painted at, so
+         * the phone got the softest image on the page for its largest element.
+         */
+        sizes="(max-width: 899px) 91vw, 22vw"
       />
     </div>
   );

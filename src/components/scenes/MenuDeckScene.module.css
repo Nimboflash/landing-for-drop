@@ -683,9 +683,24 @@
       calc(var(--card-index) - var(--column-position, 0)),
       calc(var(--column-position, 0) - var(--card-index))
     );
+    /*
+     * ONE card at a time, with a plateau in the middle of its own step.
+     *
+     * This faded out over 1.8 steps, which sounds generous and behaved badly. Two things:
+     *
+     *   - a card was still fully solid 0.8 of a step past the stage, i.e. 465px above the centre
+     *     of the frame, so it spent its opaque life LEAVING rather than being looked at;
+     *   - the conveyor stops with the last card on the stage, so the card before it sits exactly
+     *     one step behind, for ever, at `1.8 - 1` = 0.8 opacity. A permanent ghost behind the
+     *     final card, measured at the end of every phone pass.
+     *
+     * Now: solid while the card is within half a step of the stage, gone by a full step. The
+     * plateau is what the reader reads on — about 290px either side of centre, on a card that is
+     * most of the frame — and the ghost cannot exist, because one step behind is zero.
+     */
     opacity: clamp(
       0,
-      calc((1.8 - var(--column-distance)) * var(--phase-stack, 1)),
+      calc(((1 - var(--column-distance)) / 0.5) * var(--phase-stack, 1)),
       1
     );
     z-index: calc(100 - var(--column-distance) * 10);
@@ -745,12 +760,12 @@
      * the first moment a card has any paint at all. Finishing at 1.9 puts the whole turn — its
      * edge-on frame included — outside the band where anything is drawn.
      */
-    --flip-clear: 1.9;
+    --flip-clear: 1.05;
     /*
      * How much conveyor travel the turn itself takes. Under one step, so the card turns as part
      * of its own approach rather than across the whole queue behind it.
      */
-    --flip-turn-steps: 0.7;
+    --flip-turn-steps: 0.5;
   }
 
   .deck[data-deck-conveyor="on"] .card {

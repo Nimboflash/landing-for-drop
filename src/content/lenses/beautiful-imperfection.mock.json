@@ -39,8 +39,8 @@
     }
   ],
   "gridStatement": {
-    "fa": "جایی با یک نگاه مشخص.",
-    "en": "A PLACE WITH A POINT OF VIEW."
+    "fa": "از دریچهٔ DROP.",
+    "en": "THROUGH THE LENS OF DROP."
   },
   "sectionLabels": {
     "menu": {
@@ -708,8 +708,8 @@
   ],
   "footer": {
     "statement": {
-      "fa": "جایی با یک نگاه مشخص.",
-      "en": "A PLACE WITH A POINT OF VIEW."
+      "fa": "از دریچهٔ DROP.",
+      "en": "THROUGH THE LENS OF DROP."
     },
     "cta": {
       "label": {

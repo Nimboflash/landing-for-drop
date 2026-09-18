@@ -102,14 +102,23 @@
   /* Families — bound to next/font CSS variables in src/app/layout.tsx */
   --font-latin: var(--font-satoshi), "Helvetica Neue", Arial, sans-serif;
   /*
-   * Abar first — the approved Persian brand face (brief §4). Vazirmatn stays
-   * behind it as the glyph safety net and is only fetched if Abar fails to
-   * match; Satoshi then covers the Latin fragments that run inline in Persian
-   * text — the reason the no-English cut of Abar is the one shipped — and Tahoma
-   * is the last resort with no download at all.
+   * Abar first — the approved Persian brand face (brief §4). SATOSHI SECOND, and
+   * that order is the whole point: Abar ships without Latin, so Latin inside a
+   * Persian line falls straight through to the face that is meant to draw it.
+   *
+   * Vazirmatn used to sit here and it drew that Latin instead — the stack said
+   * one thing and this comment said another, and the comment was the one telling
+   * the truth about the intent. Rendered proof: the footer statement's brand word
+   * came out in Vazirmatn's Latin, not Satoshi's, and it pulled down a font that
+   * `preload: false` had been keeping free. Satoshi carries no Arabic, so moving
+   * it up costs Persian nothing — fallback is per glyph, and an Arabic character
+   * Abar cannot draw still lands on Vazirmatn behind it.
+   *
+   * Vazirmatn is therefore what it was always described as: the glyph safety net,
+   * fetched only if Abar misses. Tahoma is the last resort, with no download.
    */
   --font-persian:
-    var(--font-abar), var(--font-vazirmatn), var(--font-satoshi), Tahoma,
+    var(--font-abar), var(--font-satoshi), var(--font-vazirmatn), Tahoma,
     sans-serif;
 
   /* Layout */

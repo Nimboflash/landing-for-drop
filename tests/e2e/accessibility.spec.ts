@@ -63,8 +63,8 @@ const DECORATIVE_SCENES: readonly SceneId[] = ["loader", "pixelA", "pixelB"];
  * expected region labels too.
  */
 const LENS_TITLE_FA = "زیبایی در کامل نبودن";
-const GRID_STATEMENT_FA = "جایی با یک نگاه مشخص.";
-const FOOTER_STATEMENT_FA = "جایی با یک نگاه مشخص.";
+const GRID_STATEMENT_FA = "از دریچهٔ DROP.";
+const FOOTER_STATEMENT_FA = "از دریچهٔ DROP.";
 const SECTION_LABELS_FA = {
   menu: "انتخاب مزه",
   films: "سه نگاه",

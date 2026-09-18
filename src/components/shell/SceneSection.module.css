@@ -9,7 +9,10 @@
    * The budget arrives unitless so it can be scaled per breakpoint. The floor keeps a pinned
    * scene's sticky travel non-degenerate no matter how far a breakpoint scales the budget down.
    */
-  min-height: max(120svh, calc(var(--scene-budget, 100) * 1svh * var(--scene-scale, 1)));
+  min-height: max(
+    120svh,
+    calc(var(--scene-budget, 100) * 1svh * var(--scene-scale, 1))
+  );
 }
 
 /*
@@ -72,6 +75,43 @@
 @media (max-width: 767px) {
   .scene {
     --scene-scale: 0.72;
+  }
+
+  /*
+   * THE MENU DECK IS THE EXCEPTION, because on a phone it is a different composition.
+   *
+   * Every other scene shows the reader the same thing it shows on a desktop and simply needs less
+   * scroll to say it, which is what 0.72 is for. The deck does not: below 900px it stops being a
+   * hand of cards fanned across one stage and becomes a vertical CONVEYOR that carries four
+   * full-frame cards past the reader one at a time. That is roughly 1740px of card travel — it
+   * needs more scroll than the desktop layout, not less.
+   *
+   * The two breakpoints disagreed, and the disagreement ran the wrong way: the conveyor starts at
+   * 899px while this shrink starts at 767px, so 768-899px ran the conveyor at full length and
+   * everything below it ran the same conveyor at 0.72. The layout that needs the most scroll was
+   * given the least. Measured at 390x844 before this rule: the belt moved about five pixels of
+   * card for every pixel of finger, a card went from invisible to solid in 74px of scroll, and
+   * each card was centred in the frame for exactly one sample of forty.
+   *
+   * Restoring 1 here does not lengthen anything relative to the desktop budget — it removes a
+   * shortening that was never meant for this layout. `menu` stays at its 260vh in
+   * scene-budgets.ts, so no other viewport and no other scene moves.
+   *
+   * GATED ON MOTION BEING WANTED, and that gate is load-bearing rather than tidy. This selector
+   * is a class AND an attribute, so it outranks the bare `.scene` in the reduced-motion block
+   * below and would have overridden it — a reader who asks for less motion would have been given
+   * a LONGER journey, which is the opposite of what that block is for. It showed up as the footer
+   * reaching 99% instead of 100 at the end of a reduced-motion pass: the document had grown under
+   * a test that scrolls to the bottom.
+   *
+   * There is nothing to buy here anyway. Under reduced motion the component drops
+   * `data-deck-conveyor` entirely and the deck is the plain centred grid — no belt, no travel,
+   * nothing for the extra length to scrub.
+   */
+  @media (prefers-reduced-motion: no-preference) {
+    .scene[data-scene="menu"] {
+      --scene-scale: 1;
+    }
   }
 }
 

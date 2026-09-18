@@ -38,7 +38,11 @@ import rawW04 from "@/content/lenses/beautiful-imperfection.mock.json";
 
 // --- independent expectations: the shipped media manifest --------------------------------
 
-const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
+const repoRoot = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "..",
+);
 
 type ManifestRow = {
   asset_id: string;
@@ -61,14 +65,17 @@ function readMediaManifest(): ManifestRow[] {
     columns.forEach((column, index) => {
       // The trailing instruction column may itself contain commas.
       row[column] =
-        index === columns.length - 1 ? cells.slice(index).join(",") : (cells[index] ?? "");
+        index === columns.length - 1
+          ? cells.slice(index).join(",")
+          : (cells[index] ?? "");
     });
     return row as unknown as ManifestRow;
   });
 }
 
 const manifest = readMediaManifest();
-const manifestRowsFor = (scene: string) => manifest.filter((row) => row.scene === scene);
+const manifestRowsFor = (scene: string) =>
+  manifest.filter((row) => row.scene === scene);
 
 /** Brief §7.2: the W04 pinned thesis cycles exactly three hero messages. */
 const HERO_MESSAGE_COUNT = 3;
@@ -95,14 +102,21 @@ function lensWithMediaRights(
   return weeklyLensSchema.parse(lens);
 }
 
-function anAssetWith(rightsStatus: MediaAsset["rightsStatus"], productionAllowed: boolean) {
+function anAssetWith(
+  rightsStatus: MediaAsset["rightsStatus"],
+  productionAllowed: boolean,
+) {
   const asset = clone(beautifulImperfectionLens).menuItems[0].image;
   asset.rightsStatus = rightsStatus;
   asset.productionAllowed = productionAllowed;
   return asset;
 }
 
-const ENV_KEYS = ["DROP_SHOW_RIGHTS_PENDING", "DROP_ENFORCE_MEDIA_RIGHTS", "DROP_ENV"] as const;
+const ENV_KEYS = [
+  "DROP_SHOW_RIGHTS_PENDING",
+  "DROP_ENFORCE_MEDIA_RIGHTS",
+  "DROP_ENV",
+] as const;
 let savedEnv: Record<string, string | undefined> = {};
 
 beforeEach(() => {
@@ -168,10 +182,18 @@ describe("W04 Beautiful Imperfection lens", () => {
     expect(beautifulImperfectionLens.menuItems.length).toBeGreaterThanOrEqual(
       manifestRowsFor("menu").length,
     );
-    expect(beautifulImperfectionLens.films).toHaveLength(manifestRowsFor("films").length);
-    expect(beautifulImperfectionLens.tracks).toHaveLength(manifestRowsFor("tracks").length);
-    expect(beautifulImperfectionLens.artPieces).toHaveLength(manifestRowsFor("art").length);
-    expect(beautifulImperfectionLens.heroMessages).toHaveLength(HERO_MESSAGE_COUNT);
+    expect(beautifulImperfectionLens.films).toHaveLength(
+      manifestRowsFor("films").length,
+    );
+    expect(beautifulImperfectionLens.tracks).toHaveLength(
+      manifestRowsFor("tracks").length,
+    );
+    expect(beautifulImperfectionLens.artPieces).toHaveLength(
+      manifestRowsFor("art").length,
+    );
+    expect(beautifulImperfectionLens.heroMessages).toHaveLength(
+      HERO_MESSAGE_COUNT,
+    );
   });
 
   it("uses exactly the local media files listed in the manifest", () => {
@@ -179,7 +201,11 @@ describe("W04 Beautiful Imperfection lens", () => {
     // reference count and the file count are no longer the same number. Every file the lens names
     // must be in the manifest, and every manifest file must still be used by the lens.
     const lensFiles = [
-      ...new Set(collectMediaAssets(beautifulImperfectionLens).map((located) => located.asset.src)),
+      ...new Set(
+        collectMediaAssets(beautifulImperfectionLens).map(
+          (located) => located.asset.src,
+        ),
+      ),
     ].sort();
     const manifestPaths = manifest.map((row) => row.target_public_path).sort();
     expect(lensFiles).toEqual(manifestPaths);
@@ -187,8 +213,15 @@ describe("W04 Beautiful Imperfection lens", () => {
 
   it("serves every media file locally from public/", () => {
     for (const located of collectMediaAssets(beautifulImperfectionLens)) {
-      const filePath = path.join(repoRoot, "public", located.asset.src.replace(/^\//, ""));
-      expect(existsSync(filePath), `missing local asset for ${located.location}`).toBe(true);
+      const filePath = path.join(
+        repoRoot,
+        "public",
+        located.asset.src.replace(/^\//, ""),
+      );
+      expect(
+        existsSync(filePath),
+        `missing local asset for ${located.location}`,
+      ).toBe(true);
     }
   });
 
@@ -198,66 +231,74 @@ describe("W04 Beautiful Imperfection lens", () => {
       "PERFECT DAYS",
       "PATERSON",
     ]);
-    expect(beautifulImperfectionLens.films.map((film) => film.director)).toEqual([
-      "Kelly Reichardt",
-      "Wim Wenders",
-      "Jim Jarmusch",
-    ]);
+    expect(
+      beautifulImperfectionLens.films.map((film) => film.director),
+    ).toEqual(["Kelly Reichardt", "Wim Wenders", "Jim Jarmusch"]);
     expect(beautifulImperfectionLens.films.map((film) => film.year)).toEqual([
       "2023",
       "2023",
       "2016",
     ]);
-    expect(beautifulImperfectionLens.films.map((film) => film.viewLabel.en)).toEqual([
-      "FIRST VIEW",
-      "SECOND VIEW",
-      "COMPLETING VIEW",
-    ]);
+    expect(
+      beautifulImperfectionLens.films.map((film) => film.viewLabel.en),
+    ).toEqual(["FIRST VIEW", "SECOND VIEW", "COMPLETING VIEW"]);
   });
 
   it("presents the seed menu items with their makers (brief §7.3)", () => {
     // The first two are the brief's own seed items; the rest are the widened deck's stand-ins.
-    expect(beautifulImperfectionLens.menuItems.map((item) => item.name.en)).toEqual([
+    expect(
+      beautifulImperfectionLens.menuItems.map((item) => item.name.en),
+    ).toEqual([
       "WEEKLY FRUIT TART",
       "MOCHI BITE BOX",
       "SLOW FILTER BREW",
       "DAILY SOURDOUGH",
     ]);
-    expect(beautifulImperfectionLens.menuItems.map((item) => item.maker)).toEqual([
-      "ÉCLAIR",
-      "MOCHIKI",
-      "DROP KITCHEN",
-      "DROP BAKERY",
-    ]);
+    expect(
+      beautifulImperfectionLens.menuItems.map((item) => item.maker),
+    ).toEqual(["ÉCLAIR", "MOCHIKI", "DROP KITCHEN", "DROP BAKERY"]);
   });
 
   it("groups the eleven tracks by period as the brief's sound edit does (§10)", () => {
     const byPeriod = (period: string) =>
-      beautifulImperfectionLens.tracks.filter((track) => track.period === period);
+      beautifulImperfectionLens.tracks.filter(
+        (track) => track.period === period,
+      );
     expect(byPeriod("morning")).toHaveLength(4);
     expect(byPeriod("afternoon")).toHaveLength(3);
     expect(byPeriod("night")).toHaveLength(4);
   });
 
   it("presents the four art pieces of the field notes (brief §7.9)", () => {
-    expect(beautifulImperfectionLens.artPieces.map((piece) => piece.title)).toEqual([
+    expect(
+      beautifulImperfectionLens.artPieces.map((piece) => piece.title),
+    ).toEqual([
       "BRION MEMORIAL",
       "UNTITLED (S.270)",
       "UNTITLED, FROM ILLUMINANCE",
       "THE PRATFALL EFFECT",
     ]);
-    expect(beautifulImperfectionLens.artPieces.map((piece) => piece.creator)).toEqual([
-      "Carlo Scarpa",
-      "Ruth Asawa",
-      "Rinko Kawauchi",
-      undefined,
-    ]);
+    expect(
+      beautifulImperfectionLens.artPieces.map((piece) => piece.creator),
+    ).toEqual(["Carlo Scarpa", "Ruth Asawa", "Rinko Kawauchi", undefined]);
     expect(beautifulImperfectionLens.artPieces[3].duration).toBe("3 MIN READ");
   });
 
   it("carries the brand statement used by the grid scene and the footer (brief §7.4, §7.10)", () => {
-    expect(beautifulImperfectionLens.gridStatement.en).toBe("A PLACE WITH A POINT OF VIEW.");
-    expect(beautifulImperfectionLens.footer.statement.en).toBe("A PLACE WITH A POINT OF VIEW.");
+    /*
+     * Both surfaces carry the SAME line, in both languages — that is the thing under test, not
+     * the wording. The grid statement and the footer statement are one brand line shown twice,
+     * so a change that reaches one and not the other is the failure this catches.
+     *
+     * The Persian half is asserted too. It was not before, which is how the two could have
+     * drifted apart in the language the page is actually written in.
+     */
+    const en = "THROUGH THE LENS OF DROP.";
+    const fa = "از دریچهٔ DROP.";
+    expect(beautifulImperfectionLens.gridStatement.en).toBe(en);
+    expect(beautifulImperfectionLens.footer.statement.en).toBe(en);
+    expect(beautifulImperfectionLens.gridStatement.fa).toBe(fa);
+    expect(beautifulImperfectionLens.footer.statement.fa).toBe(fa);
   });
 
   it("keeps the footer CTA and every footer link disabled until final destinations exist", () => {
@@ -273,9 +314,15 @@ describe("W04 Beautiful Imperfection lens", () => {
 
 type LocalizedNode = { at: string; fa: unknown; en: unknown };
 
-function collectLocalizedText(value: unknown, at = "$", found: LocalizedNode[] = []) {
+function collectLocalizedText(
+  value: unknown,
+  at = "$",
+  found: LocalizedNode[] = [],
+) {
   if (Array.isArray(value)) {
-    value.forEach((entry, index) => collectLocalizedText(entry, `${at}[${index}]`, found));
+    value.forEach((entry, index) =>
+      collectLocalizedText(entry, `${at}[${index}]`, found),
+    );
     return found;
   }
   if (value !== null && typeof value === "object") {
@@ -300,12 +347,16 @@ describe("bilingual completeness", () => {
   });
 
   it("has a non-empty Persian string everywhere (Persian is the primary language)", () => {
-    const missingFa = localized.filter((node) => typeof node.fa !== "string" || node.fa === "");
+    const missingFa = localized.filter(
+      (node) => typeof node.fa !== "string" || node.fa === "",
+    );
     expect(missingFa.map((node) => node.at)).toEqual([]);
   });
 
   it("has the English strings the mock pack supplies on every localized field", () => {
-    const missingEn = localized.filter((node) => typeof node.en !== "string" || node.en === "");
+    const missingEn = localized.filter(
+      (node) => typeof node.en !== "string" || node.en === "",
+    );
     expect(missingEn.map((node) => node.at)).toEqual([]);
   });
 });
@@ -315,7 +366,8 @@ describe("bilingual completeness", () => {
 describe("malformed lens data fails loudly", () => {
   it("rejects a remote media src (no hotlinking, ever)", () => {
     const lens = clone(beautifulImperfectionLens);
-    lens.menuItems[0].image.src = "https://cdn.example.com/hotlinked-product-photo.webp";
+    lens.menuItems[0].image.src =
+      "https://cdn.example.com/hotlinked-product-photo.webp";
     expect(() => weeklyLensSchema.parse(lens)).toThrow();
   });
 
@@ -371,10 +423,13 @@ describe("production-media guard", () => {
     const collected = collectMediaAssets(beautifulImperfectionLens);
     expect(collected).toHaveLength(LENS_MEDIA_REFERENCES);
 
-    const perScene = (scene: string) => collected.filter((located) => located.scene === scene);
+    const perScene = (scene: string) =>
+      collected.filter((located) => located.scene === scene);
     // References, not files: the widened deck has stand-ins that share another item's image,
     // and the guard judges every reference on its own rights metadata.
-    expect(perScene("menu")).toHaveLength(beautifulImperfectionLens.menuItems.length);
+    expect(perScene("menu")).toHaveLength(
+      beautifulImperfectionLens.menuItems.length,
+    );
     expect(perScene("films")).toHaveLength(manifestRowsFor("films").length);
     expect(perScene("tracks")).toHaveLength(manifestRowsFor("tracks").length);
     expect(perScene("artPieces")).toHaveLength(manifestRowsFor("art").length);
@@ -390,7 +445,10 @@ describe("production-media guard", () => {
       thrown = error as Error;
     }
 
-    expect(thrown, "the guard must block while mock assets remain").toBeDefined();
+    expect(
+      thrown,
+      "the guard must block while mock assets remain",
+    ).toBeDefined();
     const message = thrown!.message;
     // The message states the blocking count (all 20 manifest assets) and names offenders.
     expect(message).toMatch(new RegExp(`\\b${LENS_MEDIA_REFERENCES}\\b`));
@@ -400,25 +458,27 @@ describe("production-media guard", () => {
   });
 
   it("blocks while assets are development-mock", () => {
-    expect(() => assertProductionMedia(lensWithMediaRights("development-mock", false))).toThrow();
+    expect(() =>
+      assertProductionMedia(lensWithMediaRights("development-mock", false)),
+    ).toThrow();
   });
 
   it("blocks any asset with productionAllowed: false, whatever its rights status", () => {
-    expect(() => assertProductionMedia(lensWithMediaRights("approved", false))).toThrow(
-      /productionAllowed: false/,
-    );
+    expect(() =>
+      assertProductionMedia(lensWithMediaRights("approved", false)),
+    ).toThrow(/productionAllowed: false/);
   });
 
   it("blocks rights-pending assets, which never ship to production", () => {
-    expect(() => assertProductionMedia(lensWithMediaRights("rights-pending", true))).toThrow(
-      /rights-pending/,
-    );
+    expect(() =>
+      assertProductionMedia(lensWithMediaRights("rights-pending", true)),
+    ).toThrow(/rights-pending/);
   });
 
   it("fails loudly by default on required replace-with-final assets", () => {
-    expect(() => assertProductionMedia(lensWithMediaRights("replace-with-final", true))).toThrow(
-      /replace-with-final/,
-    );
+    expect(() =>
+      assertProductionMedia(lensWithMediaRights("replace-with-final", true)),
+    ).toThrow(/replace-with-final/);
   });
 
   it("warns loudly instead when replace-with-final is explicitly downgraded to a warning", () => {
@@ -437,8 +497,12 @@ describe("production-media guard", () => {
   });
 
   it("passes for approved and original-drop media", () => {
-    expect(() => assertProductionMedia(lensWithMediaRights("approved", true))).not.toThrow();
-    expect(() => assertProductionMedia(lensWithMediaRights("original-drop", true))).not.toThrow();
+    expect(() =>
+      assertProductionMedia(lensWithMediaRights("approved", true)),
+    ).not.toThrow();
+    expect(() =>
+      assertProductionMedia(lensWithMediaRights("original-drop", true)),
+    ).not.toThrow();
   });
 
   it("reviews a lens into blocking / awaiting-final / cleared groups", () => {
@@ -446,11 +510,15 @@ describe("production-media guard", () => {
     expect(mockReview.blocking).toHaveLength(LENS_MEDIA_REFERENCES);
     expect(mockReview.cleared).toHaveLength(0);
 
-    const clearedReview = reviewMediaRights(lensWithMediaRights("original-drop", true));
+    const clearedReview = reviewMediaRights(
+      lensWithMediaRights("original-drop", true),
+    );
     expect(clearedReview.cleared).toHaveLength(LENS_MEDIA_REFERENCES);
     expect(clearedReview.blocking).toHaveLength(0);
 
-    const awaitingReview = reviewMediaRights(lensWithMediaRights("replace-with-final", true));
+    const awaitingReview = reviewMediaRights(
+      lensWithMediaRights("replace-with-final", true),
+    );
     expect(awaitingReview.awaitingFinal).toHaveLength(LENS_MEDIA_REFERENCES);
   });
 });
@@ -460,15 +528,17 @@ describe("production-media guard", () => {
 describe("production rights enforcement flag", () => {
   it("is off unless DROP_ENFORCE_MEDIA_RIGHTS is set, so the default build stays green", () => {
     expect(isProductionRightsEnforced()).toBe(false);
-    expect(() => enforceProductionMediaRights(beautifulImperfectionLens)).not.toThrow();
+    expect(() =>
+      enforceProductionMediaRights(beautifulImperfectionLens),
+    ).not.toThrow();
   });
 
   it("runs the guard on the flagged production build path", () => {
     process.env.DROP_ENFORCE_MEDIA_RIGHTS = "1";
     expect(isProductionRightsEnforced()).toBe(true);
-    expect(() => enforceProductionMediaRights(beautifulImperfectionLens)).toThrow(
-      /Production media guard blocked the build/,
-    );
+    expect(() =>
+      enforceProductionMediaRights(beautifulImperfectionLens),
+    ).toThrow(/Production media guard blocked the build/);
   });
 
   it("treats an explicitly falsy flag value as off", () => {
@@ -481,7 +551,9 @@ describe("production rights enforcement flag", () => {
     // `npm run ci:rights-guard` relies on. Re-imported in isolation so the flag is read fresh.
     vi.resetModules();
     process.env.DROP_ENFORCE_MEDIA_RIGHTS = "1";
-    await expect(import("@/content")).rejects.toThrow(/Production media guard blocked the build/);
+    await expect(import("@/content")).rejects.toThrow(
+      /Production media guard blocked the build/,
+    );
     vi.resetModules();
   });
 
@@ -542,7 +614,9 @@ describe("asset display gating", () => {
 
 describe("lens lookup", () => {
   it("returns the W04 lens for its slug", () => {
-    expect(getLensBySlug("beautiful-imperfection")).toBe(beautifulImperfectionLens);
+    expect(getLensBySlug("beautiful-imperfection")).toBe(
+      beautifulImperfectionLens,
+    );
   });
 
   it("returns undefined for an unknown slug", () => {
@@ -588,27 +662,40 @@ describe("count fixtures", () => {
   });
 
   it("parses against the real schema", () => {
-    for (const fixture of [variableCountFixtureLens, minimumCountsFixtureLens]) {
+    for (const fixture of [
+      variableCountFixtureLens,
+      minimumCountsFixtureLens,
+    ]) {
       expect(() => weeklyLensSchema.parse(fixture)).not.toThrow();
     }
   });
 
   it("reuses W04 media, so fixture renders never 404", () => {
     const w04Paths = new Set(
-      collectMediaAssets(beautifulImperfectionLens).map((located) => located.asset.src),
+      collectMediaAssets(beautifulImperfectionLens).map(
+        (located) => located.asset.src,
+      ),
     );
-    for (const fixture of [variableCountFixtureLens, minimumCountsFixtureLens]) {
+    for (const fixture of [
+      variableCountFixtureLens,
+      minimumCountsFixtureLens,
+    ]) {
       for (const located of collectMediaAssets(fixture)) {
         expect(w04Paths.has(located.asset.src)).toBe(true);
         expect(
-          existsSync(path.join(repoRoot, "public", located.asset.src.replace(/^\//, ""))),
+          existsSync(
+            path.join(repoRoot, "public", located.asset.src.replace(/^\//, "")),
+          ),
         ).toBe(true);
       }
     }
   });
 
   it("stays blocked by the production guard like every development lens", () => {
-    for (const fixture of [variableCountFixtureLens, minimumCountsFixtureLens]) {
+    for (const fixture of [
+      variableCountFixtureLens,
+      minimumCountsFixtureLens,
+    ]) {
       expect(() => assertProductionMedia(fixture)).toThrow();
     }
   });

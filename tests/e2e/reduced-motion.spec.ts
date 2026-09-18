@@ -88,7 +88,7 @@ const ARGUMENT_FA = [
 ] as const;
 
 const MENU_NAMES_FA = ["تارت میوهٔ هفتگی", "جعبهٔ موچی بایت"] as const;
-const GRID_STATEMENT_FA = "جایی با یک نگاه مشخص.";
+const GRID_STATEMENT_FA = "از دریچهٔ DROP.";
 const FILM_TITLES = ["SHOWING UP", "PERFECT DAYS", "PATERSON"] as const;
 const TRACK_TITLES = [
   "Natural Blue",
@@ -109,7 +109,7 @@ const ART_TITLES = [
   "UNTITLED, FROM ILLUMINANCE",
   "THE PRATFALL EFFECT",
 ] as const;
-const FOOTER_STATEMENT_FA = "جایی با یک نگاه مشخص.";
+const FOOTER_STATEMENT_FA = "از دریچهٔ DROP.";
 
 /**
  * Brief §7.10, "Footer content": "Bottom metadata slots: Instagram, location, contact, copyright,

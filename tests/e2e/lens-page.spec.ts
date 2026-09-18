@@ -66,8 +66,8 @@ const ART_PIECE_TITLES = [
   "THE PRATFALL EFFECT",
 ];
 // The seed uses the same closing line for the grid statement and the footer (brief §7.4, §7.10).
-const GRID_STATEMENT_FA = "جایی با یک نگاه مشخص.";
-const FOOTER_STATEMENT_FA = "جایی با یک نگاه مشخص.";
+const GRID_STATEMENT_FA = "از دریچهٔ DROP.";
+const FOOTER_STATEMENT_FA = "از دریچهٔ DROP.";
 /**
  * Brief §7.10, "Footer content": "Bottom metadata slots: Instagram, location, contact, copyright,
  * and legal." The W04 seed carries exactly those five, all disabled. (This constant previously
