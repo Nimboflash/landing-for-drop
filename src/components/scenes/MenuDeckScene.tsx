@@ -3,11 +3,10 @@
 /**
  * The menu deck — the taste edit as a physical deck of cards (brief §7.3, ticket 07).
  *
- * A compressed stack rises from below centre and fans into small rotations with the CARD BACKS
- * facing us; then the cards are DEALT out of it one at a time, each turning over in 3D as it
- * travels so that it reaches its place in the composition already showing a real menu item.
- * Every word and every image comes from {@link MenuDeckSceneProps.items}; the count comes from
- * that array's length, and nothing in this file knows what a fruit tart is.
+ * A compressed stack rises from below centre, fans into small rotations and offsets with the
+ * CARD BACKS facing us, then the cards flip in 3D with a crisp stagger and each front reveals a
+ * real menu item. Every word and every image comes from {@link MenuDeckSceneProps.items}; the
+ * count comes from that array's length, and nothing in this file knows what a fruit tart is.
  *
  * ## What is deliberately NOT here
  *
@@ -36,20 +35,14 @@
  * un-flip in the reverse of the order they flipped, the fan closes, and the stack drops back
  * below the viewport. Reversibility is structural here, not a second animation.
  *
- * The deal and the turn are carved out of the reducer's OWN bands (see {@link deckBands}), so
- * "the scene decides nothing" is now true of the pacing as well as of the verdict: a card takes
- * its place and comes over at the band boundary where `flippedCards` counts it, and the two can
- * no longer drift.
- *
  * ## Four layers of geometry, on purpose
  *
  * | layer | owner | why |
  * | --- | --- | --- |
- * | per-card place in the deck (`--card-index`), and the deal/turn widths (`--deal-bands`, `--flip-bands`) | this file | they never change, so they belong in the render output |
+ * | per-card place in the deck (`--card-index`) | this file | it never changes, so it belongs in the render output |
  * | how far one conveyor step travels at this viewport | the stylesheet | a phone gets a smaller card and a shallower recede with no resize listener |
- * | deck scrub (`--deck-bands`, `--deck-arrival`, `--phase-stack`, `--phase-fan`, `--column-position`) | an effect, written imperatively | changes every scroll frame; keeping it out of the render output also keeps SSR and hydration identical |
- * | the deal (`--deal-t`) and the flip (`--card-flip`) | the stylesheet, from `--deck-bands` and the card's index | a pure function of scroll, so the order and the reverse both fall out of the arithmetic |
- * | the pointer tilt (`--deck-tilt-*`) | GSAP | the one motion scroll does not drive, on one shared ticker |
+ * | deck scrub (`--deck-arrival`, `--deck-fan`, `--deck-position`) | an effect, written imperatively | changes every scroll frame; keeping it out of the render output also keeps SSR and hydration identical |
+ * | the flip (`--card-flip`) and the tilt (`--deck-tilt-*`) | GSAP | a real stagger, reverse ordering, and one shared ticker |
  *
  * Everything composes inside ONE CSS transform per card, so the fan, the flip and the tilt can
  * never fight over the same inline `transform` string.
@@ -171,84 +164,69 @@ export function deckArrival(progress: number, flippedCards: number, count: numbe
 }
 
 /**
- * How many of the reducer's own bands this scene's progress has covered, as a continuous float.
+ * The deck's position along its conveyor, as a continuous float.
  *
- * `scopedFlippedCards()` splits the menu scene into `count + 1` equal bands with
- * `floor(progress * (count + 1))`, reserving the first band for the stack's rise and fan and
- * turning one more card face-up in each later band. This is that same expression WITHOUT the
- * floor, so `Math.floor` of it (clamped) is exactly `flippedCards`, and card `index` is the
- * reducer's business from the moment this passes `index + 1`.
+ * The presentation is one card at a time: the card whose index equals this value is centred on
+ * the stage, lower indices have already travelled up and out, higher ones are still waiting
+ * below. Every card's own offset is then `index - position`, which the stylesheet derives — this
+ * is the single per-frame number the scene writes.
  *
- * Every number the scene hands its stylesheet is expressed in these bands. That is the whole
- * point: presentation and state are then the same arithmetic, one floored and one not, and they
- * cannot drift apart. This still decides nothing — it re-derives the reducer's verdict for the
- * benefit of the frame, it does not compete with it.
+ * It is the CONTINUOUS analogue of the reducer's `flippedCards`, and deliberately mirrors that
+ * function's arithmetic rather than inventing its own pacing: the reducer splits the scene into
+ * `count + 1` bands with `floor(progress * (count + 1))`, so dropping the floor and subtracting
+ * the entry band gives a position that passes through exactly 0, 1, 2 … at the same scroll points
+ * the reducer turns each card over. The flip and the travel therefore cannot drift apart, and
+ * this stays presentation math over reducer output — it decides nothing.
+ *
+ * Clamped to `[-1, count - 1]`: -1 is the whole deck held one step below the stage during the
+ * entry band, and `count - 1` is the last card centred and staying there.
  */
-export function deckBands(progress: number, count: number): number {
-  return clamp01(progress) * (Math.max(count, 1) + 1);
-}
-
 /**
- * The deck's ENTRY choreography, in fractions of the reducer's first band.
+ * The deck's choreography, as named phases of the scene's own 0..1 progress.
  *
- * The first band is the one the reducer reserves for the rise and the fan, so the entry is
- * written in fractions of it rather than in fractions of the whole scene. Band fractions also
- * make the choreography count-agnostic for real: a 2-item lens and a 6-item lens each get this
- * shape over their own entry band, instead of the same absolute windows meaning two different
- * things.
+ * Every phase overlaps the next on purpose: a card is still fanning as the spread begins, and
+ * still spreading as the first flip starts, so the deck reads as one continuous move rather than
+ * as five moves queued back to back. The windows are the ones the design calls for.
  *
- * Every phase overlaps the next on purpose, so the deck reads as one continuous move rather than
- * as three moves queued back to back.
- *
- * ## What these replaced, and why
- *
- * The windows used to be fixed fractions of the scene — stack 0.12-0.28, fan 0.25-0.42, spread
- * 0.40-0.58, flip 0.52-0.78 — that owed nothing to the reducer's bands. Measured on the running
- * page at 1440x900 and at 390x844, the two schedules disagreed by up to 0.41 of the scene: every
- * card reported `data-flipped` at its own band (progress 0.20 / 0.40 / 0.60 / 0.80) while the
- * stylesheet went on painting its BACK until the fixed flip window came round (0.61 / 0.64 /
- * 0.67 / 0.70). On the wide layout every card spent roughly half its time on screen face-down;
- * on the narrow layout, where the cards travel through the stage one at a time, three of the
- * four were painted back-side-up for the WHOLE of their time on screen and only turned over
- * after they had scrolled off the top. That is the "cards are not presenting their fronts when
- * they arrive" report, and it was structural, not a tuning value.
- *
- * The spread and flip windows are gone entirely: both are per-card now and both are carved out
- * of the card's own band, below.
+ * Everything downstream is a pure function of these five numbers plus a card's own index, which
+ * is what makes the whole scene reversible by construction: scrubbing back re-evaluates the same
+ * arithmetic and lands on the same frame. There is no timeline object holding state.
  */
-const ENTRY_WINDOWS = Object.freeze({
+const PHASE_WINDOWS = Object.freeze({
   /** The heading arrives and the hero hands over. */
-  heading: Object.freeze({ from: 0.0, to: 0.6 }),
+  heading: Object.freeze({ from: 0.0, to: 0.16 }),
   /** The backs rise from below and gather into ONE centred stack. */
-  stack: Object.freeze({ from: 0.08, to: 0.8 }),
+  stack: Object.freeze({ from: 0.12, to: 0.28 }),
   /** The stack fans: small alternating rotations, still overlapping. */
-  fan: Object.freeze({ from: 0.55, to: 1.0 }),
+  fan: Object.freeze({ from: 0.25, to: 0.42 }),
+  /** The fan opens across the available width until every card stands clear. */
+  spread: Object.freeze({ from: 0.4, to: 0.58 }),
+  /** Backs turn to fronts, left to right, staggered by index. */
+  flip: Object.freeze({ from: 0.52, to: 0.78 }),
+  /**
+   * The readable composition, held — and held all the way out.
+   *
+   * The deck used to drift up 12svh and fade to nothing across the last tenth of the scene.
+   * That read as the menu being taken away mid-sentence: four fronts are the whole point of
+   * this scene, and they were dimmest exactly when the reader had finally got all four.
+   * Nothing animates past the end of the hold now. The cards stay where they were put, the pin
+   * releases on schedule, and the next scene scrolls up over a composition still fully there.
+   */
+  hold: Object.freeze({ from: 0.78, to: 0.9 }),
 });
 
-/** A phase of the deck's entry. Distinct from `DeckPhase`, which is the observable
+/** A phase of the deck's choreography. Distinct from `DeckPhase`, which is the observable
  * `data-deck-phase` state the page seam asserts. */
-export type DeckChoreographyPhase = keyof typeof ENTRY_WINDOWS;
-
-/**
- * How much of its own band a card spends travelling out of the stack to its place in the
- * composition, and how much of it it spends turning over — both ending exactly AT the band
- * boundary, which is the instant the reducer counts the card as flipped.
- *
- * The turn is the shorter of the two and so sits inside the travel: the card is already moving
- * before it starts to come over, and it lands flat and face-up. Under half a band each, so the
- * card that has arrived is then held, unmoving, for the rest of its band — the beat that lets
- * the item actually be read before the next card is dealt.
- */
-const DEAL_BANDS = 0.62;
-const FLIP_BANDS = 0.5;
+export type DeckChoreographyPhase = keyof typeof PHASE_WINDOWS;
 
 /** Everything the scrub writes, so reduced motion can clear it without listing it twice. */
 const SCRUBBED_PROPERTIES = [
   "--deck-arrival",
   "--deck-fan",
-  "--deck-bands",
   "--phase-stack",
   "--phase-fan",
+  "--phase-spread",
+  "--phase-flip",
   "--column-position",
 ] as const;
 
@@ -259,61 +237,31 @@ function smoothstep(value: number): number {
 }
 
 /**
- * How far through one entry phase the deck is, 0 before it and 1 after.
+ * How far through one phase the given scene progress is, 0 before it and 1 after.
  *
  * Exported because the phases ARE the scene's contract with its stylesheet: the component writes
- * these numbers and the stylesheet composes every card's transform from them and the card's own
- * index. Nothing here knows how many cards there are beyond where the band boundaries fall.
+ * these five numbers and the stylesheet composes every card's transform from them and the card's
+ * own index. Nothing here knows how many cards there are.
  */
-export function deckPhaseAmount(
-  progress: number,
-  phase: DeckChoreographyPhase,
-  count: number,
-): number {
-  const { from, to } = ENTRY_WINDOWS[phase];
-  const bands = deckBands(progress, count);
-  if (to <= from) return bands >= to ? 1 : 0;
-  return smoothstep((bands - from) / (to - from));
-}
-
-/**
- * Card `index`'s own turn, 0 face-down and 1 face-up.
- *
- * It reaches 1 exactly at band `index + 1` — the instant `scopedFlippedCards` starts counting
- * this card as flipped — so the card presents its front BY the time it takes its place rather
- * than some distance after it. Being a pure function of the bands is what keeps the reverse
- * contract: scrubbing back re-evaluates the same arithmetic, so the last card to turn is the
- * first to un-turn and the deck reconstructs itself in exactly the reverse of the order it was
- * dealt in.
- *
- * The stylesheet computes this same value from `--deck-bands`; it is duplicated here only so
- * `data-card-face` can report the face the reader is ACTUALLY shown (the stylesheet swaps faces
- * at the half-turn) rather than the reducer's verdict, which `data-flipped` already carries.
- */
-export function deckCardTurn(bands: number, index: number): number {
-  return clamp01((bands - index - 1 + FLIP_BANDS) / FLIP_BANDS);
+export function deckPhaseAmount(progress: number, phase: DeckChoreographyPhase): number {
+  const { from, to } = PHASE_WINDOWS[phase];
+  if (to <= from) return clamp01(progress) >= to ? 1 : 0;
+  return smoothstep((clamp01(progress) - from) / (to - from));
 }
 
 /**
  * The vertical sequence's read position, in cards, for the narrow layout.
  *
  * Below the tablet breakpoint the deck stops spreading sideways and becomes a column that the
- * scene scrolls through: this is which card is level with the stage. It is the same band
- * position the flip is carved out of, so card `index` is level with the stage at band
- * `index + 1` — the moment its turn completes. The narrow layout therefore cannot show a card
- * on the stage face-down, which is precisely what it used to do.
- *
- * Smoothstepped WITHIN each band rather than across the whole travel, so each card eases into
- * the stage and holds there while its band runs out, instead of the column sliding through at a
- * constant rate with no card ever at rest.
+ * scene scrolls through: this is which card is level with the stage. Derived from the same scene
+ * progress, so the two layouts are the same scrub expressed on different axes — and neither can
+ * drift from the flip, which is keyed off the same progress too.
  */
 export function deckColumnPosition(progress: number, count: number): number {
   if (count <= 1) return 0;
-  const travel = Math.min(Math.max(deckBands(progress, count) - 1, 0), count - 1);
-  // The step currently being walked. Capped at the last one so `travel === count - 1` eases to
-  // the end of that step rather than starting a step that does not exist.
-  const step = Math.min(Math.floor(travel), count - 2);
-  return step + smoothstep(travel - step);
+  const span = PHASE_WINDOWS.hold.to - PHASE_WINDOWS.stack.from;
+  const through = clamp01((clamp01(progress) - PHASE_WINDOWS.stack.from) / span);
+  return smoothstep(through) * (count - 1);
 }
 
 /** How far the fan has opened out of the compressed stack: 0 compressed, 1 fanned. */
@@ -387,17 +335,13 @@ export function MenuDeckScene({
   const phase = deckPhase(arrival, flipped, count);
 
   /*
-   * The scrubbed numbers the stylesheet composes every card's transform from. Each is a pure
+   * The four scrubbed numbers the stylesheet composes every card's transform from. Each is a pure
    * function of this scene's own progress, so the whole deck is reversible by construction.
-   *
-   * `bands` is the one that matters: it is the reducer's own band counter without the floor, and
-   * the stylesheet carves each card's deal and turn out of it by index. The deck no longer sends
-   * a deck-wide spread or flip amount at all — both were the schedules that drifted from
-   * `flippedCards`.
    */
-  const bands = deckBands(progress, count);
-  const stackAmount = deckPhaseAmount(progress, "stack", count);
-  const fanAmount = deckPhaseAmount(progress, "fan", count);
+  const stackAmount = deckPhaseAmount(progress, "stack");
+  const fanAmount = deckPhaseAmount(progress, "fan");
+  const spreadAmount = deckPhaseAmount(progress, "spread");
+  const flipAmount = deckPhaseAmount(progress, "flip");
   /** Which card is level with the stage in the narrow, vertical layout. */
   const columnPosition = deckColumnPosition(progress, count);
 
@@ -461,13 +405,14 @@ export function MenuDeckScene({
     deck.dataset.deckConveyor = "on";
     deck.style.setProperty("--deck-arrival", arrival.toFixed(4));
     deck.style.setProperty("--deck-fan", fan.toFixed(4));
-    deck.style.setProperty("--deck-bands", bands.toFixed(4));
     deck.style.setProperty("--phase-stack", stackAmount.toFixed(4));
     deck.style.setProperty("--phase-fan", fanAmount.toFixed(4));
+    deck.style.setProperty("--phase-spread", spreadAmount.toFixed(4));
+    deck.style.setProperty("--phase-flip", flipAmount.toFixed(4));
     deck.style.setProperty("--column-position", columnPosition.toFixed(4));
     // The heading yields as the stack gathers, and is a sibling so it cannot inherit this.
     headingRef.current?.style.setProperty("--phase-stack", stackAmount.toFixed(4));
-  }, [arrival, fan, bands, stackAmount, fanAmount, columnPosition, reducedMotion]);
+  }, [arrival, fan, stackAmount, fanAmount, spreadAmount, flipAmount, columnPosition, reducedMotion]);
 
   /**
    * The flip, driven by `flippedCards`.
@@ -495,11 +440,10 @@ export function MenuDeckScene({
        * The FLIP IS NO LONGER TWEENED HERE.
        *
        * It is a pure function of scroll in the stylesheet now: each card carves its own turn out
-       * of its own band of `--deck-bands` by index, so the deck turns left to right and reverse
-       * scrolling un-turns it in exactly the reverse order. A GSAP tween writing an inline
-       * `--card-flip` would win the cascade and freeze the card at whatever value the tween last
-       * landed on, which is precisely the "fire-and-forget animation" the rebuild was asked to
-       * remove.
+       * of the shared flip phase by index, so the deck turns left to right and reverse scrolling
+       * un-turns it in exactly the reverse order. A GSAP tween writing an inline `--card-flip`
+       * would win the cascade and freeze the card at whatever value the tween last landed on,
+       * which is precisely the "fire-and-forget animation" the rebuild was asked to remove.
        *
        * What is left here is the one thing scroll cannot express: reduced motion, where there is
        * no turn at all and every card is simply shown face-up. That still has to beat the
@@ -585,11 +529,6 @@ export function MenuDeckScene({
     // Gaps, not cards: the stylesheet divides the content column by this to find the reading
     // spread. Never zero, so the division is always defined for a one-item deck.
     "--deck-gaps": String(Math.max(count - 1, 1)),
-    // The deal and the turn, in bands. Constants, so they belong in the render output rather
-    // than in the per-frame scrub — the server and the hydrated client write the same string,
-    // and there is then ONE definition of each shared by the stylesheet and `deckCardTurn`.
-    "--deal-bands": String(DEAL_BANDS),
-    "--flip-bands": String(FLIP_BANDS),
   };
 
   return (
@@ -614,21 +553,11 @@ export function MenuDeckScene({
         >
           {items.map((item, index) => {
             const faceUp = index < flipped;
-            /*
-             * `data-flipped` is the reducer's verdict; `data-card-face` is the face actually
-             * presented, and under reduced motion that is the front on every card — there is no
-             * 3D flip to wait for. Keeping the two attributes distinct lets the page seam assert
-             * "reduced motion shows fronts" from attributes alone, never a computed transform.
-             *
-             * The presented face reads the card's own turn rather than `faceUp`, because the
-             * stylesheet swaps faces at the HALF-turn and the turn completes at the band boundary
-             * `faceUp` steps on: for the last half of the turn the reader is already looking at
-             * the front while the reducer has not yet counted the card. Reporting `faceUp` there
-             * would make this attribute describe the state instead of the paint, which is the
-             * one thing it exists not to do — `data-flipped` is right beside it for the state.
-             */
-            const presentedFace =
-              reducedMotion || deckCardTurn(bands, index) >= 0.5 ? "front" : "back";
+            // `data-flipped` is the reducer's verdict; `data-card-face` is the face actually
+            // presented, and under reduced motion that is the front on every card — there is no
+            // 3D flip to wait for. Keeping the two attributes distinct lets the page seam assert
+            // "reduced motion shows fronts" from attributes alone, never a computed transform.
+            const presentedFace = faceUp || reducedMotion ? "front" : "back";
             // The card's place in the deck, and nothing else. Its position on the conveyor is
             // derived in the stylesheet from this plus the deck's single `--deck-position`, so
             // the markup React renders on the server is byte-identical to the hydrated markup.
@@ -753,8 +682,6 @@ function clampUnit(value: number): number {
 type DeckStyle = CSSProperties & {
   "--deck-count": string;
   "--deck-gaps": string;
-  "--deal-bands": string;
-  "--flip-bands": string;
 };
 
 /** Per-card geometry: the index alone, so the markup is identical on the server and in the browser. */

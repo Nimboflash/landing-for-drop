@@ -319,13 +319,12 @@ export function ImmersiveLensPage({ lens }: ImmersiveLensPageProps) {
           reducedMotion={state.reducedMotion}
         />
         <SiteHeader variant={transitionState.headerVariant} />
-        {budgets.map(({ sceneId, vh, pin, overlay }) => (
+        {budgets.map(({ sceneId, vh, pin }) => (
           <SceneSection
             key={sceneId}
             sceneId={sceneId}
             budgetVh={vh}
             pin={pin}
-            overlay={overlay}
             active={state.sceneId === sceneId}
             sectionRef={registerScene(sceneId)}
             label={sceneLabel(sceneId)}

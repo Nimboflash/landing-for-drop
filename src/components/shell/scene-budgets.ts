@@ -26,12 +26,6 @@ export type SceneBudget = {
   vh: number;
   /** Whether the scene holds the viewport while its budget scrolls past. */
   pin: boolean;
-  /**
-   * Whether this scene's section is pulled UP under the one before it by
-   * {@link SCENE_UNDERLAP_VH}, so the scene is already in place behind its predecessor and is
-   * revealed as that predecessor scrolls away over it. See {@link SCENE_UNDERLAP_VH}.
-   */
-  overlay: boolean;
 };
 
 /* ------------------------------------------------------------------ loader timing */
@@ -106,15 +100,7 @@ const FIXED_BUDGET_VH = {
   pixelA: 160, // brief: 140-180
   films: 460, // brief: 420-500
   pixelB: 170, // brief: 150-190
-  /*
-   * At the TOP of the brief's range, where it used to sit at the middle of it, and the page is
-   * 70vh SHORTER for it: the footer is an overlay scene now (see `OVERLAY` and
-   * `SCENE_UNDERLAP_VH`), so its section underlaps the art pieces by a viewport and adds 120vh to
-   * the document rather than 190vh. What the extra budget buys is the scene's own scroll WINDOW,
-   * which grows from 90vh to 120vh — the reveal sweeps a viewport of sheet across roughly 84vh of
-   * that window, so it rises at about the speed the page scrolls instead of outrunning it.
-   */
-  footer: 220, // brief: 160-220
+  footer: 190, // brief: 160-220
 } as const satisfies Partial<Record<SceneId, number>>;
 
 /**
@@ -136,50 +122,6 @@ const PINNED: Readonly<Record<SceneId, boolean>> = {
   footer: true,
 };
 
-/* ----------------------------------------------------------------- underlap */
-
-/**
- * How far an OVERLAY scene's section is pulled up under the section before it, in viewport
- * heights. Exactly one viewport, and that is structural rather than a taste value.
- *
- * Every consecutive scene pair is separated by one full viewport of scroll — a scene's trigger
- * runs `top top` -> `bottom bottom`, so scene k ends when its section's bottom reaches the
- * viewport's bottom and scene k+1 starts when its section's top reaches the viewport's top, one
- * screen later. That gap is the hand-over, and for every pair but the last one side holds content
- * across it. For art pieces -> footer nothing did: measured at 1440x900, scroll 18349 to 19110 —
- * 761px, more than four fifths of a screen — reported (artPieces, 1) the whole way while the
- * footer block simply slid up from below the fold with nothing responding to scroll.
- *
- * Pulling the footer's section up by exactly one viewport closes that gap: the footer's trigger
- * now starts on the same scroll position the art pieces' trigger ends on, so the screen of scroll
- * that was dead becomes the first screen of the footer's own window — which is what the reveal
- * needs to run at about scroll speed. It must stay EXACTLY one viewport: less leaves a shorter
- * dead gap, and more would make two scene triggers active at once, which the one-way data flow
- * (BUILD-GUIDE seam 2) has no precedence rule for.
- */
-export const SCENE_UNDERLAP_VH = 100;
-
-/**
- * Which scenes are revealed from behind the scene before them rather than arriving after it.
- *
- * An overlay scene's section underlaps its predecessor by {@link SCENE_UNDERLAP_VH} and paints
- * its own edge-to-edge surface, so the scene is already in place, behind, while the previous
- * scene scrolls away over it. The footer is the one scene built that way (brief §7.10 asks for a
- * closing scene, not a trailing page block); nothing else opts in.
- */
-const OVERLAY: Readonly<Record<SceneId, boolean>> = {
-  loader: false,
-  thesis: false,
-  menu: false,
-  gridStatement: false,
-  pixelA: false,
-  films: false,
-  pixelB: false,
-  tracks: false,
-  artPieces: false,
-  footer: true,
-};
-
 /* ------------------------------------------------------------------- public API */
 
 /** Scroll length of one scene, in viewport heights, for a lens with these counts. */
@@ -194,11 +136,6 @@ export function scenePins(sceneId: SceneId): boolean {
   return PINNED[sceneId];
 }
 
-/** Whether a scene is revealed from behind the scene before it. */
-export function sceneOverlays(sceneId: SceneId): boolean {
-  return OVERLAY[sceneId];
-}
-
 /**
  * Every scene's budget, in brief §6 order. The shell maps over this to render the page, so the
  * scene sequence and the scroll rhythm come from one place.
@@ -208,19 +145,10 @@ export function sceneBudgets(counts: LensCounts): readonly SceneBudget[] {
     sceneId,
     vh: sceneBudgetVh(sceneId, counts),
     pin: scenePins(sceneId),
-    overlay: sceneOverlays(sceneId),
   }));
 }
 
-/**
- * Total page length in viewport heights. Diagnostics and pacing review; never a test expectation.
- *
- * An overlay scene's section overlaps the one before it, so it adds its budget MINUS the underlap
- * to the document — the page is what you can scroll through, not the sum of the sections.
- */
+/** Total page length in viewport heights. Diagnostics and pacing review; never a test expectation. */
 export function totalBudgetVh(counts: LensCounts): number {
-  return sceneBudgets(counts).reduce(
-    (total, budget) => total + budget.vh - (budget.overlay ? SCENE_UNDERLAP_VH : 0),
-    0,
-  );
+  return sceneBudgets(counts).reduce((total, budget) => total + budget.vh, 0);
 }

@@ -135,11 +135,11 @@
   --stack-depth: calc(var(--card-width) * -0.04);
 
   /*
-   * `--deal-bands` and `--flip-bands` arrive from the component: how much of its own band a card
-   * spends travelling to its place, and how much of it it spends turning over. Both windows END
-   * at the band boundary, which is where the reducer counts the card as flipped — so there is no
-   * stagger constant to keep in step with anything any more. The stagger IS the band structure.
+   * The flip's stagger, as a fraction of the flip window per card index. The window is fixed
+   * (phase 0.52 -> 0.78), so the stagger stretches to fit: card 0 turns as the window opens and
+   * the last card finishes exactly as it closes, whatever the count.
    */
+  --flip-stagger: 0.34;
 
   /* Far enough that the reconstructed stack is genuinely below the viewport, at any height. */
   --deck-rise: calc(60svh + var(--card-height));
@@ -206,41 +206,20 @@
   --card-centred: calc(var(--card-norm) - 0.5);
 
   /*
-   * THE DEAL AND THE FLIP, both carved out of THIS CARD'S OWN BAND.
+   * THE FLIP, scrubbed rather than tweened.
    *
-   * `--deck-bands` is the reducer's band counter without its floor (see `deckBands`), so card N
-   * is the one the reducer turns over as that value passes N + 1. Both windows below therefore
-   * END at `--card-index + 1`: the card finishes travelling to its place, and finishes coming
-   * over, exactly at the boundary where `data-flipped` becomes true. The deck deals left to
-   * right because the bands arrive in index order, and reverse scrolling un-deals it in exactly
-   * the reverse order because this is arithmetic on a scroll position, not a timeline.
+   * Each card's own 0 -> 1 turn is carved out of the shared flip phase by its index, so the deck
+   * turns left to right with a real stagger and — because it is a pure function of scroll —
+   * reverse scrolling un-turns them in exactly the reverse order. There is no timeline to get out
+   * of step with the scroll position.
    *
-   * They used to be a shared 0.52 -> 0.78 window with a stagger constant, owing nothing to the
-   * reducer. Measured on the page, that had every card reporting `data-flipped` at its band while
-   * this stylesheet went on painting its BACK for up to 0.41 of the scene afterwards — and on the
-   * narrow layout, where cards pass through the stage one at a time, it meant three of four cards
-   * were face-down for the whole time they were on screen.
-   *
-   * The fallbacks are the no-JavaScript resting state: with nothing writing `--deck-bands` the
-   * `99` saturates both clamps, so every card is dealt and face-up. See the last rule in this
-   * file for why that matters.
+   * The window stretches to the count: total span is 1 + stagger x (count - 1), so card 0 starts
+   * as the phase opens and the last card lands exactly as it closes, for any count.
    */
-  --deal-t: clamp(
-    0,
-    calc(
-      (var(--deck-bands, 99) - var(--card-index) - 1 + var(--deal-bands, 0.62)) /
-        var(--deal-bands, 0.62)
-    ),
-    1
-  );
-  /* Smoothstep, so the card eases out of the stack and settles rather than arriving with a jolt. */
-  --deal-eased: calc(var(--deal-t) * var(--deal-t) * (3 - 2 * var(--deal-t)));
+  --flip-span: calc(1 + var(--flip-stagger) * (var(--deck-count) - 1));
   --flip-t: clamp(
     0,
-    calc(
-      (var(--deck-bands, 99) - var(--card-index) - 1 + var(--flip-bands, 0.5)) /
-        var(--flip-bands, 0.5)
-    ),
+    calc(var(--phase-flip, 1) * var(--flip-span) - var(--card-index) * var(--flip-stagger)),
     1
   );
   /*
@@ -299,12 +278,8 @@
    * width cancels, leaving (count - 1) x 1.06 / 3.3 = 0.3212 per unit of card-centred. Small-angle
    * (57.3 deg per radian) because the cap below is far larger than the few degrees this drifts.
    */
-  /*
-   * Per-card now, because the spread is per-card now: the obliquity is a function of how far
-   * THIS card has travelled from the deck's centre, which is exactly `--deal-eased`.
-   */
   --view-shift: calc(
-    57.3 * var(--card-centred) * (var(--deck-count) - 1) * 0.3212 * var(--deal-eased)
+    57.3 * var(--card-centred) * (var(--deck-count) - 1) * 0.3212 * var(--phase-spread, 1)
   );
   --edge-on: calc(90 - var(--view-shift));
   /* How far the card must stay clear of its own vanishing point, in degrees. */
@@ -336,16 +311,12 @@
   --turn-edge: calc(4 * var(--flip-eased) * (1 - var(--flip-eased)));
 
   /*
-   * The composed offsets. The entry phases are deck-wide and overlap by design, so the deck reads
-   * as one continuous move; the horizontal travel is the card's OWN deal, so the stack is worked
-   * through one card at a time rather than opening all at once.
-   *
-   * That is what makes the scene's claim true: a card is not separated out of the stack and left
-   * sitting there face-down waiting for a flip window: it comes out of the stack and turns over
-   * in the same move, and the move ends where the reducer says the card is flipped.
+   * The composed offsets. Each phase contributes its own term and they overlap by design, so the
+   * deck reads as one continuous move: still fanning as the spread starts, still spreading as the
+   * first card turns.
    */
-  --spread-x: calc(var(--card-centred) * var(--spread-span) * var(--deal-eased));
-  --stack-x: calc(var(--card-centred) * var(--card-width) * 0.05 * (1 - var(--deal-eased)));
+  --spread-x: calc(var(--card-centred) * var(--spread-span) * var(--phase-spread, 1));
+  --stack-x: calc(var(--card-centred) * var(--card-width) * 0.05 * (1 - var(--phase-spread, 1)));
   --travel-x: calc(var(--spread-x) + var(--stack-x));
 
   --rise-y: calc((1 - var(--phase-stack, 1)) * var(--stack-rise));
@@ -354,12 +325,12 @@
   );
   --travel-y: calc(var(--rise-y) + var(--arc-y));
 
-  /* The fan flattens as the card is dealt: a card laid out reads flatter than one held in hand. */
+  /* The fan flattens as the spread opens: a fanned hand laid out reads flatter than one held. */
   --fan-rotate: calc(
-    var(--card-centred) * var(--fan-angle) * var(--phase-fan, 1) * (1 - 0.55 * var(--deal-eased))
+    var(--card-centred) * var(--fan-angle) * var(--phase-fan, 1) *
+      (1 - 0.55 * var(--phase-spread, 1))
   );
-  /* Depth in the stack, given up as the card leaves it. */
-  --recede: calc(var(--card-index) * var(--stack-depth) * (1 - var(--deal-eased)));
+  --recede: calc(var(--card-index) * var(--stack-depth) * (1 - var(--phase-spread, 1)));
   --card-scale: calc(0.94 + 0.06 * var(--phase-stack, 1));
   /*
    * Which face is turned toward the reader, as a HARD 0/1 step at the half-turn: below 90° the

@@ -26,77 +26,7 @@
  * | `--footer-content-opacity` / `--footer-content-lift` | the closing block and metadata settle |
  */
 
-/*
- * THE SHEET.
- *
- * The footer is an overlay scene: its section already underlaps the one above it by a viewport
- * (SceneSection.module.css), so by the time the reveal starts this box is parked across the
- * screen, behind the art pieces. The reveal itself is these two transforms, and they are the
- * whole of it.
- *
- * `--footer-curtain` is 1 while the sheet is still below the frame and 0 once it is fully up;
- * FooterScene writes it from the reducer. The sheet translates by that fraction of its own
- * height, and `.stationary` translates back by exactly the same amount — so the surface rises
- * and everything printed on it does not move at all. That is what makes it read as an
- * uncovering rather than a block sliding into view, and it is why scrolling back up undoes it
- * exactly: both are pure functions of one value, with nothing to unwind.
- */
 .footer {
-  /*
-   * THE SHEET DOES NOT TRAVEL, and removing that is the fix rather than a simplification.
-   *
-   * It used to translate by the curtain and the content counter-translate by the same amount.
-   * That double-counts: the overlay arrangement ALREADY performs the reveal — the section
-   * underlaps the one above it and paints beneath it, so the scene above scrolls away over a
-   * footer that was never moving. Translating on top of that put the surface and the words on
-   * opposite sides of the frame. Measured on a 390x844 phone at 34% revealed: the sheet's top
-   * edge at 654 with the closing statement already drawn at 101, outside and above it.
-   *
-   * So the reveal is the section geometry, and this box only has to be a surface.
-   */
-  /*
-   * Fills its stage, and `100%` rather than `100svh` for a measured reason.
-   *
-   * The stage above is already exactly the viewport — sticky, and sized by the scene system.
-   * `svh` is the viewport with the browser's UI EXPANDED, which is not the same number: on a
-   * 390x844 phone the stage measured 844px while `100svh` resolved to 658.32px, and the sheet
-   * sat 92px down with 94px of nothing under it — the floating panel that was reported. A
-   * percentage of the stage cannot drift from the stage.
-   */
-  block-size: 100%;
-  /*
-   * THE CURVED TOP CORNERS ARE A RECORDED DEPARTURE FROM A HARD RULE.
-   *
-   * CLAUDE.md: "Sharp corners on the logo and content-card system (border-radius: 0 on cards)
-   * … No generic rounded SaaS styling." These two corners are rounded anyway, on an explicit
-   * request, and this comment is the record rather than a silence. It is deliberately narrow:
-   * the curve is what makes this read as a surface the page above is lying over, it is on the
-   * footer's own surface rather than on the card system the rule names, and nothing else in the
-   * scene rounds — the CTA slot is still a sharp box and the only circle is still the O.
-   */
-  border-start-start-radius: var(--footer-sheet-radius);
-  border-start-end-radius: var(--footer-sheet-radius);
-  /*
-   * TRANSLUCENT, not opaque — the light is the point of this scene.
-   *
-   * This was `--drop-black`, which covered the shared canvas completely: `footerLight` is
-   * painted behind everything, so an opaque surface over it hides the whole horizon. That is
-   * what the reported missing animation was. Verified by reading the canvas's own mode at the
-   * same moment: `footerLight` was live and running the entire time it could not be seen.
-   *
-   * A tint still defines the sheet — it darkens what is behind the curve relative to what is
-   * outside it — while letting the horizon through.
-   */
-  background: rgba(0, 0, 0, 0.42);
-  overflow: hidden;
-  /*
-   * The rim light along the curved edge — the sheet catching the light of the scene it is
-   * rising past. It is an inset ring rather than a border so it follows the radius exactly and
-   * takes no layout space.
-   */
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
-
-  --footer-sheet-radius: clamp(1.25rem, 3.2vw, 2.75rem);
   --footer-wordmark-aspect: 4.472;
   --footer-horizon-settled: 0.38;
   --footer-outline-strength: 1;
@@ -171,13 +101,6 @@
    * Tall enough to fill the stage almost exactly, which is what keeps `--footer-stage-slack`
    * small, and short enough that the stage's own padding still fits inside one viewport — a
    * pinned scene that overflows its sticky child loses its bottom edge off-screen.
-   */
-  /*
-   * 78svh was the right floor while this was the last BLOCK of the page — tall enough to hold
-   * the composition, short enough to leave the stage's padding inside one viewport. As a
-   * surface it is the wrong shape: the stage stretches it now, and a floor this close to the
-   * frame only risks a seam if the two disagree. Kept as a floor for the case where the stage
-   * is shorter than the composition needs.
    */
   min-block-size: 78svh;
 }
@@ -417,15 +340,3 @@
     filter: none;
   }
 }
-
-/*
- * The wrapper is a passthrough now.
- *
- * It existed to counter-translate the sheet's travel. The sheet does not travel, so there is
- * nothing to cancel and a box here would only add one. Kept as a node because the component
- * renders it and because it is where a future per-block treatment would hang.
- */
-.stationary {
-  display: contents;
-}
-/* Reduced motion needs no rule here: nothing in this scene translates any more. */
