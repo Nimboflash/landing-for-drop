@@ -42,7 +42,13 @@
  */
 
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 
 import { DropWordmark, brandGeometry } from "@/components/brand";
 import { gsap } from "@/lib/motion/gsap";
@@ -57,7 +63,10 @@ import styles from "./LoaderScene.module.css";
  * bake, neither of which belongs in the server bundle or in the reduced-motion path.
  */
 const DropLogoMaterial3D = dynamic(
-  () => import("@/components/webgl/DropLogoMaterial3D").then((module) => module.DropLogoMaterial3D),
+  () =>
+    import("@/components/webgl/DropLogoMaterial3D").then(
+      (module) => module.DropLogoMaterial3D,
+    ),
   { ssr: false },
 );
 
@@ -111,13 +120,35 @@ const GEOMETRY = brandGeometry();
 const WORDMARK = GEOMETRY.wordmark;
 const O_TILE = WORDMARK.tiles.find((tile) => tile.glyph === "O");
 /** Where the O's centre sits across the wordmark row, 0..1. */
-const O_CENTRE_X_FRACTION = O_TILE ? (O_TILE.x + O_TILE.size / 2) / WORDMARK.width : 0.5;
+const O_CENTRE_X_FRACTION = O_TILE
+  ? (O_TILE.x + O_TILE.size / 2) / WORDMARK.width
+  : 0.5;
 /** The resting aperture radius as a fraction of the row's width. */
 const O_RADIUS_FRACTION = GEOMETRY.oRestingInnerRadius / WORDMARK.width;
 const WORDMARK_ASPECT = WORDMARK.width / WORDMARK.height;
 
-/** Scoped to this scene, and inert whenever scripting is on. Not a global stylesheet. */
-const NOSCRIPT_HIDE_LOADER = '<style>[data-loader-overlay]{display:none!important}</style>';
+/**
+ * What a reader without scripting gets instead of a portal. Inert whenever scripting is on.
+ *
+ * Hiding the overlay was only half of it, and the half that showed less. The overlay does go, but
+ * the loader SECTION keeps its scroll budget: measured at 390x844 with scripting off, it held
+ * 1013px at the top of a 16191px document and the thesis started underneath it. So the page
+ * opened on a blank screen and the reader had to scroll a whole viewport, past nothing, to reach
+ * the first line — a page that is otherwise entirely server-rendered and ready to read.
+ *
+ * The section collapses to nothing here rather than being conditionally rendered, because the
+ * server cannot know whether scripting is on: the same HTML is sent either way, and only this
+ * stylesheet — which the browser applies exactly when the script never runs — can tell them
+ * apart. `min-height` is what SceneSection sizes a scene with, so that is what has to go.
+ *
+ * `height: 0` alongside it because the section is a grid item; `min-height: 0` alone leaves the
+ * row sized by content, and the overlay is `position: fixed` so it contributes none.
+ */
+const NOSCRIPT_HIDE_LOADER =
+  "<style>" +
+  "[data-loader-overlay]{display:none!important}" +
+  '[data-scene="loader"]{min-height:0!important;height:0!important;overflow:hidden!important}' +
+  "</style>";
 
 /**
  * Has the full loader already *played* in this document? Module scope on purpose — see the note
@@ -151,7 +182,8 @@ export interface LoaderSceneProps {
  */
 function whenCriticalAssetsReady(): Promise<void> {
   const fonts = document.fonts;
-  if (!fonts || typeof fonts.ready?.then !== "function") return Promise.resolve();
+  if (!fonts || typeof fonts.ready?.then !== "function")
+    return Promise.resolve();
   return Promise.race([
     fonts.ready.then(() => undefined),
     new Promise<void>((resolve) => {
@@ -209,7 +241,8 @@ export function LoaderScene({ onComplete, reducedMotion }: LoaderSceneProps) {
 
     // Nothing to wait for on the static path (the mark is vector geometry, not type) or on the
     // short mask transition (the page is already loaded).
-    const ready = staticPath || short ? Promise.resolve() : whenCriticalAssetsReady();
+    const ready =
+      staticPath || short ? Promise.resolve() : whenCriticalAssetsReady();
 
     void ready.then(() => {
       if (cancelled) return;
@@ -218,7 +251,10 @@ export function LoaderScene({ onComplete, reducedMotion }: LoaderSceneProps) {
       setBudgetSeconds(
         Math.max(
           0.4,
-          Math.min(LOADER_TARGET_SECONDS, LOADER_CAP_SECONDS - elapsed - CAP_HEADROOM_SECONDS),
+          Math.min(
+            LOADER_TARGET_SECONDS,
+            LOADER_CAP_SECONDS - elapsed - CAP_HEADROOM_SECONDS,
+          ),
         ),
       );
       setMode(staticPath ? "static" : "material");
@@ -287,7 +323,8 @@ export function LoaderScene({ onComplete, reducedMotion }: LoaderSceneProps) {
     root.dataset.dropLoader = "playing";
     if (mode === "material" || mode === "static") {
       root.dataset.dropLoaderMode = mode;
-      root.dataset.dropLoaderSequence = mode === "material" ? sequence : "static";
+      root.dataset.dropLoaderSequence =
+        mode === "material" ? sequence : "static";
     }
   }, [mode, sequence]);
 

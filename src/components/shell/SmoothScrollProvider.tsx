@@ -165,8 +165,38 @@ export function SmoothScrollProvider({
       autoRaf: false,
       // Reduced motion: no smoothing at all, native 1:1 scrolling.
       smoothWheel: !reducedMotion,
-      // Native touch momentum stays with the platform — never re-simulated.
-      syncTouch: false,
+      /*
+       * TOUCH IS DAMPED HERE, not left to the platform's ballistics.
+       *
+       * It was `false`, with the note that native momentum "stays with the platform — never
+       * re-simulated". That is the right instinct for a page of text and the wrong one for this
+       * page: every screen of scroll here is a scrubbed choreography, and iOS's fling is tuned
+       * for throwing a document, not for stepping through one.
+       *
+       * Measured on a booted iPhone 17, same 400px of finger travel, twice:
+       *
+       *   slow drag over 800ms   ->   360px of document   (0.9 : 1)
+       *   hard flick over  80ms  ->  2420px of document   (6.0 : 1)
+       *
+       * A 6.7x spread between the same gesture taken slowly and quickly, and the fast one crossed
+       * three whole scenes in a single flick. A gesture that reversed inside one touch threw the
+       * page 2376px the other way and logged a single frame that moved 354px. That is the
+       * "it doesn't behave sensibly" in numbers: the reader cannot aim, because the distance
+       * depends on how hard they threw rather than how far they moved.
+       *
+       * With syncTouch on, Lenis reads the touch delta itself and damps it, so the page follows
+       * the finger and the fling is bounded. `syncTouchLerp` is the follow, and
+       * `touchInertiaExponent` is how much a fast gesture is allowed to be worth beyond a slow
+       * one — 1.7 is Lenis's default and still amplifies hard; both are tuned below against the
+       * same three gestures rather than taken on faith.
+       *
+       * Reduced motion keeps the platform's own scrolling: `respectReducedMotion` below makes
+       * Lenis fall back to 1:1 there, and nothing should re-simulate a gesture for a reader who
+       * asked for less motion.
+       */
+      syncTouch: !reducedMotion,
+      syncTouchLerp: 0.09,
+      touchInertiaExponent: 1.15,
       // Belt and braces: Lenis also watches the media query itself.
       respectReducedMotion: true,
     });
